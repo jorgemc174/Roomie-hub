@@ -1,0 +1,76 @@
+export type Chore = {
+  id: string;
+  home_id: string;
+  name: string;
+  description: string;
+  difficulty: number;
+  active: boolean;
+  recurrence: 'daily' | 'days' | 'weekly' | 'weeks' | 'monthly';
+  interval_count: number;
+  anchor_date: string;
+  assignment_mode: 'automatic' | 'manual';
+  deadline_days: number | null;
+  deadline_time: string;
+  deadline_timezone: string;
+  seed_key: string | null;
+  created_at: string;
+  updated_at: string;
+};
+export type RotationMember = {
+  home_id: string;
+  chore_id: string;
+  user_id: string;
+  position: number;
+};
+export type ChoreInstance = {
+  id: string;
+  home_id: string;
+  chore_id: string;
+  period_start: string;
+  period_end: string;
+  task_name: string;
+  difficulty: number;
+  assignee_id: string;
+  assignee_name: string;
+  assignment_blocked: boolean;
+  generated_at: string;
+  deadline_at: string | null;
+  completed_at: string | null;
+  completed_by: string | null;
+  completed_by_name: string | null;
+  updated_at: string;
+};
+export type Absence = {
+  id: string;
+  home_id: string;
+  user_id: string;
+  user_name: string;
+  start_date: string;
+  end_date: string;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+export type ShoppingList = {
+  id: string;
+  home_id: string;
+  name: string;
+  created_by: string;
+  created_by_name: string;
+  created_at: string;
+  completed_at: string | null;
+  completed_by: string | null;
+  completed_by_name: string | null;
+  deleted_at: string | null;
+  updated_at: string;
+};
+export type ShoppingItem = ShoppingList & { shopping_list_id: string; purchased: boolean };
+export type AssignmentEvent = {
+  id: string;
+  home_id: string;
+  instance_id: string;
+  assignee_id: string;
+  assignee_name: string;
+  reason: 'generated' | 'reassigned';
+  created_at: string;
+};
