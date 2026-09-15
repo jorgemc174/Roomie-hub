@@ -6,6 +6,9 @@ import { organizationMessages } from './messages';
 import { organizationAction } from './actions';
 import { addDays, validDate, instanceStatus } from './logic';
 import { ChoreForm } from './chore-form';
+import { readRows } from './read-rows';
+import { homeDate } from '@/lib/timezones';
+import { ensureOrganizationPeriod } from './generation';
 
 export async function OrganizationPage({
   homeId,
@@ -14,22 +17,18 @@ export async function OrganizationPage({
   homeId: string;
   search: Record<string, string | string[] | undefined>;
 }) {
-  await getHome(homeId);
+  const home = await getHome(homeId);
   const { db, user } = await requireUser();
   const { locale } = await i18n();
   const t = organizationMessages(locale);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = homeDate(home.timezone ?? 'UTC');
   const requested = typeof search.from === 'string' ? search.from : '';
   const from = validDate(requested) ? requested : today;
   const through = addDays(from, 30);
   const view = typeof search.view === 'string' ? search.view : 'mine';
-  const tab = typeof search.tab === 'string' ? search.tab : 'tasks';
+  const tab = search.tab === 'shopping' || search.tab === 'absences' ? search.tab : 'tasks';
   const base = `/homes/${homeId}/organization`;
-  const result = await db.rpc('generate_chore_instances', {
-    target: homeId,
-    from_date: from,
-    through_date: through,
-  });
+  const result = await ensureOrganizationPeriod(db, homeId, tab);
   if (result.error)
     return (
       <section className="panel">
@@ -44,35 +43,61 @@ export async function OrganizationPage({
     );
   const [chores, rotations, instances, absences, lists, items, events, members] = await Promise.all(
     [
-      db.from('chores').select('*').eq('home_id', homeId).order('created_at'),
-      db.from('chore_rotation_members').select('*').eq('home_id', homeId).order('position'),
-      db
-        .from('chore_instances')
-        .select('*')
-        .eq('home_id', homeId)
-      .or(`period_end.gt.${from},completed_at.is.null`)
-        .lte('period_start', through)
-        .order('period_start'),
-      db
-        .from('absences')
-        .select('*')
-        .eq('home_id', homeId)
-        .is('deleted_at', null)
-        .gte('end_date', from)
-        .order('start_date'),
-      db
-        .from('shopping_lists')
-        .select('*')
-        .eq('home_id', homeId)
-        .is('deleted_at', null)
-        .order('created_at'),
-      db
-        .from('shopping_items')
-        .select('*')
-        .eq('home_id', homeId)
-        .is('deleted_at', null)
-        .order('created_at'),
-      db.from('chore_assignment_events').select('*').eq('home_id', homeId).order('created_at'),
+      readRows(db.from('chores').select('*').eq('home_id', homeId).order('created_at').order('id')),
+      readRows(
+        db
+          .from('chore_rotation_members')
+          .select('*')
+          .eq('home_id', homeId)
+          .order('chore_id')
+          .order('position'),
+      ),
+      readRows(
+        db
+          .from('chore_instances')
+          .select('*')
+          .eq('home_id', homeId)
+          .or(`period_end.gt.${from},completed_at.is.null`)
+          .lte('period_start', through)
+          .order('period_start')
+          .order('id'),
+      ),
+      readRows(
+        db
+          .from('absences')
+          .select('*')
+          .eq('home_id', homeId)
+          .is('deleted_at', null)
+          .gte('end_date', from)
+          .order('start_date')
+          .order('id'),
+      ),
+      readRows(
+        db
+          .from('shopping_lists')
+          .select('*')
+          .eq('home_id', homeId)
+          .is('deleted_at', null)
+          .order('created_at')
+          .order('id'),
+      ),
+      readRows(
+        db
+          .from('shopping_items')
+          .select('*')
+          .eq('home_id', homeId)
+          .is('deleted_at', null)
+          .order('created_at')
+          .order('id'),
+      ),
+      readRows(
+        db
+          .from('chore_assignment_events')
+          .select('*')
+          .eq('home_id', homeId)
+          .order('created_at')
+          .order('id'),
+      ),
       getMembers(homeId),
     ],
   );
@@ -95,11 +120,11 @@ export async function OrganizationPage({
     new Intl.DateTimeFormat(locale, {
       dateStyle: 'medium',
       timeStyle: 'short',
-      timeZone: 'UTC',
-    }).format(new Date(v)) + ' UTC';
+      timeZone: home.timezone ?? 'UTC',
+    }).format(new Date(v)) + ` (${home.timezone ?? 'UTC'})`;
   const hidden = (name: string, value: string) => <input type="hidden" name={name} value={value} />;
   const taskRows = (instances.data ?? []).filter(
-    (i) => view !== 'mine' || i.assignee_id === user.id,
+    (i) => (view === 'cancelled' ? !!i.cancelled_at : !i.cancelled_at) && (view !== 'mine' || i.assignee_id === user.id),
   );
   return (
     <div className="organization">
@@ -126,7 +151,7 @@ export async function OrganizationPage({
           )}
           <div className="section-heading">
             <nav className="org-tabs" aria-label={t.tasks}>
-              {(['mine', 'all', 'manage'] as const).map((k) => (
+              {(['mine', 'all', 'manage', 'cancelled'] as const).map((k) => (
                 <Link
                   key={k}
                   href={`${base}?view=${k}&from=${from}`}
@@ -139,7 +164,7 @@ export async function OrganizationPage({
             <details className="org-disclosure">
               <summary className="button secondary">{t.newTask}</summary>
               <div className="panel">
-                <ChoreForm homeId={homeId} rotations={[]} members={members} t={t} today={today} />
+                <ChoreForm homeId={homeId} rotations={[]} members={members} t={t} today={today} homeTimezone={home.timezone}/>
               </div>
             </details>
           </div>
@@ -160,6 +185,7 @@ export async function OrganizationPage({
                     {c.name} · {c.active ? t.active : t.inactive}
                   </summary>
                   <ChoreForm
+                    homeTimezone={home.timezone}
                     key={c.updated_at}
                     homeId={homeId}
                     chore={c}
@@ -184,7 +210,7 @@ export async function OrganizationPage({
               {taskRows.length === 0 && <p className="panel">{t.empty}</p>}
               <div className="task-list">
                 {taskRows.map((i) => {
-                  const status = instanceStatus(
+                  const status = i.cancelled_at ? 'cancelled' : instanceStatus(
                     i.deadline_at,
                     i.completed_at,
                     new Date().toISOString(),
@@ -209,7 +235,7 @@ export async function OrganizationPage({
                           </p>
                         )}
                         {i.assignment_blocked && <p className="notice error">{t.blocked}</p>}
-                        {i.completed_at ? (
+                        {i.cancelled_at ? <p>{t.cancelled} · {stamp(i.cancelled_at)}</p> : i.completed_at ? (
                           <p>
                             {t.completedBy}: {i.completed_by_name} · {stamp(i.completed_at)}
                           </p>
@@ -255,13 +281,13 @@ export async function OrganizationPage({
                 </label>
                 <label>
                   {t.through}
-                  <input name="through" type="date" defaultValue={through} required />
+                  <input name="through" type="date" defaultValue={addDays(today,1)} required />
                 </label>
               </div>
             </ActionForm>
           </details>
           <p>
-            <small>{t.utcDates}</small>
+            <small>{t.localDates} {home.timezone}</small>
           </p>
         </>
       )}

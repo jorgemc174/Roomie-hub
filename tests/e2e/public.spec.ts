@@ -55,6 +55,7 @@ test('anonymous users cannot enter any protected workspace or account route', as
     '/homes/11111111-1111-4111-8111-111111111111',
     '/homes/11111111-1111-4111-8111-111111111111/settings',
     '/homes/11111111-1111-4111-8111-111111111111/chat',
+    '/homes/11111111-1111-4111-8111-111111111111/organization',
     '/reset-password',
   ]) {
     await page.goto(route);

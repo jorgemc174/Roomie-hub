@@ -12,6 +12,7 @@ export function ChoreForm({
   members,
   t,
   today,
+  homeTimezone,
 }: {
   homeId: string;
   chore?: Chore;
@@ -19,6 +20,7 @@ export function ChoreForm({
   members: Member[];
   t: OrganizationMessages;
   today: string;
+  homeTimezone: string;
 }) {
   const [kind, setKind] = useState(chore?.recurrence ?? 'weekly');
   const [mode, setMode] = useState(chore?.assignment_mode ?? 'automatic');
@@ -214,7 +216,7 @@ export function ChoreForm({
               name="deadline_timezone"
               required
               defaultValue={
-                chore?.deadline_timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+                chore?.deadline_timezone ?? homeTimezone
               }
             />
           </label>

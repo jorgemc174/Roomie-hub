@@ -1,6 +1,6 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFile, readdir } from 'node:fs/promises';
-export async function organizationDatabase() {
+export async function organizationDatabase(throughMigration?: string) {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated;
     create schema auth; create schema storage;
@@ -14,7 +14,7 @@ export async function organizationDatabase() {
     create function storage.foldername(name text) returns text[] language sql as $$ select string_to_array(name,'/') $$;
     create publication supabase_realtime;`);
   for (const file of (await readdir('supabase/migrations'))
-    .filter((f) => f.endsWith('.sql'))
+    .filter((f) => f.endsWith('.sql') && (!throughMigration || f <= throughMigration))
     .sort())
     await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
   const users = [

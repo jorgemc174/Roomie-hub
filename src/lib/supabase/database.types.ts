@@ -65,6 +65,9 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      ensure_current_chores: {Args:{target:string};Returns:{created:number;blocked:number}};
+      update_home_timezone: {Args:{target:string;zone:string};Returns:undefined};
+      home_local_date: {Args:{target:string;at_instant?:string};Returns:string};
       save_chore: {
         Args: {
           target: string;

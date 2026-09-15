@@ -36,6 +36,8 @@ export type ChoreInstance = {
   generated_at: string;
   deadline_at: string | null;
   completed_at: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
   completed_by: string | null;
   completed_by_name: string | null;
   updated_at: string;

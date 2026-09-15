@@ -11,6 +11,7 @@ export type Home = {
   image_path: string | null;
   currency: string;
   week_starts_on: number;
+  timezone: string;
   created_at: string;
 };
 export type Member = {

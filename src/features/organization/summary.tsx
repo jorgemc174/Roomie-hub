@@ -1,20 +1,27 @@
 import Link from 'next/link';
-import { requireUser } from '@/lib/data';
+import { requireUser, getHome } from '@/lib/data';
+import { homeDate } from '@/lib/timezones';
 import { i18n } from '@/lib/i18n/server';
 import { organizationMessages } from './messages';
+import { readRows } from './read-rows';
 export async function OrganizationSummary({ homeId }: { homeId: string }) {
   const { db, user } = await requireUser();
+  const home = await getHome(homeId);
   const { locale } = await i18n();
   const t = organizationMessages(locale);
   const now = new Date().getTime();
   const [tasks, items] = await Promise.all([
-    db
-      .from('chore_instances')
-      .select('id,deadline_at')
-      .eq('home_id', homeId)
-      .eq('assignee_id', user.id)
-      .is('completed_at', null)
-      .lte('period_start', new Date().toISOString().slice(0, 10)),
+    readRows(
+      db
+        .from('chore_instances')
+        .select('id,deadline_at')
+        .eq('home_id', homeId)
+        .eq('assignee_id', user.id)
+        .is('completed_at', null)
+        .is('cancelled_at', null)
+        .lte('period_start', homeDate(home.timezone ?? 'UTC'))
+        .order('id'),
+    ),
     db
       .from('shopping_items')
       .select('id', { count: 'exact', head: true })
@@ -39,8 +46,8 @@ export async function OrganizationSummary({ homeId }: { homeId: string }) {
           </Link>
           <Link href={`/homes/${homeId}/organization`}>
             <strong>
-              {tasks.data?.filter((i) => i.deadline_at && Date.parse(i.deadline_at) < now)
-                .length ?? 0}
+              {tasks.data?.filter((i) => i.deadline_at && Date.parse(i.deadline_at) < now).length ??
+                0}
             </strong>
             {t.overdueTasks}
           </Link>

@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { safeNext, validImage, validName } from '@/lib/validation';
 import { validCurrency } from '@/lib/currencies';
+import { validTimezone } from '@/lib/timezones';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { authReturnUrl, authFailurePath, siteOrigin as siteUrl } from '@/lib/auth-redirects';
 export type ActionState = { error?: string; success?: string };
@@ -134,7 +135,7 @@ async function upload(
   return path;
 }
 export async function homeAction(
-  kind: 'create' | 'join' | 'update' | 'regenerate' | 'delete',
+  kind: 'create' | 'join' | 'update' | 'regenerate' | 'delete' | 'timezone',
   previous: ActionState,
   form: FormData,
 ): Promise<ActionState> {
@@ -169,6 +170,14 @@ export async function homeAction(
       redirect(`/homes/${data}`);
     }
     if (!/^[a-f0-9-]{36}$/i.test(id)) return { error: t.invalid };
+    if (kind === 'timezone') {
+      const zone=field(form,'timezone');
+      if(!validTimezone(zone))return {error:t.invalid};
+      const {error}=await db.rpc('update_home_timezone',{target:id,zone});
+      if(error)return {error:error.message==='invalid_timezone'?t.invalid:t.requestError};
+      revalidatePath(`/homes/${id}`,'layout');
+      return {success:t.saved};
+    }
     if (kind === 'update') {
       const name = field(form, 'name');
       const currency = field(form, 'currency');

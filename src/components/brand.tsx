@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { House } from 'lucide-react';
-export function Brand() {
+export function Brand({ href = '/homes' }: { href?: string }) {
   return (
-    <Link href="/homes" className="brand">
+    <Link href={href} className="brand">
       <span className="brand-icon">
         <House size={22} aria-hidden="true" />
       </span>

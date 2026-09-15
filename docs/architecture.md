@@ -49,3 +49,55 @@ Cuando existan mensajes, gastos, valoraciones o tareas, cada registro conservar�
 `safeNext` rechaza destinos externos, barras inversas, controles, formas codificadas y rutas que normalizan a `//`. Se comprueba antes de enviarlo al proveedor y al recibir su respuesta. Los fallos vuelven a login conservando solo el destino seguro; los enlaces sin destino llevan a Mis pisos. Confirmación y OAuth establecen la sesión **antes** de redirigir; ninguna de esas rutas añade miembros. El usuario confirma la unión en su formulario habitual.
 
 Los callbacks construyen la redirección absoluta sobre `NEXT_PUBLIC_SITE_URL`, nunca sobre un Host/X-Forwarded-Host recibido. Mantener el mismo origen durante el flujo para las cookies de sesión/PKCE.
+
+## Organización — Fase 2
+
+### Esquema y seguridad
+
+`202609150003_organization.sql` es aditiva. Tablas:
+
+| Tabla                   | Responsabilidad                                                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| chores                  | Definición, dificultad, recurrencia tipada, ancla, modo, deadline opcional, estado y clave de semilla                 |
+| chore_rotation_members  | Orden propio por tarea, sin repetir personas/posiciones, FK compuesta al piso                                         |
+| chore_instances         | Una instancia por tarea/periodo; un responsable obligatorio, snapshots de nombre/peso, deadline concreto y completado |
+| chore_assignment_events | Historial append-only de asignación/reasignación con nombre mínimo                                                    |
+| absences                | Persona, nombre, fechas inclusivas, baja lógica                                                                       |
+| shopping_lists          | Listas múltiples, creador y completador con snapshots, estado derivado y baja lógica                                  |
+| shopping_items          | Nombre y comprado, autores/fechas, FK compuesta a lista/piso, baja lógica                                             |
+
+Las siete tienen RLS SELECT con `is_home_member(home_id)`. No hay permisos INSERT/UPDATE/DELETE directos para clientes. Todas las escrituras pasan por RPC SECURITY DEFINER, `search_path=''`, auth comprobada y bloqueo de la fila del piso; esto también serializa con las operaciones de Fase 1. Las claves compuestas impiden mezclar pisos. Referencias históricas a perfiles restringen su borrado; membresías no se eliminan al salir. Borrar el piso mediante su regla existente elimina sus datos dependientes, no perfiles.
+
+Snapshots de responsables, autores y completadores se escriben en SQL leyendo el nombre visible en ese momento. No contienen correo/avatar/preferencias ni cambian cuando cambia el perfil. No amplían `can_read_profile`. Completar tareas es idempotente y conserva el primer autor/timestamp: no hay desmarcado de tareas en esta fase. Compra sí permite marcar/desmarcar; representa el estado actual con su última autoría, sin prometer historial de todos los toggles.
+
+### Recurrencias y generación
+
+`chore_period(kind,n,anchor,on_date)` es pura: devuelve inicio incluido y fin excluido. Diaria/cada X días usan desplazamientos desde el ancla; semanal/cada X semanas usan múltiplos de siete. Guardar una tarea semanal normaliza su ancla al día de inicio del piso (lunes inicial). Cambiar ese ajuste realinea las definiciones semanales mediante `realign_chore_weeks`, sin reescribir instancias emitidas. Mensual mantiene el día del ancla y lo acorta al último día de meses cortos: 31 enero → 28/29 febrero → 31 marzo, sin deriva.
+
+`generate_chore_instances` procesa ventanas acotadas a 366 días de diferencia, cronológicamente y con tareas más pesadas primero; desempate por UUID. UNIQUE(chore_id,period_start), bloqueo del piso y rechazo de periodos solapados con los ya emitidos impiden duplicados, también después de editar recurrencia. Las instancias ya emitidas conservan nombre/peso/deadline; desactivar conserva historia. Durante realineaciones se espera al siguiente periodo completo que no se solape con uno ya emitido.
+
+La UI materializa el periodo consultado y 30 días siguientes, bajo demanda. Un formulario permite backfill explícito de ventanas anteriores. Los pendientes antiguos siguen visibles aunque su periodo haya terminado. La RPC es reutilizable e idempotente; no hay cron instalado. Un futuro worker necesita cursor persistente, procesamiento cronológico, reintentos y una autorización administrativa separada de la RPC de usuario. No se depende de una pestaña permanentemente abierta ni se afirma que haya ejecución programada sin configurarla.
+
+### Reparto y ausencias
+
+Automático: candidatos activos y sin ausencia solapada con el periodo; menor suma de dificultad de las instancias que empiezan en la semana del piso, después menor suma histórica, finalmente hash estable de tarea/periodo/usuario y UUID. La carga incluye tareas manuales y completadas; completar pronto no provoca asignaciones extra por sí mismo. Procesar las más pesadas primero equilibra razonablemente pesos, no solo cantidades. El desempate histórico/hash reduce sesgos persistentes. No pretende optimización perfecta ni equivalencia entre generar ventanas en órdenes distintos: invocar en orden cronológico.
+
+Manual: empieza por la primera posición; después del último responsable del periodo anterior, sigue el siguiente miembro elegible y vuelve al principio. Cada tarea conserva su orden independiente. Editar la rotación afecta a periodos aún no emitidos. Los inactivos y ausentes se saltan sin borrar su historial.
+
+Ausencias son inclusivas y específicas del piso. Se excluye cualquier persona cuya ausencia se solape con alguna fecha del periodo completo (regla conservadora explícita). Guardar/editar/eliminar ausencia y generar invocan `reconcile_chore_assignments`. Revisa pendientes cuyo periodo no ha terminado; no modifica completadas ni periodos históricos cerrados. Manual continúa después del responsable ausente; automático vuelve a usar carga. Si no hay elegibles, una instancia nueva no se crea y se informa del bloqueo; una existente conserva un responsable obligatorio y se señala `assignment_blocked`. Al recuperar disponibilidad se limpia ese estado o se reasigna. No se necesitan flags de activación al terminar una ausencia.
+
+### Deadlines y futura Fase 5
+
+`deadline_days IS NULL` significa deshabilitado. Si existe, SQL combina inicio + días + hora local en `deadline_timezone` IANA y guarda timestamptz. Periodos/ausencias usan calendario UTC; UI muestra las horas UTC explícitamente. `overdueDays(deadline, now, completed)` devuelve floor de milisegundos transcurridos / 86400000, nunca negativo y se detiene en completed_at. El futuro job de negativos utilizará una clave única (instance_id, overdue_day), sin límite de días ni dobles penalizaciones. Esta fase no crea tablas de puntos ni emite penalizaciones.
+
+### Compra y Realtime
+
+`shopping_command` implementa crear/renombrar/eliminar lista, añadir/eliminar/tachar producto y completar lista. El bloqueo del piso hace transaccional el completado entero, incluso frente a añadir un producto concurrentemente. Añadir/desmarcar reabre la lista; lista vacía no se anuncia comprada. `completed_at/by` de la lista es el futuro punto de enlace para crear opcionalmente un gasto; no hay UI ni tabla de gastos todavía.
+
+`HomeSync` escucha `homes` por id y `home_members` por home_id; añade INSERT/UPDATE de chores, chore_instances, absences, shopping_lists y shopping_items por home_id. Las rotaciones se guardan junto con la definición, cuyo UPDATE refresca la UI. Las bajas lógicas evitan depender de DELETE, que no conserva filtros/RLS completos en Postgres Changes. Las ráfagas se agrupan antes de `router.refresh`; el canal se elimina al desmontar y se vuelve a consultar al recuperar foco/reconectar. Errores de canal se muestran como sincronización degradada. Los registros consultados siguen pasando por RLS: el nombre de canal nunca concede acceso.
+
+Referencia operativa: [protocolo Realtime de Supabase](https://supabase.com/docs/guides/realtime/protocol). Distinguir la unión del canal de la confirmación de la suscripción PostgreSQL al comprobar su disponibilidad.
+
+### Navegación
+
+Organización tiene pestañas Tareas/Compra/Ausencias y vistas Mis tareas/Todas/Configurar. Los formularios secundarios se despliegan con details accesible por teclado. Mi perfil contiene Mis pisos y Cerrar sesión; el logo del workspace vuelve al piso actual. Inicio resume tareas actuales pendientes/atrasadas y productos pendientes. No añade ranking, gastos, reservas, actividades ni chat.

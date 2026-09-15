@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "test:db": "tsx --test tests/database.test.ts",
+    "test:db": "tsx --test tests/database.test.ts tests/organization.test.ts tests/task-hardening.test.ts",
+    "test:remote": "node scripts/validate-organization-remote.mjs",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

@@ -2,13 +2,14 @@
 
 ## Alcance y arquitectura
 
-Aplicación real, incremental, mobile-first. Implementar solo fase 1 ahora. La especificación íntegra y vinculante está en `docs/product-requirements.md`; no eliminar ni simplificar requisitos futuros.
+Aplicación real, incremental, mobile-first. Fases 1 y 1.1 conservadas; fase 2 autorizada: tareas, rotaciones, ausencias y compra. No avanzar a fase 3 sin petición. La especificación íntegra y vinculante está en `docs/product-requirements.md`; no eliminar ni simplificar requisitos futuros.
 Next.js estable App Router, React, TypeScript estricto, Tailwind CSS; Supabase Auth SSR con cookies, PostgreSQL RLS y Storage privado. Server Components para lecturas, Server Actions para escrituras, SQL transaccional para invariantes. No service-role en la aplicación. Nunca sustituir backend por datos ficticios ni localStorage.
 `src/app`: rutas; `src/components`: UI; `src/lib`: validación, i18n y clientes Supabase; `src/features`: contratos para módulos futuros; `supabase/migrations`: esquema versionado; `tests`: pruebas.
 
 ## Reglas invariables
 
 - Un usuario puede pertenecer a varios pisos. Cambiar de piso desde Mis pisos, fuera del workspace. Datos y archivos aislados por RLS.
+- El acceso a Mis pisos y Cerrar sesión está en Mi perfil, por petición del usuario. El logo del workspace vuelve al piso actual.
 - Todos los miembros activos tienen idénticos permisos: no admin/propietario/moderador. Solo borrar un piso con exactamente un miembro activo; comprobar con bloqueo transaccional.
 - Invitación permanente por código/enlace, entrada directa sin aprobación. Cualquier miembro regenera e invalida el código anterior.
 - Salir exige deudas liquidadas; preservar membresía inactiva e historia, excluir antiguos miembros de nuevas operaciones/ranking/asignación.
@@ -34,6 +35,8 @@ Next.js estable App Router, React, TypeScript estricto, Tailwind CSS; Supabase A
 Textos visibles en diccionarios es/en; fechas/números/monedas con Intl. Tema claro/oscuro, pastel sobrio, accesibilidad y móvil. Validar entradas en servidor y constraints en DB. Funciones SECURITY DEFINER con search_path fijo, privilegios mínimos y comprobación auth.uid(). Tipos sin any. No botones inertes. Errores visibles y estados pending. Ejecutar lint, typecheck, build, pruebas de lógica y RLS; distinguir probado de pendiente de credenciales. Migraciones aditivas, no secretos en Git.
 
 ## Roadmap
+
+La Fase 2 usa `src/features/organization` y la migración aditiva `202609150003_organization.sql`. SQL es la autoridad de recurrencias, asignación ponderada, rotaciones, ausencias y completados; las siete tablas tienen RLS y no conceden escrituras directas a clientes. RPCs bajo bloqueo del piso. Snapshots mínimos de nombres escritos por backend. No borrar definiciones con historia: desactivar. Listas/productos/ausencias usan baja lógica para Realtime filtrado por home_id. Periodos UTC, fin exclusivo; ausencias con fin incluido y cualquier solapamiento excluye. Deadlines con zona IANA por definición. Sin elegibles: no crear instancia nueva; señalar asignación existente bloqueada y reintentar al gestionar/generar. `overdueDays` calcula bloques completos de 24 h, sin emitir puntos. No reinterpretar estos hooks como autorización para fases posteriores.
 
 1. Fundación: auth, perfiles, pisos, invitaciones, permisos, storage, UI, i18n, tema y scaffolding PWA/realtime.
 2. Tareas, rotaciones, ausencias, compra y sincronización realtime.

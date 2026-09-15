@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getProfile, signedImage } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
-import { profileAction } from '@/app/actions';
+import { profileAction, logoutAction } from '@/app/actions';
 import { ActionForm } from '@/components/action-form';
 import { PreferenceFields } from '@/components/preferences';
 export default async function Profile() {
@@ -11,15 +11,18 @@ export default async function Profile() {
   const image = await signedImage('avatars', profile.avatar_path);
   return (
     <div className="narrow">
-      <Link href="/homes" className="back-link">
-        ← {t.homes}
-      </Link>
       <header className="page-head">
         <div>
           <h1>{t.personal}</h1>
           <p>{t.profileBody}</p>
         </div>
       </header>
+      <section className="panel profile-account-actions">
+        <Link href="/homes" className="button secondary">
+          {t.homes}
+        </Link>
+        <ActionForm action={logoutAction} label={t.logout} pendingLabel={t.saving} />
+      </section>
       <section className="panel">
         <ActionForm action={profileAction} label={t.save} pendingLabel={t.saving}>
           {image && <img src={image} alt={t.photo} className="image-preview profile-photo" />}

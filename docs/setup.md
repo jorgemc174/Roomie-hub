@@ -3,7 +3,7 @@
 ## 1. Crear y preparar el backend
 
 1. Crea un proyecto Supabase y guarda su contraseña de base de datos fuera del repositorio.
-2. En un proyecto nuevo, ejecuta las migraciones completas en orden: `202609150001_foundation.sql` y después `202609150002_currency_profile_privacy.sql`, desde `supabase/migrations/`. Si ya aplicaste la primera, ejecuta **solo la segunda**. No se ha modificado la migración inicial. La segunda conserva datos/default EUR, sustituye la restricción de monedas por formato `[A-Z]{3}` y endurece la lectura de perfiles y avatares.
+2. En un proyecto nuevo, ejecuta las migraciones completas en orden: `202609150001_foundation.sql`, `202609150002_currency_profile_privacy.sql` y `202609150003_organization.sql`, desde `supabase/migrations/`. Ejecuta únicamente las pendientes. Las dos primeras no se modifican en Fase 2. La segunda conserva EUR y restringe perfiles; la tercera añade Organización.
 3. Alternativa CLI para un proyecto enlazado: `supabase link --project-ref TU_REFERENCIA`, después `supabase db push`. No ejecutar ambos métodos sobre el mismo esquema sin sincronizar el historial de migraciones.
 4. La aplicación nunca necesita la clave secreta ni `service_role`. Las escrituras de pisos pasan por RPC autenticadas; las lecturas por RLS. No añadir roles de propietario/admin.
 
@@ -68,3 +68,18 @@ La aplicación falla de forma explícita si falta backend; jamás usa datos simu
 
 Generar tipos desde tu esquema con `supabase gen types typescript --linked > src/lib/supabase/database.types.ts` al modificar migraciones. Revisar el diff y ejecutar typecheck.
 No implementar salida de piso hasta integrar saldos exactos y bloqueo por deudas. Las membresías inactivas ya están modeladas y protegidas.
+
+## Fase 2 en un proyecto existente
+
+1. Tras las dos migraciones anteriores, ejecutar **solo** `supabase/migrations/202609150003_organization.sql` completo en SQL Editor. `Success. No rows returned` es el resultado esperado. No repetir el archivo si terminó bien. No modifica ni borra datos de Fase 1.
+2. Abrir Organización → Configurar tareas → Añadir tareas iniciales. Es opcional, idempotente y válida también para pisos existentes. Los nombres siguen el idioma de quien inicializa.
+3. Configurar recurrencia, dificultad, modo y deadline. Un periodo generado conserva sus datos; editar la definición afecta a los siguientes periodos aún no emitidos. Desactivar evita nuevas instancias y conserva las pendientes/históricas.
+4. Cambiar el día semanal del piso realinea las definiciones semanales. No reescribe instancias existentes ni genera periodos que se solapen con ellas durante la transición.
+5. Realtime añade automáticamente `chores`, `chore_instances`, `absences`, `shopping_lists`, `shopping_items` a la publicación. Suscripciones INSERT/UPDATE con filtro home_id; bajas lógicas se propagan como UPDATE. No desactivar RLS para obtener eventos.
+6. Verificar dos sesiones compartidas y otra ajena. El script de integración crea fixtures aislados y los limpia; no ejecutarlo contra producción. `.env.local` y `test-account-*.credentials.txt` no se distribuyen.
+
+### Generación y futura programación
+
+`generate_chore_instances(target, from_date, through_date)` admite ventanas de hasta 366 días de diferencia y puede repetirse. La UI genera el periodo mostrado hasta 30 días después. Para recuperar periodos no visitados se usa Generar y revisar asignaciones, en ventanas consecutivas. No requiere mantener una pestaña abierta, pero **no hay scheduler instalado**: si nadie abre el periodo ni invoca la RPC, no se materializan sus instancias. Un futuro job mantendrá un cursor de ventanas, las ejecutará cronológicamente y reintentará los periodos sin elegibles. Separar la autorización del worker de la RPC de usuario antes de exponer acceso administrativo; no introducir service-role en frontend ni quitar comprobaciones auth.
+
+Los periodos y ausencias usan fechas UTC; deadlines usan zona IANA explícita y se convierten a timestamptz. El último día de ausencia está incluido. Cualquier solapamiento excluye durante el periodo entero. Si todos están ausentes, no se crea una instancia nueva; las existentes pendientes se señalan bloqueadas conservando su último responsable hasta poder reasignar.

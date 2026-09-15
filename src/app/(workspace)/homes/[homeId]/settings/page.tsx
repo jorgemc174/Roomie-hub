@@ -3,6 +3,7 @@ import { i18n } from '@/lib/i18n/server';
 import { homeAction } from '@/app/actions';
 import { ActionForm } from '@/components/action-form';
 import { CurrencySelect } from '@/components/currency-select';
+import { COMMON_TIMEZONES } from '@/lib/timezones';
 export default async function Settings({ params }: { params: Promise<{ homeId: string }> }) {
   const { homeId } = await params;
   const home = await getHome(homeId);
@@ -63,6 +64,14 @@ export default async function Settings({ params }: { params: Promise<{ homeId: s
               </select>
             </label>
           </div>
+        </ActionForm>
+      </section>
+      <section className="panel">
+        <h2>{t.homeTimezone}</h2><p>{t.homeTimezoneHelp}</p>
+        <ActionForm action={homeAction.bind(null,'timezone')} label={t.save} pendingLabel={t.saving}>
+          <input type="hidden" name="home_id" value={homeId}/>
+          <label>{t.homeTimezone}<input name="timezone" list="home-timezones" defaultValue={home.timezone??'UTC'} required maxLength={100}/></label>
+          <datalist id="home-timezones">{COMMON_TIMEZONES.map(zone=><option key={zone} value={zone}/>)}</datalist>
         </ActionForm>
       </section>
       <section id="invitation" className="panel">

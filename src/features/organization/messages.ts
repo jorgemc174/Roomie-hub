@@ -1,5 +1,7 @@
 import type { Locale } from '@/lib/i18n/dictionaries';
 const es = {
+  cancelled: 'Canceladas',
+  localDates: 'Periodos y ausencias siguen la fecha local del piso. Zona horaria:',
   title: 'Organización',
   tasks: 'Tareas',
   shopping: 'Compra',
@@ -42,7 +44,7 @@ const es = {
   timezone: 'Zona horaria IANA',
   timezoneHelp: 'Por ejemplo Europe/Madrid. La fecha límite se guarda como un instante concreto.',
   recurrenceHelp:
-    'Las semanas se alinean con el día configurado en el piso. Los cambios afectan a periodos aún no generados; las instancias existentes conservan su configuración.',
+    'Las semanas se alinean con el piso. Editar o desactivar cancela las futuras pendientes; el periodo actual y las completadas conservan su configuración. Las futuras se emiten de nuevo cuando corresponda.',
   period: 'Periodo',
   pending: 'Pendiente',
   completed: 'Completada',
@@ -102,6 +104,8 @@ const es = {
   reconnecting: 'Reconectando. Los cambios pueden tardar en aparecer.',
 };
 const en: Record<keyof typeof es, string> = {
+  cancelled: 'Cancelled',
+  localDates: 'Periods and absences follow the home’s local date. Time zone:',
   title: 'Organization',
   tasks: 'Tasks',
   shopping: 'Shopping',
@@ -143,7 +147,7 @@ const en: Record<keyof typeof es, string> = {
   timezone: 'IANA time zone',
   timezoneHelp: 'For example Europe/London. Each deadline is stored as a specific instant.',
   recurrenceHelp:
-    'Weeks align with the home’s configured start day. Changes apply to periods not yet generated; existing instances retain their configuration.',
+    'Weeks align with the home. Editing or deactivating cancels future pending instances; current and completed instances retain their settings. Future work is issued again when due.',
   period: 'Period',
   pending: 'Pending',
   completed: 'Completed',

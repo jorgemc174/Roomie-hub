@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, Settings, House } from 'lucide-react';
+import { Settings, House } from 'lucide-react';
 import { getHome, signedImage } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { Brand } from '@/components/brand';
@@ -20,7 +20,7 @@ export default async function WorkspaceLayout({
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Brand />
+        <Brand href={`/homes/${homeId}`} />
         <div className="home-label">
           {image ? (
             <img className="mini-cover" src={image} alt="" />
@@ -36,10 +36,6 @@ export default async function WorkspaceLayout({
           <Link href={`/homes/${homeId}/settings`}>
             <Settings size={18} />
             {t.homeSettings}
-          </Link>
-          <Link href="/homes">
-            <ArrowLeft size={18} />
-            {t.homes}
           </Link>
         </div>
       </aside>

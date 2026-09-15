@@ -1,4 +1,52 @@
-# Validación de la fase 1
+# Validación de RoomieHub
+
+## Fase 2 — 15 de septiembre de 2026
+
+### Comprobado localmente
+
+- `pnpm lint`: sin errores ni advertencias.
+- `pnpm typecheck`: correcto, TypeScript estricto.
+- `pnpm test`: **37/37** pruebas correctas. Incluye ambas suites PostgreSQL/RLS y lógica de redirección, monedas, auth, validadores y retrasos.
+- `pnpm test:db`: ejecuta `database.test.ts` y `organization.test.ts`; ambas ejecutan las migraciones reales en PGlite.
+- `pnpm build`: compilación de producción correcta, con la nueva ruta autenticada `/homes/[homeId]/organization`.
+- `pnpm test:e2e`: **10/10** Chromium escritorio/móvil. Añadida protección anónima de Organización; se mantienen pruebas de auth, invitaciones, idioma/tema y overflow.
+
+La suite nueva cubre: dificultades válidas/inválidas; cinco recurrencias y meses cortos/bisiestos; alineación semanal; rotaciones inválidas; reparto por peso (cargas 3/4/5), idempotencia y límite de ventana; manual A→B→C; ausencias/reasignación y vuelta a elegibilidad; ausencia total sin instancia huérfana; inactivos excluidos; snapshots históricos; completado por otro miembro; inicialización sin duplicados; deadline Europe/Madrid con DST; compra, desmarcado, lista completa y bajas lógicas; siete RLS, escrituras directas denegadas, IDs de otro piso, privilegios de helpers y publicación Realtime. `overdueDays` prueba días incompletos/completos, fecha futura, offsets y parada al completar.
+
+### Comprobado contra Supabase remoto real
+
+El usuario aplicó `202609150003_organization.sql` desde SQL Editor y confirmó `Success. No rows returned`. Se verificó posteriormente el esquema mediante RPC/REST; no se afirma acceso a `supabase_migrations.schema_migrations`, porque no hubo conexión SQL/MCP administrativa.
+
+`node scripts/validate-organization-remote.mjs` terminó correctamente. Crea tres usuarios confirmados y dos pisos aislados exclusivamente para la prueba. Usa JWTs normales para todas las operaciones de negocio, y la clave administrativa solo para crear/eliminar fixtures y simular una baja. No envía correos ni altera el piso personal existente. La limpieza de sus propios usuarios y pisos terminó bien.
+
+- Creación de piso JPY, unión, siete límites RLS y rechazo de operaciones con IDs ajenos.
+- Evento INSERT de Realtime recibido por otra sesión autenticada.
+- Tareas: generación e idempotencia, rotación A→B, reasignación por ausencia, completado por un compañero.
+- Navegador A crea una tarea; B la ve y completa; A recibe el UPDATE y muestra Completada **sin recargar manualmente**.
+- A crea lista y productos; B los ve, tacha un producto y completa toda la lista; A refleja ambos cambios sin recarga.
+- Mi perfil contiene Mis pisos y Cerrar sesión; Cerrar sesión ya no aparece en la barra del workspace.
+- Navegador desktop es/claro y móvil en/oscuro, sin overflow horizontal. Capturas de compra revisadas visualmente.
+- Al convertir B en antiguo miembro de ese piso, pierde lectura de las siete tablas y la capacidad de escribir mediante RPC.
+
+### Incidencias resueltas y límites
+
+El primer lint señaló una lectura de `Date.now()` dentro del render del contador; se calculó el instante fuera del callback. Las pruebas reales descubrieron que un canal podía anunciar SUBSCRIBED antes de quedar lista su suscripción PostgreSQL: algunos eventos no llegaban al callback y otra pantalla permanecía pendiente. Se corrigió solicitando `postgres_changes_options.wait=true`; también se espera a la sesión SSR, se establece el JWT de Realtime y se usa un canal distinto por montaje para evitar interferencias de la limpieza asíncrona en Strict Mode. La ejecución completa posterior pasó. No se sustituyó la sincronización por un backend simulado ni por recargas manuales.
+
+Quedan avisos no fatales del runner `NO_COLOR`/`FORCE_COLOR`. PGlite no emula el servicio Realtime ni prueba contención entre procesos. El script remoto sí usa Auth, REST y WebSockets reales, pero no es una prueba de carga, de cortes prolongados de red ni de todos los husos horarios. Los bloqueos transaccionales se revisaron; una prueba de estrés de concurrencia queda para endurecimiento previo a producción.
+
+El empaquetado detectó que faltaba `.env.example` en el workspace; se restauró una plantilla con marcadores, sin credenciales. `scripts/package-project.ps1` comprueba archivos obligatorios y excluye .env.local, contraseñas, .git, dependencias, compilaciones y resultados de prueba. El ZIP contiene código, migraciones, documentación y lockfile; requiere instalar dependencias y configurar el entorno en otro equipo.
+
+No hay scheduler instalado: generación bajo demanda/RPC, con formulario para recuperar ventanas anteriores. No hay desmarcado de tareas completadas, puntos, gastos ni Fase 3. Una ausencia que se solapa con cualquier día excluye durante el periodo completo; si no hay elegibles, se informa y se reintenta después de ajustar disponibilidad. Las horas se muestran en UTC, y los deadlines se calculan con la zona IANA elegida. No se han revalidado en esta fase entrega SMTP, Google OAuth ni limpieza de Storage.
+
+### Reproducir integración remota
+
+Servidor de desarrollo activo en `NEXT_PUBLIC_SITE_URL` y variables de `.env.local`. Ejecutar `pnpm test:remote` solo en desarrollo. La clave `SUPABASE_SECRET_KEY` o `SUPABASE_SERVICE_ROLE_KEY` se necesita en el script de fixtures, nunca en variables públicas ni dentro de la aplicación. No se registran contraseñas/tokens ni se guardan trazas de login. Para ejecutar solo API/Realtime sin navegador puede usarse `SKIP_REMOTE_UI=true`; esa variante no acredita la UI.
+
+---
+
+## Registro histórico de validación de la Fase 1
+
+Los apartados siguientes describen lo comprobado en la revisión original, cuando todavía no había backend remoto disponible; el estado actual de Fase 2 está documentado arriba.
 
 ## Ejecutada en este entorno
 
