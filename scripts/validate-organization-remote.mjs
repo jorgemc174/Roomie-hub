@@ -6,6 +6,7 @@ import { chromium, expect } from '@playwright/test';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { checkTaskHardening } from './check-task-hardening.mjs';
 process.loadEnvFile('.env.local');
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -50,7 +51,10 @@ try {
       email_confirm: true,
       user_metadata: { name: `QA Roomie ${name}` },
     });
-    if (error) throw new Error(`Create fixture account: ${error.code}`);
+    if (error)
+      throw new Error(
+        `Create fixture account: status=${error.status} code=${error.code} message=${error.message}`,
+      );
     const client = createClient(url, key, opts);
     const account = { id: data.user.id, email, password, client };
     accounts.push(account);
@@ -65,6 +69,7 @@ try {
     home_currency: 'JPY',
   });
   homes.push({ id: h, owner: a });
+  await rpc(a.client, 'update_home_timezone', { target: h, zone: 'UTC' });
   const invitation = (await read(a.client, 'invitations', h))[0].code;
   await rpc(b.client, 'join_home', { invite_code: invitation });
   const other = await rpc(c.client, 'create_home', { home_name: `QA Isolated ${suffix}` });
@@ -336,6 +341,7 @@ try {
       fullPage: true,
     });
     log('authenticated profile navigation, Spanish/English, light/dark and mobile layout');
+    await checkTaskHardening({ a, b, c, rpc, read, homes, page: pa, base });
     await Promise.all([pa.waitForLoadState('networkidle'), pb.waitForLoadState('networkidle')]);
     await browser.close();
     browser = null;

@@ -9,11 +9,13 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "test:db": "tsx --test tests/database.test.ts tests/organization.test.ts tests/task-hardening.test.ts",
+    "test:db": "tsx --test tests/database.test.ts tests/organization.test.ts tests/task-hardening.test.ts tests/expenses.test.ts tests/calendar.test.ts",
+    "test:expenses:remote": "node scripts/validate-expenses-remote.mjs",
     "test:remote": "node scripts/validate-organization-remote.mjs",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:calendar:remote": "node scripts/validate-calendar-remote.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
@@ -21,7 +23,8 @@
     "lucide-react": "^0.577.0",
     "next": "16.3.5",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sharp": "0.35.4"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",

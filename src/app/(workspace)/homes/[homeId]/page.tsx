@@ -1,3 +1,4 @@
+import { ExpenseSummary } from '@/features/expenses/summary';
 import Link from 'next/link';
 import {
   CalendarDays,
@@ -41,6 +42,7 @@ export default async function HomePage({ params }: { params: Promise<{ homeId: s
         </Link>
       </section>
       <OrganizationSummary homeId={homeId} />
+      <ExpenseSummary homeId={homeId} />
       <div className="two-column">
         <section>
           <h2>{t.nextTitle}</h2>
@@ -54,7 +56,9 @@ export default async function HomePage({ params }: { params: Promise<{ homeId: s
                   <h3>{t[key]}</h3>
                   <p>{t[`${key}Body`]}</p>
                 </div>
-                {key !== 'organization' && <span className="badge">{t.future}</span>}
+                {key === 'chat' && (
+                  <span className="badge">{t.future}</span>
+                )}
               </Link>
             ))}
           </div>

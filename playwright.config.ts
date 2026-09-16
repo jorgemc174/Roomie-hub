@@ -11,7 +11,7 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' } },
   ],
   webServer: {
-    command: 'pnpm exec next dev --hostname 127.0.0.1 --port 3100',
+    command: 'node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3100',
     url: 'http://127.0.0.1:3100/login',
     reuseExistingServer: false,
     timeout: 120000,

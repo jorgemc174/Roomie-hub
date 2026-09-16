@@ -1,4 +1,4 @@
-# RoomieHub — Fase 2
+# RoomieHub — Fase 4
 
 Base real para convivencia, con Next.js, TypeScript y Supabase. Requisitos completos: [docs/product-requirements.md](docs/product-requirements.md). Arquitectura y roadmap: [AGENTS.md](AGENTS.md).
 
@@ -16,7 +16,7 @@ Sin variables la aplicación muestra instrucciones de conexión; no crea sesione
 
 Registro, login/logout, recuperación y sesión SSR; perfil con nombre/foto; creación y unión a varios pisos, invitaciones regenerables, workspace y ajustes; permisos iguales y borrado exclusivo con un único miembro activo; Storage privado, RLS y suscripción Realtime base. Diseño mobile-first, claro/oscuro, diccionarios es/en y manifest inicial.
 
-Organización incluye tareas recurrentes, reparto ponderado, rotaciones manuales, ausencias con reasignación, fechas límite y múltiples listas de compra, con Realtime. Calendario, gastos, convivencia y chat siguen como próximas fases. No hay localStorage ni datos de negocio ficticios.
+Organización incluye tareas recurrentes, reparto ponderado, rotaciones manuales, ausencias con reasignación, fechas límite y múltiples listas de compra, con Realtime. Gastos incluye reparto, pagos y recurrentes; Reservas, Actividades y Calendario están implementados. Puntos, chat y notificaciones siguen pendientes. No hay localStorage ni datos de negocio ficticios.
 
 ## Archivos principales
 
@@ -45,9 +45,27 @@ Monedas internacionales (30 opciones, EUR inicial), privacidad del perfil actual
 - UI: Organización → Tareas / Compra / Ausencias. Mi perfil contiene Mis pisos y Cerrar sesión.
 - Tareas iniciales: Configurar tareas → Añadir tareas iniciales; seguro para pisos nuevos o existentes, sin duplicados ni reemplazar ediciones.
 - Definiciones editables; instancias con un responsable, peso, periodo, deadline y snapshots de nombres. Historial de asignaciones y completados.
-- Generación al entrar al periodo (30 días), RPC explícita para otros rangos y preparación para jobs. No hay cron instalado ni puntos por retraso en esta fase.
+- Generación solo en Tareas para hoy y mañana según la zona del piso, RPC explícita para otros rangos y preparación para jobs. No hay cron instalado ni puntos por retraso en esta fase.
 - Compras solo con nombre y comprado, baja lógica, completar lista en una transacción. Sin precios, cantidades, notas ni gastos.
 - Validación real: `node scripts/validate-organization-remote.mjs` contra **desarrollo**, con servidor activo. Crea y elimina sus propios usuarios/pisos de prueba; necesita clave administrativa únicamente para esos fixtures. Ver [validación](docs/validation.md).
 
 1. Auth, perfil, pisos, invitaciones, RLS, Storage, tema e idioma.
 2. Tareas y compras; después gastos, calendario, convivencia, chat y notificaciones según AGENTS.md.
+
+## Endurecimiento de Fase 2
+
+Migración aditiva `202609150004_task_lifecycle_timezone.sql`: cancelación auditable de futuras pendientes, calendario local configurable y reparto futuro actualizado al entrar miembros. Ver [semántica y entrega](docs/phase-2-hardening.md). No incluye Fase 3.
+
+## Fase 3 — Gastos compartidos
+
+Gastos con reparto igual, exacto o porcentual; saldos derivados y pagos sugeridos; registro de pagos; edición auditada y baja lógica; recurrentes fijos/variables; tickets privados; compra→gasto y salida solo con saldo cero. Moneda única con aritmética exacta y calendario del piso.
+
+Aplicar `supabase/migrations/202609150005_expenses.sql` después de 004. Ver [entrega y decisiones](docs/phase-3-delivery.md), [configuración](docs/setup.md) y [validación](docs/validation.md). No incluye Fase 4.
+
+## Fase 4 — Reservas, actividades y calendario
+
+Recursos configurables en Organización → Reservas, reservas sin solapamientos, actividades con participantes en Convivencia y calendario mensual con agenda, tipos y Solo lo mío. Horas del piso, RLS y sincronización entre miembros; se preservan tareas y finanzas.
+
+Nueva migración `202609150006_calendar_reservations_activities.sql`, después de 005. [Entrega completa](docs/phase-4-delivery.md), [configuración](docs/setup.md) y [validación](docs/validation.md). No incluye Fase 5.
+
+Los scripts también se ejecutan con `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:db`, `npm run build`, `npm run test:e2e`. Integración autenticada de desarrollo: `npm run test:calendar:remote` con el servidor local activo y credenciales en .env.local. El lockfile de dependencias sigue siendo pnpm-lock.yaml.

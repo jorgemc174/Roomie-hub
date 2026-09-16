@@ -1,3 +1,5 @@
+import { financeAction } from '@/features/expenses/actions';
+import { expenseMessages } from '@/features/expenses/messages';
 import { getHome, getMembers, requireUser, signedImage } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { homeAction } from '@/app/actions';
@@ -16,6 +18,7 @@ export default async function Settings({ params }: { params: Promise<{ homeId: s
     .single();
   if (error) throw new Error('invitation_read_failed');
   const { t, locale } = await i18n();
+  const financeText = expenseMessages(locale);
   const image = await signedImage('home-images', home.image_path);
   const url = process.env.NEXT_PUBLIC_SITE_URL;
   if (!url) throw new Error('site_url_missing');
@@ -67,11 +70,29 @@ export default async function Settings({ params }: { params: Promise<{ homeId: s
         </ActionForm>
       </section>
       <section className="panel">
-        <h2>{t.homeTimezone}</h2><p>{t.homeTimezoneHelp}</p>
-        <ActionForm action={homeAction.bind(null,'timezone')} label={t.save} pendingLabel={t.saving}>
-          <input type="hidden" name="home_id" value={homeId}/>
-          <label>{t.homeTimezone}<input name="timezone" list="home-timezones" defaultValue={home.timezone??'UTC'} required maxLength={100}/></label>
-          <datalist id="home-timezones">{COMMON_TIMEZONES.map(zone=><option key={zone} value={zone}/>)}</datalist>
+        <h2>{t.homeTimezone}</h2>
+        <p>{t.homeTimezoneHelp}</p>
+        <ActionForm
+          action={homeAction.bind(null, 'timezone')}
+          label={t.save}
+          pendingLabel={t.saving}
+        >
+          <input type="hidden" name="home_id" value={homeId} />
+          <label>
+            {t.homeTimezone}
+            <input
+              name="timezone"
+              list="home-timezones"
+              defaultValue={home.timezone ?? 'UTC'}
+              required
+              maxLength={100}
+            />
+          </label>
+          <datalist id="home-timezones">
+            {COMMON_TIMEZONES.map((zone) => (
+              <option key={zone} value={zone} />
+            ))}
+          </datalist>
         </ActionForm>
       </section>
       <section id="invitation" className="panel">
@@ -95,6 +116,21 @@ export default async function Settings({ params }: { params: Promise<{ homeId: s
           <label className="checkbox">
             <input type="checkbox" name="confirm" required />
             {t.confirmRegenerate}
+          </label>
+        </ActionForm>
+      </section>
+      <section className="panel">
+        <h2>{financeText.leave}</h2>
+        <p>{financeText.leaveHelp}</p>
+        <ActionForm
+          action={financeAction.bind(null, homeId, 'leave')}
+          label={financeText.leave}
+          pendingLabel={t.saving}
+          danger
+        >
+          <label className="checkbox">
+            <input name="confirm" type="checkbox" required />
+            {financeText.confirmLeave}
           </label>
         </ActionForm>
       </section>

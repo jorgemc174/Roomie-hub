@@ -1,9 +1,10 @@
+import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 test('PostgreSQL: RLS, equal permissions, invitation lifecycle, storage and deletion', async (t) => {
-  const db = new PGlite();
+  const db = new PGlite({ extensions: { btree_gist } });
   try {
     await db.exec(`create role anon; create role authenticated;
  create schema auth; create schema storage;
@@ -11,7 +12,7 @@ test('PostgreSQL: RLS, equal permissions, invitation lifecycle, storage and dele
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  grant usage on schema auth,public,storage to authenticated,anon;
  create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
- create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);
+ create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text,owner uuid,owner_id text,metadata jsonb,user_metadata jsonb);
  alter table storage.objects enable row level security;
  grant select,insert,delete on storage.objects to authenticated;
  create function storage.foldername(name text) returns text[] language sql as $$ select string_to_array(name,'/') $$;

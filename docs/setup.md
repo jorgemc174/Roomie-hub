@@ -3,7 +3,7 @@
 ## 1. Crear y preparar el backend
 
 1. Crea un proyecto Supabase y guarda su contraseña de base de datos fuera del repositorio.
-2. En un proyecto nuevo, ejecuta las migraciones completas en orden: `202609150001_foundation.sql`, `202609150002_currency_profile_privacy.sql` y `202609150003_organization.sql`, desde `supabase/migrations/`. Ejecuta únicamente las pendientes. Las dos primeras no se modifican en Fase 2. La segunda conserva EUR y restringe perfiles; la tercera añade Organización.
+2. En un proyecto nuevo, ejecuta las migraciones completas en orden: `202609150001_foundation.sql`, `202609150002_currency_profile_privacy.sql`, `202609150003_organization.sql`, `202609150004_task_lifecycle_timezone.sql` y `202609150005_expenses.sql`, desde `supabase/migrations/`. Ejecuta únicamente las pendientes. Las dos primeras no se modifican en Fase 2. La segunda conserva EUR y restringe perfiles; la tercera añade Organización.
 3. Alternativa CLI para un proyecto enlazado: `supabase link --project-ref TU_REFERENCIA`, después `supabase db push`. No ejecutar ambos métodos sobre el mismo esquema sin sincronizar el historial de migraciones.
 4. La aplicación nunca necesita la clave secreta ni `service_role`. Las escrituras de pisos pasan por RPC autenticadas; las lecturas por RLS. No añadir roles de propietario/admin.
 
@@ -67,19 +67,47 @@ La aplicación falla de forma explícita si falta backend; jamás usa datos simu
 ## Evolución
 
 Generar tipos desde tu esquema con `supabase gen types typescript --linked > src/lib/supabase/database.types.ts` al modificar migraciones. Revisar el diff y ejecutar typecheck.
-No implementar salida de piso hasta integrar saldos exactos y bloqueo por deudas. Las membresías inactivas ya están modeladas y protegidas.
+La salida de piso está implementada desde 005 con saldos exactos y bloqueo por deudas; preserva membresías inactivas e historia.
 
 ## Fase 2 en un proyecto existente
 
 1. Tras las dos migraciones anteriores, ejecutar **solo** `supabase/migrations/202609150003_organization.sql` completo en SQL Editor. `Success. No rows returned` es el resultado esperado. No repetir el archivo si terminó bien. No modifica ni borra datos de Fase 1.
 2. Abrir Organización → Configurar tareas → Añadir tareas iniciales. Es opcional, idempotente y válida también para pisos existentes. Los nombres siguen el idioma de quien inicializa.
-3. Configurar recurrencia, dificultad, modo y deadline. Un periodo generado conserva sus datos; editar la definición afecta a los siguientes periodos aún no emitidos. Desactivar evita nuevas instancias y conserva las pendientes/históricas.
-4. Cambiar el día semanal del piso realinea las definiciones semanales. No reescribe instancias existentes ni genera periodos que se solapen con ellas durante la transición.
+3. Configurar recurrencia, dificultad, modo y deadline. El periodo actual y las completadas conservan sus datos; editar o desactivar cancela las futuras pendientes, preservando eventos.
+4. Cambiar el día semanal del piso realinea las definiciones semanales. Cancela futuras pendientes; conserva actuales/completadas y evita solaparlas durante la transición.
 5. Realtime añade automáticamente `chores`, `chore_instances`, `absences`, `shopping_lists`, `shopping_items` a la publicación. Suscripciones INSERT/UPDATE con filtro home_id; bajas lógicas se propagan como UPDATE. No desactivar RLS para obtener eventos.
 6. Verificar dos sesiones compartidas y otra ajena. El script de integración crea fixtures aislados y los limpia; no ejecutarlo contra producción. `.env.local` y `test-account-*.credentials.txt` no se distribuyen.
 
 ### Generación y futura programación
 
-`generate_chore_instances(target, from_date, through_date)` admite ventanas de hasta 366 días de diferencia y puede repetirse. La UI genera el periodo mostrado hasta 30 días después. Para recuperar periodos no visitados se usa Generar y revisar asignaciones, en ventanas consecutivas. No requiere mantener una pestaña abierta, pero **no hay scheduler instalado**: si nadie abre el periodo ni invoca la RPC, no se materializan sus instancias. Un futuro job mantendrá un cursor de ventanas, las ejecutará cronológicamente y reintentará los periodos sin elegibles. Separar la autorización del worker de la RPC de usuario antes de exponer acceso administrativo; no introducir service-role en frontend ni quitar comprobaciones auth.
+`generate_chore_instances(target, from_date, through_date)` admite ventanas de hasta 366 días de diferencia y puede repetirse. Solo Tareas invoca ensure_current_chores: hoy y mañana locales, independientemente del rango consultado. Compra y Ausencias no generan. Para recuperar periodos no visitados se usa Generar y revisar asignaciones, en ventanas consecutivas. No requiere mantener una pestaña abierta, pero **no hay scheduler instalado**: si nadie abre el periodo ni invoca la RPC, no se materializan sus instancias. Un futuro job mantendrá un cursor de ventanas, las ejecutará cronológicamente y reintentará los periodos sin elegibles. Separar la autorización del worker de la RPC de usuario antes de exponer acceso administrativo; no introducir service-role en frontend ni quitar comprobaciones auth.
 
-Los periodos y ausencias usan fechas UTC; deadlines usan zona IANA explícita y se convierten a timestamptz. El último día de ausencia está incluido. Cualquier solapamiento excluye durante el periodo entero. Si todos están ausentes, no se crea una instancia nueva; las existentes pendientes se señalan bloqueadas conservando su último responsable hasta poder reasignar.
+Los periodos y ausencias usan fechas del calendario local del piso; deadlines usan zona IANA explícita y se convierten a timestamptz. El último día de ausencia está incluido. Cualquier solapamiento excluye durante el periodo entero. Si todos están ausentes, no se crea una instancia nueva; las existentes pendientes se señalan bloqueadas conservando su último responsable hasta poder reasignar.
+
+### Actualización de endurecimiento (004)
+
+Si 001–003 ya están aplicadas, ejecutar únicamente `supabase/migrations/202609150004_task_lifecycle_timezone.sql` completo, una sola vez. No repetir migraciones anteriores. La actualización cancela futuras pendientes pregeneradas; conserva el periodo actual, completadas y eventos.
+
+Ajustes del piso → Zona horaria permite seleccionar o escribir una zona IANA válida. Los pisos existentes conservan UTC; los nuevos usan Europe/Madrid por defecto. Cambiarla preserva los periodos iniciados bajo cualquiera de las dos zonas. Los deadlines existentes conservan su instante y zona de definición; nuevas tareas toman la zona del piso como valor inicial. Ver [semántica](phase-2-hardening.md).
+
+## Fase 3 — Configuración
+
+En instalaciones con 001–004 aplicadas, ejecutar **solo** `supabase/migrations/202609150005_expenses.sql` completo en SQL Editor. En instalación nueva, ejecutar 001 a 005 en orden. No repetir ni modificar archivos ya aplicados. La migración crea ocho tablas, RPCs, políticas, publicación Realtime y bucket privado expense-receipts. No añade datos ficticios.
+
+Abrir Gastos para crear movimientos y generar periodos vencidos; Ajustes ofrece Salir del piso con comprobación transaccional del saldo. Moneda bloqueada tras el primer movimiento o plantilla. Fechas según zona del piso. Tickets hasta 10 MiB; Server Actions admite 12 MB para el formulario y su envoltorio. En hosting, comprobar también el límite de tamaño del proxy/proveedor. No hay cron ni análisis antimalware instalado.
+
+Validación remota de desarrollo: servidor activo en NEXT_PUBLIC_SITE_URL y ejecutar `node scripts/validate-expenses-remote.mjs`. Requiere clave secreta administrativa válida en SUPABASE_SECRET_KEY (o la antigua SUPABASE_SERVICE_ROLE_KEY) exclusivamente para fixtures. Si devuelve Unregistered API key, actualizar la clave local del mismo proyecto; no pegarla en el chat ni en Git. SKIP_REMOTE_UI=true ejecuta únicamente API/Storage, sin acreditar navegadores/Realtime visual. Nunca ejecutar los fixtures en producción.
+
+El entorno de aplicación sigue usando solo clave publicable y sesión del usuario. Para instalación en otro equipo: pnpm install, configurar .env.local desde .env.example, aplicar migraciones pendientes y pnpm dev.
+
+## Fase 4 — Configuración (006)
+
+Con 001–005 aplicadas, ejecutar completo una sola vez `supabase/migrations/202609150006_calendar_reservations_activities.sql` en SQL Editor. Instalaciones nuevas: 001→006 en orden. Necesita `btree_gist`; la migración la activa si falta. Crea cuatro tablas, constraints, RPCs, RLS, trigger de salida y publicación Realtime, dentro de una transacción. No repetir ni editar migraciones anteriores.
+
+Recursos iniciales son opcionales: Organización → Reservas → Recursos → Añadir baño, cocina y lavadora. Puede crearse cualquier recurso propio. No se insertan recursos automáticamente en pisos existentes. Convivencia contiene Actividades. Calendario muestra registros existentes; no hay scheduler ni materialización desde esa página.
+
+Pruebas remotas: servidor activo en NEXT_PUBLIC_SITE_URL, `npm run test:calendar:remote`. Usa la clave administrativa local solo para crear/eliminar tres cuentas confirmadas y un piso de prueba; operaciones normales con JWT de cada cuenta. No imprime contraseñas ni tokens. SKIP_REMOTE_UI=true omite navegadores (no acredita UI/Realtime visual). El script borra únicamente los fixtures que él creó. Usar un proyecto de desarrollo, nunca producción.
+
+En este equipo Windows bloquea el ejecutable pnpm mediante Control de aplicaciones. Los scripts de validación se ejecutaron mediante npm/Node con las dependencias ya instaladas; no se cambió la resolución del lockfile. Playwright inicia Next directamente con Node. Detener otro Next dev del mismo checkout antes del E2E público (puerto 3100); reiniciar después `npm run dev` (3000).
+
+Las nuevas reservas duran como máximo 7 días y admiten 5 minutos de margen en el pasado. Se rechazan horas locales inexistentes; en horas repetidas se usa hora estándar. Cambiar timezone no altera los instantes ya guardados. Para revisar un formulario abierto antes del cambio hay que recargarlo. Ver [semántica completa](phase-4-delivery.md).

@@ -1,4 +1,5 @@
 'use server';
+import { expenseMessages } from '@/features/expenses/messages';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect, unstable_rethrow } from 'next/navigation';
@@ -171,12 +172,13 @@ export async function homeAction(
     }
     if (!/^[a-f0-9-]{36}$/i.test(id)) return { error: t.invalid };
     if (kind === 'timezone') {
-      const zone=field(form,'timezone');
-      if(!validTimezone(zone))return {error:t.invalid};
-      const {error}=await db.rpc('update_home_timezone',{target:id,zone});
-      if(error)return {error:error.message==='invalid_timezone'?t.invalid:t.requestError};
-      revalidatePath(`/homes/${id}`,'layout');
-      return {success:t.saved};
+      const zone = field(form, 'timezone');
+      if (!validTimezone(zone)) return { error: t.invalid };
+      const { error } = await db.rpc('update_home_timezone', { target: id, zone });
+      if (error)
+        return { error: error.message === 'invalid_timezone' ? t.invalid : t.requestError };
+      revalidatePath(`/homes/${id}`, 'layout');
+      return { success: t.saved };
     }
     if (kind === 'update') {
       const name = field(form, 'name');
@@ -207,7 +209,11 @@ export async function homeAction(
       });
       if (error) {
         if (path) await db.storage.from('home-images').remove([path]);
-        return { error: t.requestError };
+        return {
+          error: error.message.includes('currency_has_history')
+            ? expenseMessages((await i18n()).locale).currencyLocked
+            : t.requestError,
+        };
       }
       // Superseded files are retained for now; concurrent editors may still reference them.
     }
@@ -221,7 +227,11 @@ export async function homeAction(
       const { error } = await db.rpc('delete_home', { target: id });
       if (error)
         return {
-          error: error.message.includes('home_has_members') ? t.deleteError : t.requestError,
+          error: error.message.includes('home_has_members')
+            ? t.deleteError
+            : error.message.includes('home_has_balances')
+              ? expenseMessages((await i18n()).locale).homeDebt
+              : t.requestError,
         };
       revalidatePath('/homes');
       redirect('/homes');

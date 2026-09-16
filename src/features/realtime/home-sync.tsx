@@ -58,6 +58,14 @@ export function HomeSync({ homeId }: { homeId: string }) {
         'absences',
         'shopping_lists',
         'shopping_items',
+        'expenses',
+        'settlements',
+        'recurring_expenses',
+        'recurring_expense_instances',
+        'resources',
+        'reservations',
+        'activities',
+        'activity_members',
       ]) {
         channel
           .on(

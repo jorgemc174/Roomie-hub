@@ -1,6 +1,86 @@
 # Validación de RoomieHub
 
-## Fase 2 — 15 de septiembre de 2026
+## Fase 4 — Recursos, reservas, actividades y calendario (006)
+
+Resultados del 16 de septiembre de 2026, con las seis migraciones:
+
+| Comando                        | Resultado                                                            |
+| ------------------------------ | -------------------------------------------------------------------- |
+| `npm run lint`                 | Correcto, sin errores ni advertencias                                |
+| `npm run typecheck`            | Correcto                                                             |
+| `npm test`                     | 71/71, incluidas regresiones de todas las fases anteriores           |
+| `npm run test:db`              | 61/61, PostgreSQL embebido PGlite                                    |
+| `npm run build`                | Producción correcta; nuevas rutas calendario, actividades y reservas |
+| `npm run test:e2e`             | 10/10 Chromium escritorio/móvil, incluidas nuevas rutas protegidas   |
+| `npm run test:calendar:remote` | Integración autenticada contra Supabase real, API y dos navegadores  |
+
+### Cobertura local
+
+11 pruebas nuevas (incluida suite contenedora): cinco formas de solapamiento; límites [inicio,fin), otro recurso y constraint probado con INSERT SQL sin RPC; edición atómica/versiones, cancelación/reutilización de hueco; recursos configurables/semillas/desactivación; creador apuntado, participantes únicos/idempotentes, conservación al editar/cancelar; cuatro RLS, anónimo, cross-home, escrituras directas denegadas y exmiembros; snapshots al salir; DST inexistente/repetido, Madrid/Canarias/UTC/Tokio y medianoche; cambio de timezone preservando instante/formulario obsoleto; normalización de cuatro fuentes, pendientes, filtros, fecha lógica y final a medianoche.
+
+PGlite procesa las dos peticiones enviadas juntas de forma serial. Esa prueba local **no** se presenta como contención multisesión. Las migraciones 001–005 son idénticas a las del ZIP entregado de Fase 3; product-requirements.md conserva SHA256 A54CD3E93EEFD40DC6FB94FC484FEF6F8E54DEF7120A32A5508DA71ED5C4B862.
+
+### Supabase real
+
+El usuario confirmó 006 en SQL Editor. La clave de fixtures ya funciona y 005 está disponible, a diferencia del diagnóstico histórico inferior. No se accedió al registro administrativo de migraciones; se verificaron tablas/RPC y comportamiento con datos reales de prueba.
+
+El script crea tres cuentas confirmadas y un piso temporal; API de negocio con JWT de usuario, clave administrativa solo para fixtures. Comprobado:
+
+- Dos solicitudes HTTP concurrentes de usuarios distintos sobre el mismo recurso/horario: exactamente una aceptada y una rechazada; una fila persistida.
+- Horarios consecutivos y recursos distintos permitidos, edición conflictiva rechazada, cancelación libera hueco.
+- Cuatro tablas invisibles para externo, escrituras directas/RPC ajenas rechazadas; antiguo sin acceso.
+- Cambiar Madrid→Tokio conserva timestamps; formulario con zona antigua rechazado; hueco DST rechazado y hora repetida con interpretación estándar.
+- Navegador crea Lavadora UI, reserva mañana, edita y cancela.
+- A crea Cena italiana; B la recibe y se apunta; A ve a B sin recargar manualmente.
+- Calendario incluye tarea con deadline, reserva, actividad y siguiente recurrente; filtros por tipo y Solo lo mío. Visitarlo no aumenta instancias de tareas ni contabiliza recurrentes.
+- Escritorio y móvil 360px sin overflow; cambio de preferencias real a inglés/oscuro. Capturas revisadas visualmente en ambos temas.
+- Limpieza de todos los usuarios/pisos creados por cada ejecución; no se modificó el piso personal del usuario.
+
+No es prueba de carga masiva, recuperación de red prolongada, todos los husos IANA ni SMTP/OAuth. Las comprobaciones financieras remotas completas de Fase 3 no se vuelven a acreditar por el hecho de probar la lectura de un recurrente en esta fase.
+
+### Incidencias y correcciones
+
+- Windows bloquea pnpm mediante Control de aplicaciones. Mismos scripts ejecutados mediante npm/Node con dependencias existentes; sin cambiar lockfile.
+- Lint detectó Date.now en render; se toma el instante de la petición sin esa llamada. Typecheck detectó inferencia demasiado estrecha de UUID en helpers de pruebas; tipos explícitos string. Ejecuciones finales correctas.
+- Una aserción SQL comparaba texto UTC con la zona local del proceso; fixtures fijan UTC y las pruebas de zonas usan conversiones explícitas.
+- Primera ejecución E2E: 9/10, timeout de 30 segundos compilando múltiples rutas frías. Se amplió a 60 segundos únicamente la prueba que visita quince rutas; ejecución final 10/10.
+- Primer remoto: Playwright rechazó datetime-local con segundos cero redundantes; se usan valores normalizados HH:mm. Ejecución posterior completa correcta.
+- Next dev registró un cierre anticipado de stream al navegar durante un refresh del runner remoto. Se espera networkidle antes/después de navegación, recarga y cierre de contextos, pero el mensaje sigue apareciendo de forma intermitente en Next dev al interrumpirse un refresh. Las nueve comprobaciones remotas terminan correctamente; no se acredita que ese mensaje de desarrollo esté resuelto ni se ha repetido la integración con next start. No se ocultaron errores de servidor ni se simuló la respuesta.
+- Persisten avisos no fatales NO_COLOR/FORCE_COLOR del runner público.
+
+No quedan migraciones pendientes en el proyecto remoto de desarrollo para esta fase. En otra instalación deben aplicarse 001–006. Semántica y límites: [phase-4-delivery.md](phase-4-delivery.md).
+
+## Fase 3 — Gastos (005)
+
+- PostgreSQL/PGlite: 12 pruebas nuevas de dinero, SQL, seguridad y firmas de tickets; 50/50 en `pnpm test:db` con todas las migraciones.
+- `pnpm build`: producción correcta, incluye Gastos y descarga autenticada de tickets.
+- `pnpm test:e2e`: 10/10 Chromium escritorio/móvil. Se amplió la protección anónima a Gastos y tickets. No sustituye la prueba autenticada de gastos.
+- `pnpm lint`: sin errores ni advertencias; `pnpm typecheck`: correcto; `pnpm test`: 60/60.
+
+Cobertura: decimales sin float, límite de importes, escalas 0/2/3/4, igual con residuo, custom y porcentaje, paridad SQL/TypeScript y mayores restos; saldos con pagador incluido/excluido, pagos y reintentos, sugerencias deterministas; edición atómica y versión obsoleta, baja lógica y auditoría; antiguos conservados, alta de antiguo rechazada, salida bloqueada con deuda o crédito y salida a cero; recurrentes fijos/variables, confirmación repetida, snapshots y desactivación, mensual bisiesto/sin deriva, fecha local entre UTC+14 y UTC−12, no generación futura; conversión de compra única; ocho RLS, helpers privados, RPC cross-home, Storage y acceso anónimo; firmas/tamaño/MIME del adjunto. La salida reconcilia la tarea actual sin romper la política de 004.
+
+Incidencias resueltas durante desarrollo: el trigger diferido inicial referenciaba campos de otra tabla dentro de CASE; se corrigió con ramas PL/pgSQL. La incorporación de un import desplazó la directiva use server; lint/build lo detectaron y se restauró al inicio. Las ejecuciones posteriores pasan. E2E emite avisos no fatales NO_COLOR/FORCE_COLOR.
+
+### Supabase real
+
+Se intentó `node scripts/validate-expenses-remote.mjs`: se detuvo antes de crear fixtures porque PostgREST todavía no encuentra expense_balances (PGRST202), por lo que falta aplicar 005. Comprobación independiente de clave administrativa: HTTP 401, Unregistered API key. No hay herramienta SQL/MCP disponible. Se solicitó ejecutar la migración completa y actualizar la clave local; no se afirma aplicación remota ni pruebas autenticadas de esta fase hasta comprobarlo.
+
+El script preparado prueba tres cuentas, gasto 30 EUR y pago 15 EUR, custom/porcentajes/residuos, ediciones y envíos concurrentes, conversión de compra concurrente, recurrentes/confirmación concurrente, ocho tablas RLS, tickets privados, salida con deuda y tras saldar, creación en escritorio y recepción por Realtime en otro navegador móvil. PGlite no prueba contención real ni servicios Supabase; estas comprobaciones siguen pendientes mientras falte el entorno remoto.
+
+## Endurecimiento de Fase 2 (004)
+
+- `pnpm lint` y `pnpm typecheck`: correctos.
+- `pnpm test`: 48/48; `pnpm test:db`: 38/38. Incluyen 11 pruebas nuevas: Compra/Ausencias sin generación, horizonte corto, desactivación, recurrencia, rotación/no-op, dificultad/modo/ancla/deadline, completadas inmutables, nuevo miembro, idempotencia, zonas y medianoche/DST, RLS y actualización de 003 poblada conservando eventos.
+- `pnpm build`: correcto.
+- `pnpm test:e2e`: 10/10 en Chromium escritorio/móvil; auth, invitaciones, protección de Organización, idioma/tema y overflow. Avisos no fatales NO_COLOR/FORCE_COLOR. Estas pruebas públicas no acreditan flujos autenticados de Organización.
+
+Supabase real: el usuario confirmó la aplicación completa de 004 en SQL Editor. Las RPC ensure_current_chores y home_local_date existen y rechazan acceso anónimo con 42501. No se ha consultado el registro administrativo de migraciones.
+
+`pnpm test:remote` se intentó y falló antes de crear fixtures. Diagnóstico adicional: Auth responde, pero la clave administrativa local devuelve HTTP 401, «Unregistered API key». Por ello no se acredita integración autenticada ni Realtime de 004 contra Supabase real. El script extendido está incluido para repetirlo con una clave administrativa de desarrollo válida; nunca ponerla en variables públicas. Las comprobaciones remotas de la sección histórica inferior corresponden a 003, no a esta revisión.
+
+001–003 y product-requirements.md conservan sus hashes. Ver [semántica de entrega](phase-2-hardening.md).
+
+## Registro previo: Fase 2 — 15 de septiembre de 2026
 
 ### Comprobado localmente
 

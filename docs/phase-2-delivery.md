@@ -14,3 +14,7 @@
 12. **Límites:** generación bajo demanda, sin cron instalado; tareas completadas no se desmarcan; periodos/ausencias UTC y deadlines con zona IANA; sin personas disponibles se informa y reintenta. Stress de concurrencia, cortes prolongados, OAuth/SMTP y automatizaciones futuras no están acreditados por esta entrega.
 
 No se implementa Fase 3 ni gastos, puntos, calendario completo, chat o notificaciones.
+
+## Revisión posterior
+
+El endurecimiento 004 sustituye el horizonte y las reglas de futuras instancias descritos en la entrega original. Consulte [la semántica actual](phase-2-hardening.md) y [validación](validation.md).

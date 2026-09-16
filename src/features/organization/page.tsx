@@ -1,3 +1,5 @@
+import { calendarMessages } from '@/features/calendar/messages';
+import { expenseMessages } from '@/features/expenses/messages';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
@@ -124,7 +126,9 @@ export async function OrganizationPage({
     }).format(new Date(v)) + ` (${home.timezone ?? 'UTC'})`;
   const hidden = (name: string, value: string) => <input type="hidden" name={name} value={value} />;
   const taskRows = (instances.data ?? []).filter(
-    (i) => (view === 'cancelled' ? !!i.cancelled_at : !i.cancelled_at) && (view !== 'mine' || i.assignee_id === user.id),
+    (i) =>
+      (view === 'cancelled' ? !!i.cancelled_at : !i.cancelled_at) &&
+      (view !== 'mine' || i.assignee_id === user.id),
   );
   return (
     <div className="organization">
@@ -136,6 +140,9 @@ export async function OrganizationPage({
         </div>
       </header>
       <nav className="org-tabs" aria-label={t.title}>
+        <Link href={`/homes/${homeId}/organization/reservations`}>
+          {calendarMessages(locale).reservations}
+        </Link>
         {(['tasks', 'shopping', 'absences'] as const).map((k) => (
           <Link key={k} href={`${base}?tab=${k}`} aria-current={tab === k ? 'page' : undefined}>
             {t[k]}
@@ -164,7 +171,14 @@ export async function OrganizationPage({
             <details className="org-disclosure">
               <summary className="button secondary">{t.newTask}</summary>
               <div className="panel">
-                <ChoreForm homeId={homeId} rotations={[]} members={members} t={t} today={today} homeTimezone={home.timezone}/>
+                <ChoreForm
+                  homeId={homeId}
+                  rotations={[]}
+                  members={members}
+                  t={t}
+                  today={today}
+                  homeTimezone={home.timezone}
+                />
               </div>
             </details>
           </div>
@@ -210,13 +224,11 @@ export async function OrganizationPage({
               {taskRows.length === 0 && <p className="panel">{t.empty}</p>}
               <div className="task-list">
                 {taskRows.map((i) => {
-                  const status = i.cancelled_at ? 'cancelled' : instanceStatus(
-                    i.deadline_at,
-                    i.completed_at,
-                    new Date().toISOString(),
-                  );
+                  const status = i.cancelled_at
+                    ? 'cancelled'
+                    : instanceStatus(i.deadline_at, i.completed_at, new Date().toISOString());
                   return (
-                    <article className={`task-row ${status}`} key={i.id}>
+                    <article className={`task-row ${status}`} key={i.id} id={`task-${i.id}`}>
                       <div className="task-content">
                         <div className="section-heading">
                           <h2>{i.task_name}</h2>
@@ -235,7 +247,11 @@ export async function OrganizationPage({
                           </p>
                         )}
                         {i.assignment_blocked && <p className="notice error">{t.blocked}</p>}
-                        {i.cancelled_at ? <p>{t.cancelled} · {stamp(i.cancelled_at)}</p> : i.completed_at ? (
+                        {i.cancelled_at ? (
+                          <p>
+                            {t.cancelled} · {stamp(i.cancelled_at)}
+                          </p>
+                        ) : i.completed_at ? (
                           <p>
                             {t.completedBy}: {i.completed_by_name} · {stamp(i.completed_at)}
                           </p>
@@ -281,13 +297,15 @@ export async function OrganizationPage({
                 </label>
                 <label>
                   {t.through}
-                  <input name="through" type="date" defaultValue={addDays(today,1)} required />
+                  <input name="through" type="date" defaultValue={addDays(today, 1)} required />
                 </label>
               </div>
             </ActionForm>
           </details>
           <p>
-            <small>{t.localDates} {home.timezone}</small>
+            <small>
+              {t.localDates} {home.timezone}
+            </small>
           </p>
         </>
       )}
@@ -387,6 +405,14 @@ export async function OrganizationPage({
                   <p className="notice success">
                     {t.purchased} · {stamp(list.completed_at)}
                   </p>
+                )}
+                {list.completed_at && (
+                  <Link
+                    className="button secondary"
+                    href={`/homes/${homeId}/expenses?shopping=${list.id}`}
+                  >
+                    {expenseMessages(locale).shopping}
+                  </Link>
                 )}
                 <ul className="products">
                   {products.map((item) => (
