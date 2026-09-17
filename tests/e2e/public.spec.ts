@@ -47,7 +47,7 @@ test('public routes, translations and theme persist without overflow', async ({
   });
 });
 test('anonymous users cannot enter any protected workspace or account route', async ({ page }) => {
-  // First visits compile fifteen independent App Router routes in development.
+  // First visits compile sixteen independent App Router routes in development.
   test.setTimeout(60000);
   for (const route of [
     '/homes',
@@ -60,6 +60,8 @@ test('anonymous users cannot enter any protected workspace or account route', as
     '/homes/11111111-1111-4111-8111-111111111111/organization',
     '/homes/11111111-1111-4111-8111-111111111111/calendar',
     '/homes/11111111-1111-4111-8111-111111111111/community',
+    '/homes/11111111-1111-4111-8111-111111111111/community/activities',
+    '/homes/11111111-1111-4111-8111-111111111111/community/photo/22222222-2222-4222-8222-222222222222',
     '/homes/11111111-1111-4111-8111-111111111111/organization/reservations',
     '/homes/11111111-1111-4111-8111-111111111111/expenses',
     '/homes/11111111-1111-4111-8111-111111111111/expenses/receipt/22222222-2222-4222-8222-222222222222',

@@ -2,6 +2,10 @@
 import { useActionState, type ReactNode } from 'react';
 import { useFormStatus } from 'react-dom';
 import type { ActionState } from '@/app/actions';
+function Fields({children}:{children:ReactNode}) {
+  const {pending}=useFormStatus();
+  return <fieldset disabled={pending}>{children}</fieldset>;
+}
 function Submit({
   label,
   pendingLabel,
@@ -36,7 +40,7 @@ export function ActionForm({
   const [state, formAction] = useActionState(action, {});
   return (
     <form action={formAction} className={className}>
-      <fieldset>{children}</fieldset>
+      <Fields>{children}</Fields>
       {state.error && (
         <p className="notice error" role="alert">
           {state.error}

@@ -1140,3 +1140,147 @@ fieldset {
     font-size: 0.65rem;
   }
 }
+
+.community-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+.community-stats > div {
+  flex: 1 1 140px;
+}
+.community-stats dt {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.community-stats dd {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Phase 6: bounded chat viewport and readable, wrapping mobile controls. */
+.chat-shell {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.chat-log {
+  height: min(58dvh, 42rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  scrollbar-gutter: stable;
+}
+.chat-message {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1rem;
+  max-width: 95%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.chat-message.own {
+  align-self: flex-end;
+  background: var(--mint);
+}
+.chat-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chat-message blockquote {
+  border-inline-start: 3px solid #8bad98;
+  padding-inline-start: 0.75rem;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+}
+.chat-message blockquote p {
+  margin: 0.2rem 0;
+}
+.chat-file {
+  display: grid;
+  gap: 0.25rem;
+  max-width: 100%;
+}
+.chat-file img {
+  object-fit: contain;
+  max-width: 100%;
+  height: auto;
+  max-height: 220px;
+}
+.chat-reactions {
+  margin: 0.5rem 0;
+}
+.chat-reactions button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.35rem;
+}
+.chat-reactions button[aria-pressed='true'] {
+  outline: 2px solid #578c6b;
+}
+.row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.wrap {
+  flex-wrap: wrap;
+}
+.chat-shell textarea {
+  width: 100%;
+  min-width: 0;
+}
+.topbar nav {
+  flex-wrap: wrap;
+}
+.text-sm {
+  font-size: 0.85rem;
+}
+@media (max-width: 400px) {
+  .topbar {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .topbar nav {
+    font-size: 0.8rem;
+  }
+  .chat-message {
+    padding: 0.7rem;
+    max-width: 100%;
+  }
+  .chat-log {
+    padding: 0;
+  }
+  .chat-shell button {
+    font-size: 0.85rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.chat-shell button {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.chat-shell button.primary {
+  background: var(--mint);
+}
+.chat-shell button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

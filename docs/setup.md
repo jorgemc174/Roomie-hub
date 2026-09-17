@@ -111,3 +111,23 @@ Pruebas remotas: servidor activo en NEXT_PUBLIC_SITE_URL, `npm run test:calendar
 En este equipo Windows bloquea el ejecutable pnpm mediante Control de aplicaciones. Los scripts de validación se ejecutaron mediante npm/Node con las dependencias ya instaladas; no se cambió la resolución del lockfile. Playwright inicia Next directamente con Node. Detener otro Next dev del mismo checkout antes del E2E público (puerto 3100); reiniciar después `npm run dev` (3000).
 
 Las nuevas reservas duran como máximo 7 días y admiten 5 minutos de margen en el pasado. Se rechazan horas locales inexistentes; en horas repetidas se usa hora estándar. Cambiar timezone no altera los instantes ya guardados. Para revisar un formulario abierto antes del cambio hay que recargarlo. Ver [semántica completa](phase-4-delivery.md).
+
+## Fase 5 — Configuración (007 y 008)
+
+1. Con 001–006 aplicadas, ejecutar completo una vez `supabase/migrations/202609150007_community_ratings_punishments.sql` en SQL Editor.
+2. Ejecutar después `supabase/migrations/202609150008_community_membership_epoch.sql`. La 007 ya estaba aplicada cuando se detectó el caso salir/reentrar; se conserva intacta y se corrige aditivamente. Instalaciones nuevas: 001→008 en orden. Ambas fueron confirmadas por el usuario en desarrollo.
+3. No exponer `community_private` por API ni conceder privilegios a anon/authenticated. Las migraciones configuran RLS, RPCs, bucket privado `rating-photos` (5 MiB), saneado de owner/metadata y publicación Realtime de las cuatro tablas públicas. Nunca publicar tablas privadas de autoría/auditoría.
+4. En Convivencia → Motivos, pulsar inicializar para crear las diez semillas es/en sin duplicados. Todos los activos tienen los mismos permisos. No se añaden motivos a pisos existentes sin esa acción.
+5. Instalar dependencias del lock con pnpm 11 y Node 22.12+. sharp requiere sus binarios nativos para la plataforma; verificar build en el destino. Las fotos se recodifican a WebP; no se admiten PDF, SVG ni ejecutables.
+6. La app solo usa la clave pública y JWT de usuario. `npm run test:community:remote` requiere en `.env.local` URL, clave pública y clave administrativa de desarrollo para preparar/limpiar fixtures, además de servidor activo en NEXT_PUBLIC_SITE_URL. Crea cuatro cuentas confirmadas y un piso aislado; no toca cuentas personales. `SKIP_REMOTE_UI=true` omite navegador, pero sigue probando foto/API; no acredita los flujos visuales.
+7. `npm run test:db` usa PostgreSQL embebido y adaptadores mínimos Auth/Storage: no sustituye la prueba remota. Para E2E público detener antes el servidor Next dev de este proyecto, pues comparte `.next/dev/lock`; arrancarlo después.
+
+No hay cron: Convivencia/Tareas y completar tarea procesan el atraso. Si el backlog supera 500 decisiones, Convivencia informa y permite continuar; volver a ejecutar es seguro. No modifica módulos financieros ni tareas completadas.
+
+Privacidad de fotos: la ruta de la app verifica membresía en cada petición y no cachea. Supabase puede conservar respuestas de Storage ya descargadas en CDN incluso tras revocar membresía; las descargas nuevas con cacheNonce sí vuelven a validar RLS. Esta limitación comprobada se detalla en la entrega. No hay limpieza programada de huérfanos ni Fase 6.
+
+## Hardening de salida — 009
+
+Después de 008, ejecutar completo una vez `supabase/migrations/202609150009_departure_overdue.sql`. Solo reemplaza leave_home y conserva sus permisos. No volver a ejecutar 001–008. En este proyecto de desarrollo el usuario confirmó Success y se verificaron salidas reales con dos usuarios autenticados.
+
+`npm run test:departure:remote` prepara dos cuentas y tres pisos temporales usando la clave administrativa local; las operaciones de negocio usan JWT normales. Valida atrasos 4/5/1.003 y limpia solo sus fixtures. No necesita servidor Next activo. Usar únicamente Supabase de desarrollo. La salida procesa todo el backlog de forma atómica: un timeout aborta, no permite escapar de negativos. [Detalles](phase-5-hardening.md).

@@ -265,7 +265,7 @@ try {
     await article.getByRole('button', { name: 'Cancelar', exact: true }).click();
     await expect(pa.getByRole('heading', { name: 'Lavadora UI · Colada editada' })).toHaveCount(0);
     pass('browser creates resource and tomorrow reservation, edits and cancels it');
-    await Promise.all(pages.map((p) => visit(p, `${base}/homes/${h}/community`)));
+    await Promise.all(pages.map((p) => visit(p, `${base}/homes/${h}/community/activities`)));
     await pa.getByText('Crear actividad', { exact: true }).click();
     form = pa
       .locator('form')

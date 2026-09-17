@@ -1,3 +1,13 @@
+import type { ChatMessage, ChatAttachment, ChatReaction } from '@/features/chat/models';
+import type { Notice, NoticePreference, StoredPush } from '@/features/notifications/models';
+import type {
+  RatingReason,
+  Rating,
+  Redemption,
+  Punishment,
+  CommunityBalance,
+  AuthorLabel,
+} from '@/features/community/models';
 import type { Resource, Reservation, Activity, ActivityMember } from '@/features/calendar/models';
 import type {
   Expense,
@@ -38,6 +48,16 @@ type Table<
 export type Database = {
   public: {
     Tables: {
+      chat_messages: Table<ChatMessage>;
+      chat_attachments: Table<ChatAttachment>;
+      chat_reactions: Table<ChatReaction>;
+      notifications: Table<Notice>;
+      notification_preferences: Table<NoticePreference>;
+      push_subscriptions: Table<StoredPush>;
+      rating_reasons: Table<RatingReason>;
+      ratings: Table<Rating>;
+      rating_redemptions: Table<Redemption>;
+      punishments: Table<Punishment>;
       resources: Table<Resource>;
       reservations: Table<Reservation>;
       activities: Table<Activity>;
@@ -78,6 +98,7 @@ export type Database = {
           user_id: string;
           active: boolean;
           joined_at: string;
+          penalty_active_since: string | null;
           left_at: string | null;
         },
         [
@@ -101,6 +122,136 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      send_chat_message: {
+        Args: {
+          target: string;
+          item: string;
+          message_body: string;
+          reply?: string | null;
+          files?: string[];
+        };
+        Returns: string;
+      };
+      edit_chat_message: {
+        Args: { target: string; item: string; expected_version: number; message_body: string };
+        Returns: undefined;
+      };
+      delete_chat_message: {
+        Args: { target: string; item: string; expected_version: number };
+        Returns: undefined;
+      };
+      set_chat_reaction: {
+        Args: { target: string; item: string; reaction: string; enabled: boolean };
+        Returns: undefined;
+      };
+      prepare_chat_attachment: {
+        Args: {
+          target: string;
+          item: string;
+          label: string;
+          media_type: string;
+          content_hash: string;
+          byte_size: number;
+        };
+        Returns: string;
+      };
+      chat_file_access: { Args: { object_path: string; write_access?: boolean }; Returns: boolean };
+      chat_page: {
+        Args: { target: string; before_at?: string | null; before_id?: string | null };
+        Returns: Json;
+      };
+      save_notification_preferences: {
+        Args: {
+          group_name: string;
+          app_enabled: boolean;
+          email_enabled: boolean;
+          push_enabled: boolean;
+          offsets: number[];
+          expected_version: number;
+        };
+        Returns: undefined;
+      };
+      mark_notifications_read: { Args: { item?: string | null }; Returns: undefined };
+      save_push_subscription: {
+        Args: {
+          push_endpoint: string;
+          public_key: string;
+          auth_secret: string;
+          device_label?: string;
+        };
+        Returns: string;
+      };
+      revoke_push_subscription: { Args: { item?: string | null }; Returns: undefined };
+      run_notification_jobs: { Args: Record<string, never>; Returns: Json };
+      claim_notification_deliveries: { Args: { channels: string[] }; Returns: Json };
+      notification_delivery_valid: {
+        Args: { item: string; lease_token: string };
+        Returns: boolean;
+      };
+      finish_notification_delivery: {
+        Args: { item: string; lease_token: string; outcome: string; error_code?: string | null };
+        Returns: undefined;
+      };
+      notification_job_status: { Args: Record<string, never>; Returns: Json };
+      community_balances: { Args: { target: string }; Returns: CommunityBalance[] };
+      rating_author_labels: { Args: { target: string; items: string[] }; Returns: AuthorLabel[] };
+      reconcile_community: {
+        Args: { target: string };
+        Returns: { created: number; processed: number; more: boolean };
+      };
+      initialize_rating_reasons: {
+        Args: { target: string; language_code: string };
+        Returns: undefined;
+      };
+      save_rating_reason: {
+        Args: {
+          target: string;
+          item: string;
+          expected_version: number;
+          label: string;
+          sign: string;
+          needs_text: boolean;
+          enabled: boolean;
+        };
+        Returns: string;
+      };
+      save_rating: {
+        Args: {
+          target: string;
+          item: string;
+          expected_version: number;
+          person: string;
+          reason: string;
+          notes: string;
+          anonymous: boolean;
+        };
+        Returns: string;
+      };
+      delete_rating: {
+        Args: { target: string; item: string; expected_version: number };
+        Returns: undefined;
+      };
+      save_punishment: {
+        Args: {
+          target: string;
+          item: string;
+          expected_version: number;
+          notes: string;
+          finish: boolean;
+        };
+        Returns: undefined;
+      };
+      prepare_rating_photo: { Args: { target: string; item: string }; Returns: string };
+      attach_rating_photo: {
+        Args: {
+          target: string;
+          item: string;
+          expected_version: number;
+          object_path: string | null;
+        };
+        Returns: undefined;
+      };
+
       save_resource: {
         Args: {
           target: string;

@@ -1,5 +1,64 @@
 # Validación de RoomieHub
 
+## Hardening de Fase 5 — Salida con retrasos pendientes (009)
+
+Resultados del 16 de septiembre de 2026. Se añadió únicamente la migración `202609150009_departure_overdue.sql`, reemplazando leave_home. 001–008 y product-requirements.md comparados por SHA256 con el inicio de esta revisión: idénticos. El usuario confirmó 009 en SQL Editor.
+
+| Comando                         | Resultado                                                      |
+| ------------------------------- | -------------------------------------------------------------- |
+| `npm run lint`                  | Correcto, sin errores ni advertencias                          |
+| `npm run typecheck`             | Correcto                                                       |
+| `npm test`                      | 99/99                                                          |
+| `npm run test:db`               | 87/87                                                          |
+| `npm run test:e2e`              | 10/10, escritorio y móvil                                      |
+| `npm run build`                 | Producción correcta                                            |
+| `npm run test:departure:remote` | Correcto con dos usuarios autenticados y tres pisos temporales |
+
+Ocho casos nuevos y suite contenedora: A–E (cuatro días devengados, tres días adicionales fuera, castigo de cinco, backlog de 1.003 y reentrada sin rellenar hueco), deuda/externo/RLS, fallo tardío con rollback completo y reasignación existente. El caso de 1.003 incluye una frontera exactamente igual a now()/left_at y verifica 1.003 claves distintas más 200 castigos. Toda la regresión anterior se conserva.
+
+En Supabase real, sin reconciliación previa, salir materializó 4/5/1.003 negativos y 0/1/200 castigos. Dos reconciliaciones concurrentes posteriores no duplicaron, salir de nuevo fue rechazado, RLS impidió lectura del exmiembro y reentrada abrió penalty_active_since sin duplicar historial. Se eliminaron las dos cuentas y tres pisos de fixture. El avance de tres días y la frontera posterior a reentrada se simularon en SQL local con fechas controladas; no se esperaron días ni se expuso un reloj administrativo por RPC remota.
+
+Incidencia corregida: fixture financiero inicial con claves JSON incorrectas produjo invalid_amount; corregido el fixture al contrato existente. E2E solo emitió avisos NO_COLOR/FORCE_COLOR; ninguna prueba fallida en las ejecuciones finales. La transacción de salida puede tardar con backlogs enormes; si alcanza timeout, todo revierte y el usuario continúa activo, sin pérdida ni salida parcial.
+
+[Entrega de este endurecimiento](phase-5-hardening.md). Sin Fase 6.
+
+## Fase 5 — Convivencia (007 y 008)
+
+Resultados del 16 de septiembre de 2026. Ambas migraciones confirmadas por el usuario en SQL Editor y comprobadas con comportamiento remoto. No se leyó el registro administrativo de migraciones.
+
+| Comando                         | Resultado                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `npm run lint`                  | Correcto, sin errores ni advertencias                                                            |
+| `npm run typecheck`             | Correcto                                                                                         |
+| `npm test`                      | 90/90, regresiones anteriores incluidas                                                          |
+| `npm run test:db`               | 78/78, PostgreSQL embebido PGlite                                                                |
+| `npm run build`                 | Producción correcta, incluidas las rutas de Convivencia/Actividades/foto                         |
+| `npm run test:e2e`              | 10/10, Chromium escritorio/móvil, 16 rutas privadas protegidas                                   |
+| `npm run test:community:remote` | Flujos autenticados/API/Storage/Realtime/concurrencia correctos; limitación CDN explícita debajo |
+| `npm run test:calendar:remote`  | Regresión remota completa de Fase 4 correcta                                                     |
+
+### Cobertura añadida
+
+19 pruebas adicionales contando suites: motivos/semillas/contexto/auto-valoración; edición/cambio de signo/baja/versiones; conversiones 3/0, 3/1, 6/3, 8/4, correcciones de positivos consumidos y criterio del negativo más antiguo; concurrencia encolada e idempotencia; umbrales 5/10/15/20, descenso/recuperación y completado sin gastar negativos; RLS de las cuatro tablas públicas, esquema privado/API/RPC/joins/publicación y exmiembros; fotos/metadata/propietario/ruta/EXIF/MIME/tamaño; retraso 24 h, DST, completado, diez repeticiones, asignación/bloqueo/cancelación; reentrada sin penalizaciones del periodo fuera; continuación de más de 500 días y múltiples umbrales; ranking y traducciones. Upgrade de 006 poblada con instancias completadas/bloqueadas conserva filas y evita inventar el bloqueo pasado.
+
+Regresiones locales conservadas: auth/safeNext, pisos/invitaciones/perfiles, tareas/ausencias/compra, gastos/reparto/pagos/liquidaciones/recurrentes, reservas/actividades/calendario/timezones. PGlite usa interfaces de Auth/Storage de prueba; no acredita los servicios ni contención multisesión. La suite E2E pública usa transporte Supabase no disponible y no inventa sesiones/datos.
+
+### Verificación remota
+
+Cuatro cuentas temporales (Ana/Jorge/Pablo y externo), un piso compartido por tres. La UI crea valoración anónima con foto; destinatario la recibe por Realtime sin identidad. API, RPC, JOIN, esquema privado y payload Realtime no revelan autor. Bytes reales sin EXIF y metadata/owner/ruta sin identidad. Conversión al tercer positivo; dos positivos simultáneos con JWT distintos dejan exactamente una conversión adicional y un positivo disponible. Cuatro negativos por atraso tras diez llamadas; completar congela número. Dos reconciliaciones concurrentes producen un único castigo de cinco; UI define/completa y consulta ranking. Inglés/oscuro, móvil 360 px sin scroll horizontal. Salida deniega datos y foto nueva; reentrada registra penalty_active_since y no emite negativos del intervalo anterior. Se preservan los cuatro negativos históricos completados. Fixtures eliminados al terminar cada ejecución.
+
+Regresión calendario remota: carreras de reservas (solo una gana), adyacencia/recursos diferentes, cancelación y edición, RLS/outsider/exmiembro, DST/timezone/versiones, creación/edición/cancelación desde UI, actividades entre dos navegadores, cuatro fuentes y filtros sin generar trabajo, es/en/tema oscuro móvil. Se revisaron capturas de ranking claro y puntos oscuros móvil.
+
+### Incidencias y límites, sin ocultar fallos
+
+- Primer E2E autenticado esperaba un estado de formulario que desaparece al mover un castigo a Completados: se corrigió la aserción para comprobar el resultado persistido y la sección final.
+- **La prueba de revocación absoluta del URL de Storage ya descargado falló.** Se confirmó RLS=false, metadata denegada y descarga con nonce nuevo denegada; el CDN aún respondía 200 al URL previamente usado, incluso con no-store. La app ahora verifica membresía por petición, usa nonce nuevo y devuelve 404 al exmiembro. La prueba mantiene el diagnóstico `LIMITATION` para la copia cacheada y verifica ambas denegaciones reales. No se afirma revocación inmediata de copias ya entregadas. [Supabase CDN](https://supabase.com/docs/guides/storage/cdn/smart-cdn).
+- La prueba nueva de upgrade detectó que su fixture intentaba modificar una instancia completada; la DB lo rechazó correctamente. Se corrigió la preparación insertando periodos distintos inicialmente, sin tocar la protección de historial.
+- Runner de navegador: avisos NO_COLOR/FORCE_COLOR, sin pruebas fallidas. Build/lint/typecheck correctos. No se realizaron pruebas de carga ni despliegue de producción.
+- 001–006 comparadas byte a byte con el ZIP de Fase 4, sin cambios. Product requirements conserva SHA256 `A54CD3E93EEFD40DC6FB94FC484FEF6F8E54DEF7120A32A5508DA71ED5C4B862`. 007 conserva SHA256 `43C55D7A6912ABE3FB5FA439879F22EE32926AF2BEF0CDC815897CBC62F09A08` desde su aplicación; 008 `445B6A6665D4D154CE6DA9AE587E1651CC4C9AE921F6D81BDE655021C3E585A4`.
+
+Más semántica, pasos manuales y límites en [phase-5-delivery.md](phase-5-delivery.md). Los resultados inferiores son históricos de fases anteriores; sus pendientes no sustituyen esta validación actual.
+
 ## Fase 4 — Recursos, reservas, actividades y calendario (006)
 
 Resultados del 16 de septiembre de 2026, con las seis migraciones:

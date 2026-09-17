@@ -9,22 +9,27 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "test:db": "tsx --test tests/database.test.ts tests/organization.test.ts tests/task-hardening.test.ts tests/expenses.test.ts tests/calendar.test.ts",
+    "test:db": "tsx --test tests/database.test.ts tests/organization.test.ts tests/task-hardening.test.ts tests/expenses.test.ts tests/calendar.test.ts tests/community.test.ts tests/community-departure.test.ts tests/chat-notifications.test.ts",
     "test:expenses:remote": "node scripts/validate-expenses-remote.mjs",
     "test:remote": "node scripts/validate-organization-remote.mjs",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:calendar:remote": "node scripts/validate-calendar-remote.mjs"
+    "test:calendar:remote": "node scripts/validate-calendar-remote.mjs",
+    "test:community:remote": "node scripts/validate-community-remote.mjs",
+    "test:departure:remote": "node scripts/validate-departure-remote.mjs",
+    "test:chat:remote": "node scripts/validate-chat-remote.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.116.0",
     "lucide-react": "^0.577.0",
     "next": "16.3.5",
+    "pdf-lib": "^1.17.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "sharp": "0.35.4"
+    "sharp": "0.35.4",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -33,6 +38,7 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.5",
     "prettier": "^3.9.6",

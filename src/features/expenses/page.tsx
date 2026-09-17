@@ -76,61 +76,113 @@ export async function ExpensesPage({
         </p>
       </section>
     );
-  const [expenses, splits, payments, recurring, occurrences, receipts, events, links, members] =
+  const tab =
+    typeof search.tab === 'string' &&
+    ['expenses', 'balances', 'recurring', 'history'].includes(search.tab)
+      ? search.tab
+      : 'expenses';
+  const page =
+    typeof search.page === 'string' && /^\d{1,6}$/.test(search.page)
+      ? Math.max(0, Number(search.page))
+      : 0;
+  async function readPage<Row>(query: Parameters<typeof paginatedRows<Row>>[0]): Promise<Row[]> {
+    const result = await query.range(page * 50, page * 50 + 49);
+    if (result.error) throw new Error('finance_read_failed');
+    return result.data ?? [];
+  }
+  // Fetch only the displayed window; balances remain computed from the complete exact ledger.
+  const expenses =
+    tab === 'expenses'
+      ? await readPage(
+          db
+            .from('expenses')
+            .select('*')
+            .eq('home_id', homeId)
+            .is('deleted_at', null)
+            .order('expense_date', { ascending: false })
+            .order('id'),
+        )
+      : [];
+  const expenseIds = expenses.map((e) => e.id);
+  const [splits, payments, recurring, occurrences, receipts, events, links, members] =
     await Promise.all([
-      readRows(
-        db
-          .from('expenses')
-          .select('*')
-          .eq('home_id', homeId)
-          .order('expense_date', { ascending: false })
-          .order('id'),
-      ),
-      readRows(
-        db
-          .from('expense_splits')
-          .select('*')
-          .eq('home_id', homeId)
-          .order('expense_id')
-          .order('user_id'),
-      ),
-      readRows(
-        db
-          .from('settlements')
-          .select('*')
-          .eq('home_id', homeId)
-          .order('payment_date', { ascending: false })
-          .order('id'),
-      ),
-      readRows(
-        db
-          .from('recurring_expenses')
-          .select('*')
-          .eq('home_id', homeId)
-          .order('next_date')
-          .order('id'),
-      ),
-      readRows(
-        db
-          .from('recurring_expense_instances')
-          .select('*')
-          .eq('home_id', homeId)
-          .order('period_date')
-          .order('id'),
-      ),
-      readRows(db.from('expense_attachments').select('*').eq('home_id', homeId).order('id')),
-      readRows(
-        db.from('expense_events').select('*').eq('home_id', homeId).order('revision').order('id'),
-      ),
-      readRows(
-        db
-          .from('shopping_list_expense_links')
-          .select('*')
-          .eq('home_id', homeId)
-          .order('shopping_list_id'),
-      ),
+      expenseIds.length
+        ? readRows(
+            db
+              .from('expense_splits')
+              .select('*')
+              .eq('home_id', homeId)
+              .in('expense_id', expenseIds)
+              .order('expense_id')
+              .order('user_id'),
+          )
+        : [],
+      tab === 'balances'
+        ? readPage(
+            db
+              .from('settlements')
+              .select('*')
+              .eq('home_id', homeId)
+              .order('payment_date', { ascending: false })
+              .order('id'),
+          )
+        : [],
+      tab === 'recurring'
+        ? readPage(
+            db
+              .from('recurring_expenses')
+              .select('*')
+              .eq('home_id', homeId)
+              .order('next_date')
+              .order('id'),
+          )
+        : [],
+      tab === 'recurring'
+        ? readPage(
+            db
+              .from('recurring_expense_instances')
+              .select('*')
+              .eq('home_id', homeId)
+              .eq('status', 'pending')
+              .order('period_date')
+              .order('id'),
+          )
+        : [],
+      expenseIds.length
+        ? readRows(
+            db
+              .from('expense_attachments')
+              .select('*')
+              .eq('home_id', homeId)
+              .in('expense_id', expenseIds)
+              .order('id'),
+          )
+        : [],
+      tab === 'history'
+        ? readPage(
+            db
+              .from('expense_events')
+              .select('*')
+              .eq('home_id', homeId)
+              .order('recorded_at', { ascending: false })
+              .order('id'),
+          )
+        : [],
+      typeof search.shopping === 'string'
+        ? readRows(
+            db
+              .from('shopping_list_expense_links')
+              .select('*')
+              .eq('home_id', homeId)
+              .eq('shopping_list_id', search.shopping)
+              .order('shopping_list_id'),
+          )
+        : [],
       getMembers(homeId),
     ]);
+  const hasNext = [expenses, payments, recurring, occurrences, events].some(
+    (rows) => rows.length === 50,
+  );
   const balanceResult = await db.rpc('expense_balances', { target: homeId });
   if (balanceResult.error) throw new Error('expense_balance_read_failed');
   const balances = balanceResult.data;
@@ -149,7 +201,6 @@ export async function ExpensesPage({
     new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(
       new Date(d + 'T12:00:00Z'),
     );
-  const tab = typeof search.tab === 'string' ? search.tab : 'expenses';
   let initial: ExpenseBody | undefined;
   let shoppingList: string | undefined;
   let shoppingError = false;
@@ -446,14 +497,26 @@ export async function ExpensesPage({
           {events.map((e) => (
             <details key={e.id}>
               <summary>
-                {expenses.find((x) => x.id === e.expense_id)?.title} · {t.version} {e.revision} ·{' '}
-                {e.actor_name}
+                {(e.snapshot as unknown as { expense: Expense }).expense.title} · {t.version}{' '}
+                {e.revision} · {e.actor_name}
               </summary>
               <ExpenseRevision snapshot={e.snapshot} locale={locale} />
             </details>
           ))}
         </section>
       )}
+      <nav className="row wrap" aria-label={t.pages}>
+        {page > 0 && (
+          <Link className="button secondary" href={`${base}?tab=${tab}&page=${page - 1}`}>
+            {t.previousPage}
+          </Link>
+        )}
+        {hasNext && (
+          <Link className="button secondary" href={`${base}?tab=${tab}&page=${page + 1}`}>
+            {t.nextPage}
+          </Link>
+        )}
+      </nav>
     </div>
   );
 }

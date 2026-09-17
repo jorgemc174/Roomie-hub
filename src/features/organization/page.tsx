@@ -31,6 +31,15 @@ export async function OrganizationPage({
   const tab = search.tab === 'shopping' || search.tab === 'absences' ? search.tab : 'tasks';
   const base = `/homes/${homeId}/organization`;
   const result = await ensureOrganizationPeriod(db, homeId, tab);
+  if (tab === 'tasks' && !result.error) {
+    const penalties = await db.rpc('reconcile_community', { target: homeId });
+    if (penalties.error)
+      return (
+        <p className="notice error" role="alert">
+          {t.error}
+        </p>
+      );
+  }
   if (result.error)
     return (
       <section className="panel">
@@ -273,7 +282,11 @@ export async function OrganizationPage({
                                 <li key={e.id}>
                                   {e.reason === 'generated'
                                     ? t.generatedReason
-                                    : t.reassignedReason}
+                                    : e.reason === 'blocked'
+                                      ? t.blockedReason
+                                      : e.reason === 'unblocked'
+                                        ? t.unblockedReason
+                                        : t.reassignedReason}
                                   : {e.assignee_name} · {stamp(e.created_at)}
                                 </li>
                               ))}

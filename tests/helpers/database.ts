@@ -3,7 +3,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { readFile, readdir } from 'node:fs/promises';
 export async function organizationDatabase(throughMigration?: string) {
   const db = new PGlite({ extensions: { btree_gist } });
-  await db.exec(`set timezone='UTC'; create role anon; create role authenticated;
+  await db.exec(`set timezone='UTC'; create role anon; create role authenticated; create role service_role;
     create schema auth; create schema storage;
     create table auth.users(id uuid primary key,raw_user_meta_data jsonb);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
@@ -15,7 +15,7 @@ export async function organizationDatabase(throughMigration?: string) {
     create function storage.foldername(name text) returns text[] language sql as $$ select string_to_array(name,'/') $$;
     create publication supabase_realtime;`);
   for (const file of (await readdir('supabase/migrations'))
-    .filter((f) => f.endsWith('.sql') && (!throughMigration || f <= throughMigration))
+    .filter((f) => !f.endsWith('_scheduler.sql') && f.endsWith('.sql') && (!throughMigration || f <= throughMigration))
     .sort())
     await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
   const users = [

@@ -6,7 +6,7 @@ import { PGlite } from '@electric-sql/pglite';
 test('PostgreSQL: RLS, equal permissions, invitation lifecycle, storage and deletion', async (t) => {
   const db = new PGlite({ extensions: { btree_gist } });
   try {
-    await db.exec(`create role anon; create role authenticated;
+    await db.exec(`create role anon; create role authenticated; create role service_role;
  create schema auth; create schema storage;
  create table auth.users(id uuid primary key, raw_user_meta_data jsonb);
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
@@ -47,7 +47,7 @@ test('PostgreSQL: RLS, equal permissions, invitation lifecycle, storage and dele
     await assert.rejects(db.query("select public.create_home('Japanese home','JPY')"));
     await db.exec('reset role');
     for (const file of (await readdir('supabase/migrations'))
-      .filter((file) => file.endsWith('.sql') && file !== '202609150001_foundation.sql')
+      .filter((file) => !file.endsWith('_scheduler.sql') && file.endsWith('.sql') && file !== '202609150001_foundation.sql')
       .sort()) {
       await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
     }

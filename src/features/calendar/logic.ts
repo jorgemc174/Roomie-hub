@@ -99,7 +99,7 @@ export function normalizeCalendar(
       people: members.map((m) => m.user_id),
       names: members.map((m) => m.user_name),
       location: a.location,
-      href: `${base}/community?view=all#activity-${a.id}`,
+      href: `${base}/community/activities?view=all#activity-${a.id}`,
     });
   }
   for (const r of input.recurring) {

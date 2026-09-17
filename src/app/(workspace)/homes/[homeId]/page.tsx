@@ -1,3 +1,4 @@
+import {CommunitySummary} from '@/features/community/summary';
 import { ExpenseSummary } from '@/features/expenses/summary';
 import Link from 'next/link';
 import {
@@ -42,7 +43,7 @@ export default async function HomePage({ params }: { params: Promise<{ homeId: s
         </Link>
       </section>
       <OrganizationSummary homeId={homeId} />
-      <ExpenseSummary homeId={homeId} />
+      <ExpenseSummary homeId={homeId} /><CommunitySummary homeId={homeId}/>
       <div className="two-column">
         <section>
           <h2>{t.nextTitle}</h2>

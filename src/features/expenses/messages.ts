@@ -1,5 +1,8 @@
 import type { Locale } from '@/lib/i18n/dictionaries';
 const es = {
+  pages: 'Páginas de movimientos',
+  previousPage: 'Página anterior',
+  nextPage: 'Página siguiente',
   idempotency: 'Esta solicitud ya se guardó. Recarga para crear un movimiento nuevo.',
   inactive: 'Inactivo',
   homeDebt: 'No se puede borrar el piso mientras existan saldos pendientes.',
@@ -85,6 +88,9 @@ const es = {
     'Los gastos eliminados no cuentan en los saldos. Sus revisiones y tickets se conservan.',
 };
 const en: Record<keyof typeof es, string> = {
+  pages: 'Ledger pages',
+  previousPage: 'Previous page',
+  nextPage: 'Next page',
   idempotency: 'This request was already saved. Reload to create a new transaction.',
   inactive: 'Inactive',
   homeDebt: 'This home cannot be deleted while balances remain outstanding.',

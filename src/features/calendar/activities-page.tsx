@@ -1,3 +1,4 @@
+import { CommunityNav } from '@/features/community/nav';
 import Link from 'next/link';
 import { getHome, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
@@ -20,7 +21,7 @@ export async function ActivitiesPage({
     { locale } = await i18n(),
     t = calendarMessages(locale),
     tomorrow = addDays(homeDate(home.timezone), 1),
-    base = `/homes/${homeId}/community`,
+    base = `/homes/${homeId}/community/activities`,
     now = new Date().getTime();
   const check = await db.from('activities').select('id').eq('home_id', homeId).limit(1);
   if (check.error)
@@ -96,6 +97,7 @@ export async function ActivitiesPage({
           </p>
         </div>
       </header>
+      <CommunityNav homeId={homeId} locale={locale} tab="activities" />
       <p>{t.timeHelp}</p>
       <details className="panel">
         <summary>{t.newActivity}</summary>

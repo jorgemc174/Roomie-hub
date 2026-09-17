@@ -66,6 +66,10 @@ export function HomeSync({ homeId }: { homeId: string }) {
         'reservations',
         'activities',
         'activity_members',
+        'rating_reasons',
+        'ratings',
+        'rating_redemptions',
+        'punishments',
       ]) {
         channel
           .on(

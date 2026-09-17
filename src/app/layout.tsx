@@ -3,11 +3,12 @@ import { i18n } from '@/lib/i18n/server';
 import { Connectivity } from '@/components/connectivity';
 import { LocaleProvider } from '@/lib/i18n/provider';
 import './globals.css';
+import { Pwa } from '@/components/pwa';
 export const metadata: Metadata = {
   title: { default: 'RoomieHub', template: '%s · RoomieHub' },
   description: 'RoomieHub',
   manifest: '/manifest.webmanifest',
-  icons: { icon: '/icon.svg' },
+  icons: { icon: '/icon.svg', apple: '/icons/icon-192.png' },
   appleWebApp: { capable: true, title: 'RoomieHub' },
 };
 export const viewport: Viewport = {
@@ -27,7 +28,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {t.skip}
         </a>
         <Connectivity message={t.offline} />
-        <LocaleProvider locale={locale}>{children}</LocaleProvider>
+        <LocaleProvider locale={locale}>
+          <Pwa />
+          {children}
+        </LocaleProvider>
       </body>
     </html>
   );

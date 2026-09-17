@@ -73,6 +73,8 @@ export type AssignmentEvent = {
   instance_id: string;
   assignee_id: string;
   assignee_name: string;
-  reason: 'generated' | 'reassigned';
+  reason: 'generated' | 'reassigned' | 'blocked' | 'unblocked';
+  event_order: number;
+  blocked: boolean;
   created_at: string;
 };

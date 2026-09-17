@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$archivePath = Join-Path ([IO.Directory]::GetParent($projectRoot).FullName) 'RoomieHub-fase-4.zip'
+$archivePath = Join-Path ([IO.Directory]::GetParent($projectRoot).FullName) 'RoomieHub-fase-5.zip'
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Push-Location -LiteralPath $projectRoot
@@ -23,7 +23,7 @@ try {
   try {
     $names = @($check.Entries | ForEach-Object FullName)
     if ($names -match '\.env\.local|\.credentials\.txt|node_modules/|\.next/|test-results/|\.git/') { throw 'Unexpected private/generated file in archive.' }
-    foreach ($required in @('RoomieHub/package.json','RoomieHub/.env.example','RoomieHub/supabase/migrations/202609150003_organization.sql','RoomieHub/docs/phase-2-delivery.md','RoomieHub/supabase/migrations/202609150004_task_lifecycle_timezone.sql','RoomieHub/docs/phase-2-hardening.md','RoomieHub/supabase/migrations/202609150005_expenses.sql','RoomieHub/docs/phase-3-delivery.md','RoomieHub/supabase/migrations/202609150006_calendar_reservations_activities.sql','RoomieHub/docs/phase-4-delivery.md')) {
+    foreach ($required in @('RoomieHub/package.json','RoomieHub/.env.example','RoomieHub/supabase/migrations/202609150003_organization.sql','RoomieHub/docs/phase-2-delivery.md','RoomieHub/supabase/migrations/202609150004_task_lifecycle_timezone.sql','RoomieHub/docs/phase-2-hardening.md','RoomieHub/supabase/migrations/202609150005_expenses.sql','RoomieHub/docs/phase-3-delivery.md','RoomieHub/supabase/migrations/202609150006_calendar_reservations_activities.sql','RoomieHub/docs/phase-4-delivery.md','RoomieHub/supabase/migrations/202609150007_community_ratings_punishments.sql','RoomieHub/supabase/migrations/202609150008_community_membership_epoch.sql','RoomieHub/docs/phase-5-delivery.md','RoomieHub/docs/phase-5-requirements.md')) {
       if ($names -notcontains $required) { throw "Required file missing: $required" }
     }
     Write-Output "ZIP verified: $archivePath ($($names.Count) files, $((Get-Item -LiteralPath $archivePath).Length) bytes)"

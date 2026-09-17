@@ -1,4 +1,4 @@
-# RoomieHub — Fase 4
+# RoomieHub — Fase 5
 
 Base real para convivencia, con Next.js, TypeScript y Supabase. Requisitos completos: [docs/product-requirements.md](docs/product-requirements.md). Arquitectura y roadmap: [AGENTS.md](AGENTS.md).
 
@@ -16,7 +16,7 @@ Sin variables la aplicación muestra instrucciones de conexión; no crea sesione
 
 Registro, login/logout, recuperación y sesión SSR; perfil con nombre/foto; creación y unión a varios pisos, invitaciones regenerables, workspace y ajustes; permisos iguales y borrado exclusivo con un único miembro activo; Storage privado, RLS y suscripción Realtime base. Diseño mobile-first, claro/oscuro, diccionarios es/en y manifest inicial.
 
-Organización incluye tareas recurrentes, reparto ponderado, rotaciones manuales, ausencias con reasignación, fechas límite y múltiples listas de compra, con Realtime. Gastos incluye reparto, pagos y recurrentes; Reservas, Actividades y Calendario están implementados. Puntos, chat y notificaciones siguen pendientes. No hay localStorage ni datos de negocio ficticios.
+Organización incluye tareas recurrentes, reparto ponderado, rotaciones manuales, ausencias con reasignación, fechas límite y múltiples listas de compra, con Realtime. Gastos incluye reparto, pagos y recurrentes; Reservas, Actividades y Calendario están implementados. Convivencia incluye valoraciones, conversiones automáticas, penalizaciones por retraso, castigos y ranking. Chat y notificaciones siguen pendientes. No hay localStorage ni datos de negocio ficticios.
 
 ## Archivos principales
 
@@ -69,3 +69,13 @@ Recursos configurables en Organización → Reservas, reservas sin solapamientos
 Nueva migración `202609150006_calendar_reservations_activities.sql`, después de 005. [Entrega completa](docs/phase-4-delivery.md), [configuración](docs/setup.md) y [validación](docs/validation.md). No incluye Fase 5.
 
 Los scripts también se ejecutan con `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:db`, `npm run build`, `npm run test:e2e`. Integración autenticada de desarrollo: `npm run test:calendar:remote` con el servidor local activo y credenciales en .env.local. El lockfile de dependencias sigue siendo pnpm-lock.yaml.
+
+## Fase 5 — Convivencia
+
+Puntos, motivos configurables, anonimato en backend, fotos privadas, consumo automático de tres positivos, negativos por días completos de retraso, castigos persistentes y ranking de miembros activos. Inicio solo muestra el resumen propio. Actividades sigue disponible en Convivencia → Actividades.
+
+Migraciones aditivas **007 y 008**, después de 006. [Entrega y decisiones](docs/phase-5-delivery.md), [configuración](docs/setup.md) y [resultados de validación](docs/validation.md). `npm run test:community:remote` prueba Supabase real con cuentas temporales y limpieza. La aplicación no usa clave administrativa. No se implementa Fase 6.
+
+### Hardening de Fase 5
+
+Migración aditiva **009**: salir materializa los retrasos ya devengados y sus castigos antes de desactivar al miembro, conservando saldo cero, historial y reentrada. Procesa también backlogs de más de 500 decisiones. [Entrega y validación](docs/phase-5-hardening.md).

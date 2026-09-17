@@ -220,7 +220,9 @@ alter table public.chore_assignment_events drop constraint chore_assignment_even
 alter table public.chore_assignment_events add constraint chore_assignment_events_reason_check check(reason in ('generated','reassigned','blocked','unblocked'));
 -- For legacy currently-blocked rows there is no historical blocking timeline. Conservatively exempt their unprocessed past.
 insert into public.chore_assignment_events(home_id,instance_id,assignee_id,assignee_name,reason,blocked,created_at)
-select home_id,id,assignee_id,assignee_name,'blocked',true,coalesce(deadline_at,generated_at)-interval '1 second' from public.chore_instances where assignment_blocked and cancelled_at is null;
+select home_id,id,assignee_id,assignee_name,'blocked',true,now() from public.chore_instances where assignment_blocked and cancelled_at is null;
+insert into community_private.penalty_progress(instance_id,last_day)
+select id,greatest(0,floor(extract(epoch from(now()-deadline_at))/86400)::integer) from public.chore_instances where assignment_blocked and deadline_at is not null and cancelled_at is null;
 create function community_private.track_blocked() returns trigger language plpgsql security definer set search_path='' as $$
 begin
  if new.assignment_blocked is distinct from old.assignment_blocked then

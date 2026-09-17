@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import {Logout} from '@/components/logout';
+import {notificationMessages} from '@/features/notifications/messages';
 import { getProfile, signedImage } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
-import { profileAction, logoutAction } from '@/app/actions';
+import { profileAction } from '@/app/actions';
 import { ActionForm } from '@/components/action-form';
 import { PreferenceFields } from '@/components/preferences';
 export default async function Profile() {
@@ -21,7 +23,8 @@ export default async function Profile() {
         <Link href="/homes" className="button secondary">
           {t.homes}
         </Link>
-        <ActionForm action={logoutAction} label={t.logout} pendingLabel={t.saving} />
+        <Link href="/notifications/preferences">{notificationMessages(prefs.locale).preferences}</Link>
+        <Logout label={t.logout} pendingLabel={t.saving} errorLabel={t.requestError}/>
       </section>
       <section className="panel">
         <ActionForm action={profileAction} label={t.save} pendingLabel={t.saving}>
