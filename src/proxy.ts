@@ -8,15 +8,22 @@ export async function proxy(request: NextRequest) {
   const client = createServerClient(url, key, {
     cookies: {
       getAll: () => request.cookies.getAll(),
-      setAll(values) {
+      setAll(values, headers) {
         values.forEach(({ name, value }) => request.cookies.set(name, value));
+        const previous = response;
         response = NextResponse.next({ request });
+        previous.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+        for (const name of ['Cache-Control', 'Pragma', 'Expires']) {
+          const value = previous.headers.get(name);
+          if (value) response.headers.set(name, value);
+        }
         values.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        Object.entries(headers).forEach(([name, value]) => response.headers.set(name, value));
       },
     },
   });
   await client.auth.getUser();
-  response.headers.set('Cache-Control', 'private, no-store');
+  response.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate, max-age=0');
   return response;
 }
 export const config = {

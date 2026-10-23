@@ -2,22 +2,28 @@
 import { useActionState, type ReactNode } from 'react';
 import { useFormStatus } from 'react-dom';
 import type { ActionState } from '@/app/actions';
-function Fields({children}:{children:ReactNode}) {
-  const {pending}=useFormStatus();
+function Fields({ children }: { children: ReactNode }) {
+  const { pending } = useFormStatus();
   return <fieldset disabled={pending}>{children}</fieldset>;
 }
 function Submit({
   label,
   pendingLabel,
   danger,
+  secondary,
 }: {
   label: string;
   pendingLabel: string;
   danger?: boolean;
+  secondary?: boolean;
 }) {
   const { pending } = useFormStatus();
   return (
-    <button disabled={pending} className={danger ? 'button danger' : 'button'} type="submit">
+    <button
+      disabled={pending}
+      className={danger ? 'button danger' : secondary ? 'button secondary' : 'button'}
+      type="submit"
+    >
       {pending ? pendingLabel : label}
     </button>
   );
@@ -28,6 +34,8 @@ export function ActionForm({
   label,
   pendingLabel,
   danger,
+  secondary,
+  initialError,
   className = 'form',
 }: {
   action: (state: ActionState, form: FormData) => Promise<ActionState>;
@@ -35,23 +43,25 @@ export function ActionForm({
   label: string;
   pendingLabel: string;
   danger?: boolean;
+  secondary?: boolean;
+  initialError?: string;
   className?: string;
 }) {
-  const [state, formAction] = useActionState(action, {});
+  const [state, formAction, pending] = useActionState(action, { error: initialError });
   return (
-    <form action={formAction} className={className}>
+    <form action={formAction} className={className} aria-busy={pending}>
       <Fields>{children}</Fields>
-      {state.error && (
+      {!pending && state.error && (
         <p className="notice error" role="alert">
           {state.error}
         </p>
       )}
-      {state.success && (
+      {!pending && state.success && (
         <p className="notice success" role="status">
           {state.success}
         </p>
       )}
-      <Submit label={label} pendingLabel={pendingLabel} danger={danger} />
+      <Submit label={label} pendingLabel={pendingLabel} danger={danger} secondary={secondary} />
     </form>
   );
 }

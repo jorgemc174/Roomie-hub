@@ -113,3 +113,38 @@ test('failed auth return keeps the invitation safely available for retry', async
   for (const input of await page.locator('input[name=next]').all())
     await expect(input).toHaveValue('/homes');
 });
+test('cancelled Google consent preserves the invitation without displaying provider details', async ({
+  page,
+}) => {
+  const next = '/homes/join?code=' + 'b'.repeat(32);
+  await page.goto(
+    '/auth/callback?' +
+      new URLSearchParams({
+        next,
+        error: 'access_denied',
+        error_description: 'private-provider-details',
+      }),
+  );
+  await expect(page).toHaveURL(/\/login\?error=google/);
+  await expect(page.getByRole('main').getByRole('alert')).toHaveText(
+    'No se ha podido iniciar sesión con Google. Vuelve a intentarlo o accede con tu correo.',
+  );
+  await expect(page.getByText('private-provider-details')).toHaveCount(0);
+  for (const input of await page.locator('input[name=next]').all())
+    await expect(input).toHaveValue(next);
+});
+test('Google connection failure stays in the app and allows another attempt', async ({ page }) => {
+  test.skip(process.env.E2E_GOOGLE_ENABLED !== 'true', 'Google button is disabled in this variant');
+  const next = '/homes/join?code=' + 'c'.repeat(32);
+  await page.goto('/login?next=' + encodeURIComponent(next));
+  const google = page.getByRole('button', { name: 'Continuar con Google' });
+  await google.click();
+  await expect(page.getByRole('main').getByRole('alert')).toHaveText(
+    'No se ha podido iniciar sesión con Google. Vuelve a intentarlo o accede con tu correo.',
+  );
+  await expect(google).toBeEnabled();
+  await expect(page).toHaveURL(/\/login\?next=/);
+  for (const input of await page.locator('input[name=next]').all())
+    await expect(input).toHaveValue(next);
+  await expect(page.getByRole('button', { name: 'Iniciar sesión', exact: true })).toBeEnabled();
+});

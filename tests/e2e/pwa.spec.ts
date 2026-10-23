@@ -29,7 +29,7 @@ test('PWA public shell, real service worker, offline write guard and reconnect',
     .filter({ has: page.locator('[name=password]') })
     .locator('button[type=submit]')
     .click();
-  await expect(page.getByRole('alert')).toContainText('No se han guardado');
+  await expect(page.getByRole('alert').filter({ hasText: 'No se han guardado' })).toBeVisible();
   expect(writes).toBe(0);
   await page.goto('/homes');
   await expect(page.getByRole('heading', { name: 'Sin conexión', exact: true })).toBeVisible();

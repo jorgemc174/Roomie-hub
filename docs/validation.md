@@ -257,3 +257,12 @@ Estas pruebas locales no verifican entrega/renderizado real de las plantillas de
 - La especificación y la migración inicial conservan sus SHA-256 anteriores a la revisión. AGENTS solo incorpora las tres reglas relacionadas con este cambio.
 
 Incidencias encontradas y resueltas: el primer arranque e2e chocó con el servidor de desarrollo anterior (se detuvo para las pruebas); dos aserciones por configuración detectaron que el callback usaba localhost en vez del origen configurado (corregido usando `NEXT_PUBLIC_SITE_URL`). También aparecieron cierres anticipados de streams al sustituir/cerrar documentos en las pruebas de desarrollo; se espera ahora a que terminen las respuestas y se limita la concurrencia a dos workers. Las dos ejecuciones finales completas terminaron sin esos errores. Solo permanecen avisos del runner sobre `NO_COLOR`/`FORCE_COLOR`, sin fallo de pruebas.
+
+## Acceso con Google — 23 de octubre de 2026
+
+La [revisión local final](google-auth-review.md) amplía esta cobertura con intercambio PKCE correcto, renovación de sesión, pruebas de secretos y ejecución aislada sin leer archivos de entorno. Sus resultados y límites distinguen la validación local de la configuración externa pendiente.
+
+- Botón habilitado en `.env.example` y configuración local de producción, usando la sesión SSR/PKCE existente. Incluye estado pendiente, error traducido y comprobación del proveedor mediante el endpoint público de ajustes de Supabase. No se usan claves administrativas.
+- Cancelar el consentimiento o fallar el intercambio devuelve al acceso con el destino interno validado; no se muestra el error original del proveedor ni se ejecuta la unión al piso.
+- `pnpm lint`, `pnpm typecheck`, `pnpm build`: correctos. `pnpm test`: **125/125**, incluidas lógica y RLS en PostgreSQL embebido. `E2E_GOOGLE_ENABLED=true pnpm test:e2e`: **18/18** en móvil y escritorio, incluidas cancelación, error de conexión, invitaciones y regresión offline. Se corrigieron selectores de alertas para distinguir los avisos del producto del anunciador de rutas de Next.js.
+- El proyecto Supabase real devuelve `external.google=false`. La activación requiere crear el cliente OAuth en Google Cloud y guardar Client ID/Secret en el proveedor Google de Supabase, según `setup.md`. No se ha validado una sesión Google real, el consentimiento ni el intercambio exitoso de tokens; no existen esas credenciales en la configuración disponible.

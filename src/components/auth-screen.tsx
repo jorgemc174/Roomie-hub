@@ -21,6 +21,7 @@ export async function AuthScreen({
   next = safeNext(next);
   const prefs = await i18n();
   const { t } = prefs;
+  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
   const title =
     kind === 'login'
       ? t.authTitle
@@ -58,9 +59,9 @@ export async function AuthScreen({
           <p className="eyebrow">{label}</p>
           <h2>{title}</h2>
           {kind === 'recover' && <p>{t.recoverBody}</p>}
-          {error && (
+          {error && (error !== 'google' || !googleEnabled) && (
             <p className="notice error" role="alert">
-              {error === 'link' ? t.sessionError : t.authError}
+              {error === 'google' ? t.googleError : error === 'link' ? t.sessionError : t.authError}
             </p>
           )}
           <ActionForm action={authAction.bind(null, kind)} label={label} pendingLabel={t.saving}>
@@ -97,15 +98,19 @@ export async function AuthScreen({
               </Link>
             )}
           </ActionForm>
-          {(kind === 'login' || kind === 'register') &&
-            process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true' && (
-              <form action={googleAction} style={{ marginTop: 16 }}>
+          {(kind === 'login' || kind === 'register') && googleEnabled && (
+            <div style={{ marginTop: 16 }}>
+              <ActionForm
+                action={googleAction}
+                label={t.google}
+                pendingLabel={t.saving}
+                initialError={error === 'google' ? t.googleError : undefined}
+                secondary
+              >
                 <input type="hidden" name="next" value={next} />
-                <button className="button secondary" style={{ width: '100%' }}>
-                  {t.google}
-                </button>
-              </form>
-            )}
+              </ActionForm>
+            </div>
+          )}
           <p className="auth-bottom">
             {kind === 'login' ? t.noAccount : kind === 'register' ? t.hasAccount : ''}
             <Link

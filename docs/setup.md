@@ -15,7 +15,7 @@ Copiar `.env.example` a `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=https://TU_PROYECTO.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=false
+NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true
 ```
 
 URL y publishable key: panel del proyecto → Connect/API Keys. La anon key heredada también funciona como valor de publishable key, pero se recomienda la clave publicable actual. Estas variables son públicas por diseño; nunca introducir claves secretas. Reiniciar desarrollo tras cambios; reconstruir para producción porque `NEXT_PUBLIC_*` se incorpora al bundle.
@@ -32,7 +32,20 @@ Abrir la aplicación con el mismo origen de `NEXT_PUBLIC_SITE_URL` (no alternar 
 - El handler valida `token_hash` y establece cookies. La confirmación vuelve al destino interno del enlace incluso en otro navegador, sin depender de cookies de la pestaña de registro. El callback PKCE de Google conserva el mismo `next` y necesita completar el flujo en el navegador que lo inició. Recuperación conduce siempre a `/reset-password`.
 - Los enlaces antiguos sin `next` siguen confirmando y llevan a Mis pisos; no es posible recuperar un código que nunca se incluyó. Los códigos revocados siguen siendo rechazados al pulsar Unirse. Autenticarse no ejecuta `join_home`.
 - En producción configurar SMTP propio para correo fiable. Los límites y restricciones del proveedor de prueba de Supabase no equivalen a un servicio de correo listo para usuarios.
-- Google es opcional: crear credenciales en Google Cloud, configurar el proveedor Google en Supabase y su callback indicado por Supabase. Solo entonces poner `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true`. Sin ello el botón no se muestra.
+- Google: seguir los pasos de la sección siguiente. `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true` muestra el botón en acceso y registro; `false` permite ocultarlo si esta instalación solo usa correo. La aplicación comprueba el estado público del proveedor antes de redirigir. Si falta configuración o falla la conexión, muestra un error y permite seguir con correo. Cancelar el consentimiento conserva el destino de la invitación.
+
+### Activar el acceso con Google
+
+1. En [Google Auth Platform](https://console.cloud.google.com/auth/overview), selecciona o crea un proyecto y configura Branding, Audience y Data Access. Usa únicamente los scopes `openid`, `userinfo.email` y `userinfo.profile`. Si la aplicación está en modo Testing, añade los correos de prueba a Audience; para permitir acceso general configura su publicación en Google.
+2. En Clients crea un cliente OAuth de tipo **Web application**. Añade el origen de RoomieHub (por ejemplo `http://localhost:3000` para desarrollo, o su origen HTTPS real en producción) a **Authorized JavaScript origins**.
+3. En **Authorized redirect URIs** añade `https://TU_PROYECTO.supabase.co/auth/v1/callback`, usando la URL exacta del proveedor que muestra Supabase. Este callback de Google pertenece a Supabase; `/auth/callback` es el regreso posterior a RoomieHub.
+4. En Supabase → Authentication → Sign In / Providers → Google, activa el proveedor, introduce el **Client ID** y **Client Secret** y guarda. El secreto se almacena únicamente en Supabase: no se necesita en `.env`, código, chat ni variables públicas de RoomieHub.
+5. En Supabase → Authentication → URL Configuration, configura el origen canónico y permite `http://localhost:3000/auth/callback?**` (o el origen HTTPS de producción). La query permite transportar cada `next` interno validado; no uses comodines de dominio en producción.
+6. Con `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true`, reinicia desarrollo o reconstruye producción. Abre la app desde el mismo origen de `NEXT_PUBLIC_SITE_URL`. Prueba acceso, registro, cancelar consentimiento y una invitación: al volver debes ver Unirse con el código conservado, sin crear membresía hasta pulsarlo.
+
+Referencia: [Sign in with Google en Supabase](https://supabase.com/docs/guides/auth/social-sign-in/auth-google).
+
+La revisión local sin credenciales se ejecuta con `pnpm test:auth:local`: copia el código a un entorno temporal sin archivos `.env*`, construye la app y verifica OAuth contra endpoints HTTP de prueba. Consulta la [cobertura y los límites de la revisión](google-auth-review.md). Ese resultado no sustituye la prueba con Google/Supabase reales.
 
 ## 4. Storage y Realtime
 

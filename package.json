@@ -13,6 +13,7 @@
     "test:expenses:remote": "node scripts/validate-expenses-remote.mjs",
     "test:remote": "node scripts/validate-organization-remote.mjs",
     "test:e2e": "playwright test",
+    "test:auth:local": "node scripts/validate-google-local.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:calendar:remote": "node scripts/validate-calendar-remote.mjs",

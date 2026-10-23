@@ -20,7 +20,7 @@ export function authReturnUrl(
 export function authDestination(next: string | null, type?: string | null) {
   return type === 'recovery' ? '/reset-password' : safeNext(next);
 }
-export function authFailurePath(next: string | null, error: 'link' | 'auth' = 'link') {
+export function authFailurePath(next: string | null, error: 'link' | 'auth' | 'google' = 'link') {
   const query = new URLSearchParams({ error, next: safeNext(next) });
   return `/login?${query}`;
 }

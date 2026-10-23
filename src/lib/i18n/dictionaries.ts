@@ -22,6 +22,8 @@ export const es = {
   noAccount: '¿Primera vez aquí?',
   hasAccount: '¿Ya tienes cuenta?',
   google: 'Continuar con Google',
+  googleError:
+    'No se ha podido iniciar sesión con Google. Vuelve a intentarlo o accede con tu correo.',
   passwordHint: 'Al menos 4 caracteres.',
   authEmailInvalid:
     'Supabase no acepta esta dirección de correo. Usa una dirección real y comprueba que el dominio esté bien escrito; los dominios de ejemplo o prueba no están admitidos.',
@@ -54,7 +56,8 @@ export const es = {
   openHome: 'Entrar al piso',
   personal: 'Mi perfil',
   homeTimezone: 'Zona horaria del piso',
-  homeTimezoneHelp: 'Determina el día local de tareas y ausencias. Cambiarla cancela las futuras pendientes; conserva tareas iniciadas, completadas y sus instantes límite. Ejemplos: Europe/Madrid, Atlantic/Canary, America/New_York, Asia/Tokyo.',
+  homeTimezoneHelp:
+    'Determina el día local de tareas y ausencias. Cambiarla cancela las futuras pendientes; conserva tareas iniciadas, completadas y sus instantes límite. Ejemplos: Europe/Madrid, Atlantic/Canary, America/New_York, Asia/Tokyo.',
   preferences: 'A tu manera',
   language: 'Idioma',
   theme: 'Apariencia',
@@ -173,6 +176,7 @@ export const en: Dictionary = {
   noAccount: 'New around here?',
   hasAccount: 'Already have an account?',
   google: 'Continue with Google',
+  googleError: 'Could not sign in with Google. Try again or sign in with your email.',
   passwordHint: 'At least 4 characters.',
   authEmailInvalid:
     'Supabase does not accept this email address. Use a real address and check its domain; example and test domains are not supported.',
@@ -203,7 +207,8 @@ export const en: Dictionary = {
   openHome: 'Enter home',
   personal: 'My profile',
   homeTimezone: 'Home time zone',
-  homeTimezoneHelp: 'Determines the local day for tasks and absences. Changing it cancels future pending work, preserving started and completed tasks and their deadline instants. Examples: Europe/Madrid, Atlantic/Canary, America/New_York, Asia/Tokyo.',
+  homeTimezoneHelp:
+    'Determines the local day for tasks and absences. Changing it cancels future pending work, preserving started and completed tasks and their deadline instants. Examples: Europe/Madrid, Atlantic/Canary, America/New_York, Asia/Tokyo.',
   preferences: 'Make it yours',
   language: 'Language',
   theme: 'Appearance',

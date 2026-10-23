@@ -4,13 +4,14 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect, unstable_rethrow } from 'next/navigation';
 import { supabase } from '@/lib/supabase/server';
+import { config as supabaseConfig } from '@/lib/supabase/config';
 import { requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { safeNext, validImage, validName } from '@/lib/validation';
 import { validCurrency } from '@/lib/currencies';
 import { validTimezone } from '@/lib/timezones';
 import { authErrorMessage } from '@/lib/auth-errors';
-import { authReturnUrl, authFailurePath, siteOrigin as siteUrl } from '@/lib/auth-redirects';
+import { authReturnUrl, siteOrigin as siteUrl } from '@/lib/auth-redirects';
 export type ActionState = { error?: string; success?: string };
 const field = (form: FormData, key: string) => String(form.get(key) ?? '').trim();
 export async function setPreferences(form: FormData) {
@@ -90,17 +91,33 @@ export async function authAction(
     return { error: t.requestError };
   }
 }
-export async function googleAction(form: FormData) {
+export async function googleAction(previous: ActionState, form: FormData): Promise<ActionState> {
+  void previous;
+  const { t } = await i18n();
   const next = safeNext(field(form, 'next'));
-  if (process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED !== 'true')
-    redirect(authFailurePath(next, 'auth'));
-  const db = await supabase();
-  const { data, error } = await db.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: authReturnUrl(siteUrl(), '/auth/callback', next) },
-  });
-  if (error || !data.url) redirect(authFailurePath(next, 'auth'));
-  redirect(data.url);
+  if (process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED !== 'true') return { error: t.googleError };
+  try {
+    // OAuth URL generation alone does not check whether the provider is enabled.
+    const { url, key } = supabaseConfig();
+    const response = await fetch(new URL('/auth/v1/settings', url), {
+      headers: { apikey: key },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) return { error: t.googleError };
+    const settings: { external?: { google?: boolean } } = await response.json();
+    if (settings.external?.google !== true) return { error: t.googleError };
+    const db = await supabase();
+    const { data, error } = await db.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: authReturnUrl(siteUrl(), '/auth/callback', next) },
+    });
+    if (error || !data.url) return { error: t.googleError };
+    redirect(data.url);
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: t.googleError };
+  }
 }
 export async function logoutAction(previous: ActionState): Promise<ActionState> {
   void previous;
