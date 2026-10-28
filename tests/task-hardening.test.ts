@@ -186,7 +186,7 @@ test('PostgreSQL task lifecycle, timezones and new members', async (t) => {
       },
     );
     await t.test(
-      'weight, anchor, assignment mode and deadlines invalidate future without rewriting current snapshots',
+      'weight, anchor, assignment mode and deadlines invalidate future and sync open current instances',
       async () => {
         const id = await h();
         const chore = await save(id);
@@ -201,7 +201,7 @@ test('PostgreSQL task lifecycle, timezones and new members', async (t) => {
         });
         await ensure(id);
         const active = (await rows(id)).rows.filter((i) => !i.cancelled_at);
-        assert.equal(active.find((i) => i.id === original.id)!.difficulty, 3);
+        assert.equal(active.find((i) => i.id === original.id)!.difficulty, 5);
         assert.equal(active.find((i) => i.period_start === addDays(today, 1))!.difficulty, 5);
         assert.equal(active.find((i) => i.period_start === addDays(today, 1))!.assignee_id, bob);
       },
@@ -362,6 +362,31 @@ test('004 upgrades populated 003 without erasing completed rows or events; exist
       ),
       31,
     );
+  } finally {
+    await db.close();
+  }
+});
+test('editing a chore syncs name and difficulty into open instances of the current period', async () => {
+  const { db, home, scalar } = await organizationDatabase();
+  try {
+    const id = await home(1);
+    const today = homeDate('UTC');
+    const chore = await scalar<string>(
+      "select public.save_chore($1,null,'Cocina','',3,true,'daily',1,$2,'automatic','{}',null,'20:00','UTC') v",
+      [id, today],
+    );
+    await db.query('select public.generate_chore_instances($1,$2,$3)', [id, today, addDays(today, 2)]);
+    await db.query(
+      "select public.save_chore($1,$2,'Cocina grande','',2,true,'daily',1,$3,'automatic','{}',null,'20:00','UTC')",
+      [id, chore, today],
+    );
+    const current = await db.query<{ difficulty: number; task_name: string }>(
+      'select difficulty,task_name from public.chore_instances where chore_id=$1 and period_start=$2 and cancelled_at is null',
+      [chore, today],
+    );
+    assert.equal(current.rows.length, 1);
+    assert.equal(current.rows[0].difficulty, 2);
+    assert.equal(current.rows[0].task_name, 'Cocina grande');
   } finally {
     await db.close();
   }
