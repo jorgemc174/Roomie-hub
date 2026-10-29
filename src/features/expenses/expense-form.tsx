@@ -259,7 +259,7 @@ export function ExpenseForm({
         <section aria-live="polite">
           <h3>{t.preview}</h3>
           {invalid ? (
-            <p className="notice">{t.invalid}</p>
+            <p className="notice">{amount.trim() ? t.invalid : t.previewHint}</p>
           ) : (
             preview.map((p) => (
               <p key={p.user_id}>

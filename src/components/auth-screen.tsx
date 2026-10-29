@@ -3,6 +3,7 @@ import { House } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { Brand } from './brand';
 import { Preferences } from './preferences';
+import { PasswordField } from './password-field';
 import { ActionForm } from './action-form';
 import { authAction, googleAction } from '@/app/actions';
 import { i18n } from '@/lib/i18n/server';
@@ -49,7 +50,7 @@ export async function AuthScreen({
           <p className="eyebrow" style={{ marginTop: 30 }}>
             {t.tagline}
           </p>
-          <h1>{t.welcome}</h1>
+          <p className="auth-marketing-title">{t.welcome}</p>
           <p>{t.welcomeBody}</p>
         </div>
         <small>{t.footer}</small>
@@ -57,7 +58,7 @@ export async function AuthScreen({
       <main id="main" className="auth-main">
         <div className="auth-card">
           <p className="eyebrow">{label}</p>
-          <h2>{title}</h2>
+          <h1>{title}</h1>
           {kind === 'recover' && <p>{t.recoverBody}</p>}
           {error && (error !== 'google' || !googleEnabled) && (
             <p className="notice error" role="alert">
@@ -79,18 +80,14 @@ export async function AuthScreen({
               </label>
             )}
             {kind !== 'recover' && (
-              <label>
-                {kind === 'reset' ? t.newPassword : t.password}
-                <input
-                  name="password"
-                  type="password"
-                  autoComplete={kind === 'login' ? 'current-password' : 'new-password'}
-                  minLength={kind === 'login' ? 1 : 4}
-                  maxLength={128}
-                  required
-                />
-                {kind !== 'login' && <small>{t.passwordHint}</small>}
-              </label>
+              <PasswordField
+                label={kind === 'reset' ? t.newPassword : t.password}
+                showLabel={t.showPassword}
+                hideLabel={t.hidePassword}
+                autoComplete={kind === 'login' ? 'current-password' : 'new-password'}
+                minLength={kind === 'login' ? 1 : 4}
+                hint={kind !== 'login' ? t.passwordHint : undefined}
+              />
             )}
             {kind === 'login' && (
               <Link className="text-link" href="/forgot-password">

@@ -1,4 +1,5 @@
-import { calendarMessages } from '@/features/calendar/messages';
+import { OrganizationNav } from './nav';
+import { ViewFilter } from '@/components/view-filter';
 import { expenseMessages } from '@/features/expenses/messages';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser } from '@/lib/data';
@@ -148,16 +149,7 @@ export async function OrganizationPage({
           <p>{t.intro}</p>
         </div>
       </header>
-      <nav className="org-tabs" aria-label={t.title}>
-        <Link href={`/homes/${homeId}/organization/reservations`}>
-          {calendarMessages(locale).reservations}
-        </Link>
-        {(['tasks', 'shopping', 'absences'] as const).map((k) => (
-          <Link key={k} href={`${base}?tab=${k}`} aria-current={tab === k ? 'page' : undefined}>
-            {t[k]}
-          </Link>
-        ))}
-      </nav>
+      <OrganizationNav homeId={homeId} locale={locale} tab={tab} />
       {tab === 'tasks' && (
         <>
           {!!result.data?.blocked && (
@@ -165,20 +157,29 @@ export async function OrganizationPage({
               {t.unavailable}
             </p>
           )}
-          <div className="section-heading">
-            <nav className="org-tabs" aria-label={t.tasks}>
-              {(['mine', 'all', 'manage', 'cancelled'] as const).map((k) => (
-                <Link
-                  key={k}
-                  href={`${base}?view=${k}&from=${from}`}
-                  aria-current={view === k ? 'page' : undefined}
-                >
-                  {t[k]}
-                </Link>
-              ))}
-            </nav>
+          <div className="section-heading task-toolbar">
+            <div className="task-view-controls">
+              <ViewFilter
+                label={t.tasks}
+                value={`${base}?view=${view}&from=${from}`}
+                options={(view === 'manage'
+                  ? (['manage', 'mine', 'all', 'cancelled'] as const)
+                  : (['mine', 'all', 'cancelled'] as const)
+                ).map((k) => ({
+                  href: `${base}?view=${k}&from=${from}`,
+                  label: t[k],
+                }))}
+              />
+              <Link
+                className="text-link"
+                href={`${base}?view=manage&from=${from}`}
+                aria-current={view === 'manage' ? 'page' : undefined}
+              >
+                {t.manage}
+              </Link>
+            </div>
             <details className="org-disclosure">
-              <summary className="button secondary">{t.newTask}</summary>
+              <summary className="button">{t.newTask}</summary>
               <div className="panel">
                 <ChoreForm
                   homeId={homeId}
@@ -243,12 +244,9 @@ export async function OrganizationPage({
                           <h2>{i.task_name}</h2>
                           <span className={`badge ${status}`}>{t[status]}</span>
                         </div>
+
                         <p>
-                          {date(i.period_start)} – {date(addDays(i.period_end, -1))}
-                        </p>
-                        <p>
-                          {t.assigned}: <strong>{i.assignee_name}</strong> · {t.difficulty}:{' '}
-                          {i.difficulty}/5
+                          {t.assigned}: <strong>{i.assignee_name}</strong>
                         </p>
                         {i.deadline_at && (
                           <p>
@@ -274,7 +272,11 @@ export async function OrganizationPage({
                           </ActionForm>
                         )}
                         <details>
-                          <summary>{t.history}</summary>
+                          <summary>{t.detailsHistory}</summary>
+                          <p>
+                            {date(i.period_start)} – {date(addDays(i.period_end, -1))} ·{' '}
+                            {t.difficulty}: {i.difficulty}/5
+                          </p>
                           <ul>
                             {(events.data ?? [])
                               .filter((e) => e.instance_id === i.id)

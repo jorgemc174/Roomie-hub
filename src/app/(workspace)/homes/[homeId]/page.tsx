@@ -1,4 +1,4 @@
-import {CommunitySummary} from '@/features/community/summary';
+import { CommunitySummary } from '@/features/community/summary';
 import { ExpenseSummary } from '@/features/expenses/summary';
 import Link from 'next/link';
 import {
@@ -35,15 +35,18 @@ export default async function HomePage({ params }: { params: Promise<{ homeId: s
         <span className="badge">{t.home}</span>
       </header>
       <section className="welcome-panel">
-        <h1>{t.workspaceTitle}</h1>
-        <p>{t.workspaceBody}</p>
-        <Link className="button" href={`/homes/${homeId}/settings#invitation`}>
+        <h1>{t.dashboard}</h1>
+        {members.length === 1 && <p>{t.workspaceBody}</p>}
+        <Link className="button secondary" href={`/homes/${homeId}/settings#invitation`}>
           <UserPlus size={18} />
           {t.invitation}
         </Link>
       </section>
-      <OrganizationSummary homeId={homeId} />
-      <ExpenseSummary homeId={homeId} /><CommunitySummary homeId={homeId}/>
+      <div className="dashboard-summaries">
+        <OrganizationSummary homeId={homeId} />
+        <ExpenseSummary homeId={homeId} />
+        <CommunitySummary homeId={homeId} />
+      </div>
       <div className="two-column">
         <section>
           <h2>{t.nextTitle}</h2>
@@ -57,9 +60,7 @@ export default async function HomePage({ params }: { params: Promise<{ homeId: s
                   <h3>{t[key]}</h3>
                   <p>{t[`${key}Body`]}</p>
                 </div>
-                {key === 'chat' && (
-                  <span className="badge">{t.future}</span>
-                )}
+                <ArrowUpRight size={18} aria-hidden="true" />
               </Link>
             ))}
           </div>

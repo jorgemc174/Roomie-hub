@@ -475,7 +475,7 @@ export async function CommunityPage({
               </article>
             );
           })}
-          <nav className="org-tabs">
+          <nav className="filter-links" aria-label={t.history}>
             {page > 0 && (
               <Link
                 href={`${base}?person=${person}&history=${history ? 'on' : ''}&page=${page - 1}`}

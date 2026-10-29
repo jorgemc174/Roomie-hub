@@ -299,30 +299,54 @@ export function Chat({
                         </a>
                       ))}
                   </div>
-                  <div className="row wrap chat-reactions">
-                    {emojis.map((emoji) => {
-                      const r = page.reactions.find(
-                        (r) => r.message_id === m.id && r.emoji === emoji,
-                      );
-                      return (
+                  <div className="row wrap chat-reactions existing-reactions">
+                    {page.reactions
+                      .filter((r) => r.message_id === m.id && r.count > 0)
+                      .map((r) => (
                         <button
-                          key={emoji}
+                          key={r.emoji}
                           disabled={pending}
-                          aria-label={`${t.reaction} ${emoji}`}
-                          aria-pressed={r?.mine ?? false}
+                          aria-label={`${t.reaction} ${r.emoji}`}
+                          aria-pressed={r.mine}
                           onClick={() => {
                             const f = new FormData();
                             f.set('id', m.id);
-                            f.set('emoji', emoji);
-                            f.set('enabled', String(!r?.mine));
+                            f.set('emoji', r.emoji);
+                            f.set('enabled', String(!r.mine));
                             void command('reaction', f);
                           }}
                         >
-                          {emoji} {r?.count || ''}
+                          {r.emoji} {r.count}
                         </button>
-                      );
-                    })}
+                      ))}
                   </div>
+                  <details className="chat-reaction-picker">
+                    <summary>{t.reaction}</summary>
+                    <div className="row wrap chat-reactions">
+                      {emojis.map((emoji) => {
+                        const r = page.reactions.find(
+                          (r) => r.message_id === m.id && r.emoji === emoji,
+                        );
+                        return (
+                          <button
+                            key={emoji}
+                            disabled={pending}
+                            aria-label={`${t.reaction} ${emoji}`}
+                            aria-pressed={r?.mine ?? false}
+                            onClick={() => {
+                              const f = new FormData();
+                              f.set('id', m.id);
+                              f.set('emoji', emoji);
+                              f.set('enabled', String(!r?.mine));
+                              void command('reaction', f);
+                            }}
+                          >
+                            {emoji} {r?.count || ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </details>
                   <div className="row wrap">
                     <button
                       disabled={pending}
@@ -334,23 +358,26 @@ export function Chat({
                     >
                       {t.reply}
                     </button>
-                    {m.author_user_id === userId && (
-                      <button
-                        disabled={pending}
-                        onClick={() => {
-                          setEditing(m);
-                          setBody(m.body);
-                          setReply(null);
-                          setFiles([]);
-                          formRef.current?.querySelector('textarea')?.focus();
-                        }}
-                      >
-                        {t.edit}
+                    <details className="message-actions">
+                      <summary>{t.actions}</summary>
+                      {m.author_user_id === userId && (
+                        <button
+                          disabled={pending}
+                          onClick={() => {
+                            setEditing(m);
+                            setBody(m.body);
+                            setReply(null);
+                            setFiles([]);
+                            formRef.current?.querySelector('textarea')?.focus();
+                          }}
+                        >
+                          {t.edit}
+                        </button>
+                      )}
+                      <button disabled={pending} onClick={() => setRemoving(m.id)}>
+                        {t.remove}
                       </button>
-                    )}
-                    <button disabled={pending} onClick={() => setRemoving(m.id)}>
-                      {t.remove}
-                    </button>
+                    </details>
                   </div>
                   {removing === m.id && (
                     <div className="notice">
@@ -374,7 +401,7 @@ export function Chat({
           );
         })}
       </div>
-      <form onSubmit={send} ref={formRef} className="panel stack">
+      <form onSubmit={send} ref={formRef} className="panel stack chat-composer">
         {(reply || editing) && (
           <div className="row wrap">
             <span>{editing ? t.edit : `${t.replying} ${reply?.author_name}`}</span>
@@ -403,28 +430,34 @@ export function Chat({
           />
         </label>
         {!editing && (
-          <label>
-            {t.attach}
-            <input
-              type="file"
-              multiple
-              accept="image/jpeg,image/png,image/webp,application/pdf,text/plain"
-              disabled={pending}
-              onChange={(e) => {
-                const selected = Array.from(e.target.files ?? []);
-                if (selected.length > 3 || selected.some((f) => f.size > 10 * 1024 * 1024)) {
-                  setError(t.invalid);
-                  e.target.value = '';
-                  setFiles([]);
-                  return;
-                }
-                setFiles(selected);
-                fileIds.current = selected.map(() => crypto.randomUUID());
-                requestId.current = null;
-              }}
-            />
-            <small className="muted">{t.fileHint}</small>
-          </label>
+          <details className="chat-attachments" open={files.length > 0}>
+            <summary>
+              {t.attach}
+              {files.length > 0 ? ` (${files.length})` : ''}
+            </summary>
+            <label>
+              <span className="sr-only">{t.attach}</span>
+              <input
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,application/pdf,text/plain"
+                disabled={pending}
+                onChange={(e) => {
+                  const selected = Array.from(e.target.files ?? []);
+                  if (selected.length > 3 || selected.some((f) => f.size > 10 * 1024 * 1024)) {
+                    setError(t.invalid);
+                    e.target.value = '';
+                    setFiles([]);
+                    return;
+                  }
+                  setFiles(selected);
+                  fileIds.current = selected.map(() => crypto.randomUUID());
+                  requestId.current = null;
+                }}
+              />
+              <small className="muted">{t.fileHint}</small>
+            </label>
+          </details>
         )}
         <button
           className="primary"

@@ -1,3 +1,4 @@
+import { SectionTabs } from '@/components/section-tabs';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
@@ -237,7 +238,7 @@ export async function ExpensesPage({
         <h1>{t.title}</h1>
         <span className="badge">{home.currency}</span>
       </header>
-      <section className="panel">
+      <section className="panel balance-panel">
         <h2>{t.balance}</h2>
         <strong>
           {BigInt(me) === 0n
@@ -245,27 +246,23 @@ export async function ExpensesPage({
             : `${BigInt(me) > 0n ? t.owed : t.owe} ${formatMoney(BigInt(me) < 0n ? -BigInt(me) : me, home.currency, locale)}`}
         </strong>
       </section>
-      <nav className="org-tabs" aria-label={t.title}>
-        {[
-          ['expenses', t.title],
+      <SectionTabs
+        label={t.title}
+        items={[
+          ['expenses', t.movements],
           ['balances', t.balances],
           ['recurring', t.recurring],
           ['history', t.history],
-        ].map(([key, label]) => (
-          <Link
-            className="button secondary"
-            key={key}
-            href={`${base}?tab=${key}`}
-            aria-current={tab === key ? 'page' : undefined}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
+        ].map(([key, label]) => ({ href: `${base}?tab=${key}`, label, current: tab === key }))}
+      />
       {tab === 'expenses' && (
         <>
-          <section className="panel">
-            <h2>{shoppingList ? t.shopping : t.newExpense}</h2>
+          <details
+            className="panel create-disclosure"
+            id="new-expense"
+            open={Boolean(shoppingList || shoppingError)}
+          >
+            <summary>{shoppingList ? t.shopping : t.newExpense}</summary>
             {shoppingError ? (
               <p className="notice error">{t.listIncomplete}</p>
             ) : (
@@ -276,7 +273,7 @@ export async function ExpensesPage({
                 shoppingList={shoppingList}
               />
             )}
-          </section>
+          </details>
           {!expenses.some((e) => !e.deleted_at) && <p>{t.empty}</p>}
           {expenses
             .filter((e) => !e.deleted_at)

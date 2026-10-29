@@ -3,6 +3,21 @@ import { test, expect } from '@playwright/test';
 test.afterEach(async ({ page }) => {
   await page.waitForLoadState('networkidle');
 });
+test('mobile sign-in keeps a visible main heading and an accessible password toggle', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto('/login');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Qué bien tenerte por aquí.');
+  const password = page.getByLabel('Contraseña', { exact: true });
+  await password.fill('local-visibility-check');
+  await page.getByRole('button', { name: 'Mostrar contraseña', exact: true }).click();
+  await expect(password).toHaveAttribute('type', 'text');
+  await expect(password).toHaveValue('local-visibility-check');
+  await page.getByRole('button', { name: 'Ocultar contraseña', exact: true }).click();
+  await expect(password).toHaveAttribute('type', 'password');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
 test('public routes, translations and theme persist without overflow', async ({
   page,
 }, testInfo) => {

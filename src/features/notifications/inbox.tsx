@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { Bell } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { browserClient } from '@/lib/supabase/browser';
 import { useLocale } from '@/lib/i18n/provider';
@@ -56,8 +57,13 @@ export function NotificationBell() {
     };
   }, []);
   return (
-    <Link href="/notifications" aria-label={`${t.title}${count ? ` (${count})` : ''}`}>
-      {t.title}
+    <Link
+      className="topbar-action notification-bell"
+      href="/notifications"
+      aria-label={`${t.title}${count ? ` (${count})` : ''}`}
+    >
+      <Bell size={20} aria-hidden="true" />
+      <span>{t.title}</span>
       {count > 0 && <span className="badge">{count > 99 ? '99+' : count}</span>}
     </Link>
   );
@@ -127,7 +133,12 @@ export function Inbox({ initial }: { initial: Notice[] }) {
         <article key={n.id} className="panel">
           <h2>
             <Link href={safeNext(n.target_url)}>{n.title}</Link>
-            {!n.read_at && <span aria-label={t.read}> ●</span>}
+            {!n.read_at && (
+              <span className="unread-dot" aria-label={t.unread}>
+                {' '}
+                ●
+              </span>
+            )}
           </h2>
           <p>{n.body}</p>
           <time dateTime={n.created_at}>

@@ -1,3 +1,4 @@
+import { OrganizationNav } from '@/features/organization/nav';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
@@ -21,7 +22,6 @@ export async function ReservationsPage({
     t = calendarMessages(locale),
     today = homeDate(home.timezone),
     tomorrow = addDays(today, 1),
-    base = `/homes/${homeId}/organization/reservations`,
     now = new Date().toISOString();
   const r = await db.from('resources').select('id').eq('home_id', homeId).limit(1);
   if (r.error)
@@ -128,13 +128,10 @@ export async function ReservationsPage({
           </p>
         </div>
       </header>
-      <nav className="org-tabs">
-        <Link href={`/homes/${homeId}/organization`}>{t.backOrganization}</Link>
-        <Link href={base} aria-current="page">
-          {t.reservations}
-        </Link>
-        <Link href={`/homes/${homeId}/calendar`}>{t.calendar}</Link>
-      </nav>
+      <OrganizationNav homeId={homeId} locale={locale} tab="reservations" />
+      <Link className="text-link" href={`/homes/${homeId}/calendar`}>
+        {t.calendar} →
+      </Link>
       <p>{t.reservationHelp}</p>
       <p>{t.timeHelp}</p>
       <details className="panel" open={!resources.some((x) => x.active)}>

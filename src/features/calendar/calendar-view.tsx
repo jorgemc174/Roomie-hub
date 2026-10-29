@@ -16,6 +16,7 @@ export function CalendarView({
   homeId,
   month,
   selectedDay,
+  today,
   timezone,
   weekStart,
   locale,
@@ -25,6 +26,7 @@ export function CalendarView({
   homeId: string;
   month: string;
   selectedDay: string;
+  today: string;
   timezone: string;
   weekStart: number;
   locale: Locale;
@@ -46,25 +48,42 @@ export function CalendarView({
   const base = `/homes/${homeId}/calendar`;
   return (
     <div className="calendar-view stack">
-      <fieldset className="calendar-filters">
-        <legend>{t.filter}</legend>
-        {eventSources.map((type) => (
-          <label className="checkbox" key={type}>
-            <input
-              type="checkbox"
-              checked={types.includes(type)}
-              onChange={(e) =>
-                setTypes(e.target.checked ? [...types, type] : types.filter((x) => x !== type))
-              }
-            />
-            <span className={`event-kind kind-${type}`}>{t[type]}</span>
-          </label>
-        ))}
-        <label className="checkbox">
-          <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
-          {t.mine}
-        </label>
-      </fieldset>
+      <div className="calendar-toolbar">
+        <details className="calendar-filter-panel">
+          <summary>
+            {t.filter} · {types.length}
+            {mine ? ` · ${t.mine}` : ''}
+          </summary>
+          <fieldset className="calendar-filters">
+            <legend className="sr-only">{t.filter}</legend>
+            {eventSources.map((type) => (
+              <label className="checkbox" key={type}>
+                <input
+                  type="checkbox"
+                  checked={types.includes(type)}
+                  onChange={(e) =>
+                    setTypes(e.target.checked ? [...types, type] : types.filter((x) => x !== type))
+                  }
+                />
+                <span className={`event-kind kind-${type}`}>{t[type]}</span>
+              </label>
+            ))}
+            <label className="checkbox">
+              <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
+              {t.mine}
+            </label>
+          </fieldset>
+        </details>
+        <div className="calendar-quick-actions">
+          <Link
+            className="button secondary"
+            href={`${base}?month=${today.slice(0, 7)}&day=${today}`}
+            onClick={() => setSelected(today)}
+          >
+            {t.today}
+          </Link>
+        </div>
+      </div>
       <section className="panel calendar-month">
         <div className="calendar-month-heading">
           <Link
@@ -96,7 +115,8 @@ export function CalendarView({
                 type="button"
                 key={d}
                 disabled={!d.startsWith(month)}
-                className={`calendar-day ${d === day ? 'selected' : ''}`}
+                className={`calendar-day ${d === day ? 'selected' : ''} ${d === today ? 'today' : ''}`}
+                aria-current={d === today ? 'date' : undefined}
                 aria-pressed={d === day}
                 aria-label={`${label(d, { dateStyle: 'full' })}: ${count} ${t.events}`}
                 onClick={() => setSelected(d)}

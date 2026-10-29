@@ -124,6 +124,7 @@ export async function CalendarPage({
         homeId={homeId}
         month={month}
         selectedDay={selected}
+        today={today}
         timezone={home.timezone}
         weekStart={home.week_starts_on}
         locale={locale}

@@ -40,7 +40,7 @@ export default async function WorkspaceLayout({
         </div>
       </aside>
       <div className="workspace">
-        <Topbar t={t} homeId={homeId} />
+        <Topbar t={t} homeId={homeId} homeName={home.name} />
         <main id="main" className="page">
           {children}
         </main>

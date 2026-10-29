@@ -113,14 +113,16 @@ export async function ActivitiesPage({
           {fields()}
         </CalendarForm>
       </details>
-      <nav className="org-tabs">
+      <nav className="filter-links" aria-label={t.filter}>
         <Link href={base} aria-current={view === 'upcoming' ? 'page' : undefined}>
           {t.upcoming}
         </Link>
         <Link href={`${base}?view=history`} aria-current={view === 'history' ? 'page' : undefined}>
           {t.history}
         </Link>
-        <Link href={`/homes/${homeId}/calendar`}>{t.calendar}</Link>
+        <Link className="text-link" href={`/homes/${homeId}/calendar`}>
+          {t.calendar} →
+        </Link>
       </nav>
       {!shown.length && <p>{t.noActivities}</p>}
       {shown.map((a) => {

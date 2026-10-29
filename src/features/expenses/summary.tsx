@@ -12,9 +12,13 @@ export async function ExpenseSummary({ homeId }: { homeId: string }) {
   if (error) return <p className="notice">{error.code === 'PGRST202' ? t.migration : t.error}</p>;
   const balance = data.find((b) => b.user_id === user.id)?.balance ?? '0';
   return (
-    <section className="panel">
+    <section className="panel balance-panel">
       <h2>{t.balance}</h2>
-      <p>{BigInt(balance) === 0n ? t.zero : formatMoney(balance, home.currency, locale)}</p>
+      <p>
+        {BigInt(balance) === 0n
+          ? t.zero
+          : `${BigInt(balance) > 0n ? t.owed : t.owe} ${formatMoney(BigInt(balance) < 0n ? -BigInt(balance) : balance, home.currency, locale)}`}
+      </p>
       <Link className="text-link" href={`/homes/${homeId}/expenses?tab=balances`}>
         {t.balances}
       </Link>
