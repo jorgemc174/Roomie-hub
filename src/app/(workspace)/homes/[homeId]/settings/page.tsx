@@ -1,3 +1,4 @@
+import { CopyButton } from '@/components/ui/copy-button';
 import { financeAction } from '@/features/expenses/actions';
 import { expenseMessages } from '@/features/expenses/messages';
 import { getHome, getMembers, requireUser, signedImage } from '@/lib/data';
@@ -106,6 +107,12 @@ export default async function Settings({ params }: { params: Promise<{ homeId: s
           {t.inviteLink}
           <input readOnly value={`${new URL(url).origin}/invite/${invite.code}`} />
         </label>
+        <CopyButton
+          text={`${new URL(url).origin}/invite/${invite.code}`}
+          label={t.copy}
+          copiedLabel={t.copied}
+          errorLabel={t.copyError}
+        />
         <p style={{ marginTop: 22 }}>{t.regenerateWarning}</p>
         <ActionForm
           action={homeAction.bind(null, 'regenerate')}

@@ -1,3 +1,5 @@
+import { CreatePanel } from '@/components/ui/create-panel';
+import { EmptyState } from '@/components/ui/empty-state';
 import { SectionTabs } from '@/components/section-tabs';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser } from '@/lib/data';
@@ -63,7 +65,7 @@ export async function ExpensesPage({
 }) {
   const home = await getHome(homeId),
     { db, user } = await requireUser(),
-    { locale } = await i18n(),
+    { locale, t: ui } = await i18n(),
     t = expenseMessages(locale),
     today = homeDate(home.timezone),
     base = `/homes/${homeId}/expenses`;
@@ -257,12 +259,12 @@ export async function ExpensesPage({
       />
       {tab === 'expenses' && (
         <>
-          <details
-            className="panel create-disclosure"
+          <CreatePanel
             id="new-expense"
-            open={Boolean(shoppingList || shoppingError)}
+            title={shoppingList ? t.shopping : t.newExpense}
+            closeLabel={ui.closePanel}
+            defaultOpen={Boolean(shoppingList || shoppingError || search.create === 'expense')}
           >
-            <summary>{shoppingList ? t.shopping : t.newExpense}</summary>
             {shoppingError ? (
               <p className="notice error">{t.listIncomplete}</p>
             ) : (
@@ -273,8 +275,17 @@ export async function ExpensesPage({
                 shoppingList={shoppingList}
               />
             )}
-          </details>
-          {!expenses.some((e) => !e.deleted_at) && <p>{t.empty}</p>}
+          </CreatePanel>
+          {!expenses.some((e) => !e.deleted_at) && (
+            <EmptyState
+              title={t.empty}
+              action={
+                <Link className="button secondary" href={`${base}?create=expense`}>
+                  {t.newExpense}
+                </Link>
+              }
+            />
+          )}
           {expenses
             .filter((e) => !e.deleted_at)
             .map((e) => (

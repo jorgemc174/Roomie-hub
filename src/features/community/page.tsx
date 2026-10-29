@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/ui/empty-state';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser, signedImage } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
@@ -370,7 +371,7 @@ export async function CommunityPage({
               </CommunityForm>
             )}
           </details>
-          {!ratings.data.length && <p>{t.empty}</p>}
+          {!ratings.data.length && <EmptyState title={t.empty} />}
           {ratings.data.map((r) => {
             const author = labels.data.find((a) => a.rating_id === r.id),
               used = redemptions.some((d) => d.positive_ids.includes(r.id)),

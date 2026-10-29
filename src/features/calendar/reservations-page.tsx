@@ -1,3 +1,5 @@
+import { CreatePanel } from '@/components/ui/create-panel';
+import { EmptyState } from '@/components/ui/empty-state';
 import { OrganizationNav } from '@/features/organization/nav';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser } from '@/lib/data';
@@ -18,7 +20,7 @@ export async function ReservationsPage({
 }) {
   const home = await getHome(homeId),
     { db, user } = await requireUser(),
-    { locale } = await i18n(),
+    { locale, t: ui } = await i18n(),
     t = calendarMessages(locale),
     today = homeDate(home.timezone),
     tomorrow = addDays(today, 1),
@@ -133,7 +135,10 @@ export async function ReservationsPage({
         {t.calendar} →
       </Link>
       <p>{t.reservationHelp}</p>
-      <p>{t.timeHelp}</p>
+      <details className="ui-help">
+        <summary>{t.timezone}</summary>
+        <p>{t.timeHelp}</p>
+      </details>
       <details className="panel" open={!resources.some((x) => x.active)}>
         <summary>{t.resources}</summary>
         <p>{t.resourceHelp}</p>
@@ -197,8 +202,12 @@ export async function ReservationsPage({
         ))}
       </details>
       {resources.some((x) => x.active) ? (
-        <details className="panel">
-          <summary>{t.newReservation}</summary>
+        <CreatePanel
+          title={t.newReservation}
+          closeLabel={ui.closePanel}
+          id="create-reservation"
+          defaultOpen={search.create === 'reservation'}
+        >
           <CalendarForm
             homeId={homeId}
             operation="reservation"
@@ -209,7 +218,7 @@ export async function ReservationsPage({
           >
             {fields()}
           </CalendarForm>
-        </details>
+        </CreatePanel>
       ) : (
         <p className="notice">{t.noResources}</p>
       )}
@@ -247,7 +256,7 @@ export async function ReservationsPage({
           <button className="button">{t.filter}</button>
         </form>
       </section>
-      {!shown.length && <p>{t.noReservations}</p>}
+      {!shown.length && <EmptyState title={t.noReservations} />}
       {shown.map((b) => (
         <article className="panel" key={b.id} id={`reservation-${b.id}`}>
           <h2>

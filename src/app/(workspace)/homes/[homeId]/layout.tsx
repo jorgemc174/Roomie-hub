@@ -23,7 +23,7 @@ export default async function WorkspaceLayout({
         <Brand href={`/homes/${homeId}`} />
         <div className="home-label">
           {image ? (
-            <img className="mini-cover" src={image} alt="" />
+            <img className="mini-cover" src={image} alt="" width={40} height={40} />
           ) : (
             <span className="mini-cover">
               <House size={21} />

@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/ui/empty-state';
 import Link from 'next/link';
 import { House, Plus, KeyRound, ArrowUpRight } from 'lucide-react';
 import { requireUser, signedImage } from '@/lib/data';
@@ -31,16 +32,17 @@ export default async function Homes() {
         </div>
       </header>
       {homes.length === 0 ? (
-        <section className="empty">
-          <div className="home-symbol">
-            <House size={38} strokeWidth={1.4} />
-          </div>
-          <h2>{t.emptyHomes}</h2>
-          <p>{t.emptyHomesBody}</p>
-          <Link className="text-link" href="/homes/new">
-            {t.createHome}
-          </Link>
-        </section>
+        <EmptyState
+          title={t.emptyHomes}
+          description={t.emptyHomesBody}
+          icon={<House size={28} />}
+          action={
+            <Link className="button" href="/homes/new">
+              <Plus size={18} aria-hidden="true" />
+              {t.createHome}
+            </Link>
+          }
+        />
       ) : (
         <div className="home-grid">
           {await Promise.all(
@@ -49,10 +51,17 @@ export default async function Homes() {
               return (
                 <Link key={home.id} href={`/homes/${home.id}`} className="home-card">
                   {image ? (
-                    <img src={image} alt="" className="home-cover" />
+                    <img
+                      src={image}
+                      alt=""
+                      className="home-cover"
+                      width={360}
+                      height={170}
+                      loading="lazy"
+                    />
                   ) : (
                     <div className="home-cover">
-                      <House size={52} strokeWidth={1.2} />
+                      <House size={52} strokeWidth={1.2} aria-hidden="true" />
                     </div>
                   )}
                   <div className="home-card-body">

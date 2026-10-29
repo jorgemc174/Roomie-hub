@@ -77,12 +77,12 @@ export function PushDevices({
     }
   }
   return (
-    <section className="panel stack">
+    <section className="panel stack" aria-busy={pending}>
       <h2>{t.devices}</h2>
       <p>{t.permission}</p>
       {!publicKey && <p className="notice">{t.unavailable}</p>}
-      <button disabled={pending || !publicKey} onClick={() => void enable()}>
-        {t.enable}
+      <button className="button" disabled={pending || !publicKey} onClick={() => void enable()}>
+        {pending ? t.saving : t.enable}
       </button>
       {status && <p role="status">{status}</p>}
       {devices.map((d) => (
@@ -90,7 +90,11 @@ export function PushDevices({
           <span>
             {d.label || 'Browser'} · {d.id.slice(0, 8)}
           </span>
-          <button disabled={pending} onClick={() => void disable(d.id, d.endpoint)}>
+          <button
+            className="button secondary"
+            disabled={pending}
+            onClick={() => void disable(d.id, d.endpoint)}
+          >
             {t.disable}
           </button>
         </div>

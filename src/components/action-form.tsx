@@ -1,5 +1,8 @@
 'use client';
+import { useRetainedForm } from '@/components/ui/use-retained-form';
 import { useActionState, type ReactNode } from 'react';
+import { LoaderCircle } from 'lucide-react';
+import { FormFeedback } from './ui/form-feedback';
 import { useFormStatus } from 'react-dom';
 import type { ActionState } from '@/app/actions';
 function Fields({ children }: { children: ReactNode }) {
@@ -24,6 +27,7 @@ function Submit({
       className={danger ? 'button danger' : secondary ? 'button secondary' : 'button'}
       type="submit"
     >
+      {pending && <LoaderCircle className="ui-spinner" size={18} aria-hidden="true" />}
       {pending ? pendingLabel : label}
     </button>
   );
@@ -48,19 +52,11 @@ export function ActionForm({
   className?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, { error: initialError });
+  const retainForm = useRetainedForm(state.error, pending);
   return (
-    <form action={formAction} className={className} aria-busy={pending}>
+    <form onSubmit={retainForm} action={formAction} className={className} aria-busy={pending}>
       <Fields>{children}</Fields>
-      {!pending && state.error && (
-        <p className="notice error" role="alert">
-          {state.error}
-        </p>
-      )}
-      {!pending && state.success && (
-        <p className="notice success" role="status">
-          {state.success}
-        </p>
-      )}
+      <FormFeedback error={state.error} success={state.success} pending={pending} />
       <Submit label={label} pendingLabel={pendingLabel} danger={danger} secondary={secondary} />
     </form>
   );

@@ -1,5 +1,6 @@
 const es = {
   title: 'Notificaciones',
+  loading: 'Actualizando notificaciones…',
   empty: 'No tienes notificaciones.',
   read: 'Marcar como leída',
   unread: 'No leída',
@@ -35,6 +36,7 @@ const es = {
 };
 const en: typeof es = {
   title: 'Notifications',
+  loading: 'Updating notifications…',
   empty: 'You have no notifications.',
   read: 'Mark as read',
   unread: 'Unread',

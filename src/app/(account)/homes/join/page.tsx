@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/ui/page-header';
 import Link from 'next/link';
 import { i18n } from '@/lib/i18n/server';
 import { homeAction } from '@/app/actions';
@@ -10,12 +11,7 @@ export default async function Join({ searchParams }: { searchParams: Promise<{ c
       <Link href="/homes" className="back-link">
         ← {t.homes}
       </Link>
-      <header className="page-head">
-        <div>
-          <h1>{t.joinHome}</h1>
-          <p>{t.joinBody}</p>
-        </div>
-      </header>
+      <PageHeader title={t.joinHome} description={t.joinBody} />
       <section className="panel">
         <ActionForm action={homeAction.bind(null, 'join')} label={t.join} pendingLabel={t.saving}>
           <label>

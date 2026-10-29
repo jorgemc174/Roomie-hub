@@ -1,4 +1,6 @@
 'use client';
+import { EmptyState } from '@/components/ui/empty-state';
+import { MessageCircle } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { browserClient } from '@/lib/supabase/browser';
 import { useLocale } from '@/lib/i18n/provider';
@@ -230,7 +232,7 @@ export function Chat({
           if (e) latest.current.nearBottom = e.scrollHeight - e.scrollTop - e.clientHeight < 80;
         }}
       >
-        {!page.messages.length && <p className="muted">{t.empty}</p>}
+        {!page.messages.length && <EmptyState title={t.empty} icon={<MessageCircle size={24} />} />}
         {page.messages.map((m) => {
           const original = page.replies.find((x) => x.id === m.reply_to);
           return (

@@ -1,3 +1,4 @@
+import { QuickActions } from '@/components/ui/quick-actions';
 import { CommunitySummary } from '@/features/community/summary';
 import { ExpenseSummary } from '@/features/expenses/summary';
 import Link from 'next/link';
@@ -22,10 +23,12 @@ const modules = [
 ] as const;
 export default async function HomePage({ params }: { params: Promise<{ homeId: string }> }) {
   const { homeId } = await params;
-  const home = await getHome(homeId);
-  const members = await getMembers(homeId);
-  const { user } = await requireUser();
-  const { t, locale } = await i18n();
+  const [home, members, { user }, { t, locale }] = await Promise.all([
+    getHome(homeId),
+    getMembers(homeId),
+    requireUser(),
+    i18n(),
+  ]);
   return (
     <>
       <header className="page-head">
@@ -42,6 +45,7 @@ export default async function HomePage({ params }: { params: Promise<{ homeId: s
           {t.invitation}
         </Link>
       </section>
+      <QuickActions homeId={homeId} locale={locale} label={t.dashboard} />
       <div className="dashboard-summaries">
         <OrganizationSummary homeId={homeId} />
         <ExpenseSummary homeId={homeId} />
@@ -76,7 +80,14 @@ export default async function HomePage({ params }: { params: Promise<{ homeId: s
               return (
                 <div className="member-row" key={member.user_id}>
                   {image ? (
-                    <img src={image} className="avatar" alt="" />
+                    <img
+                      src={image}
+                      className="avatar"
+                      alt=""
+                      width={44}
+                      height={44}
+                      loading="lazy"
+                    />
                   ) : (
                     <span className="avatar">{member.profiles?.name.slice(0, 1)}</span>
                   )}

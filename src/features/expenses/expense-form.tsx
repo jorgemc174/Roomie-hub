@@ -1,4 +1,7 @@
 'use client';
+import { useRetainedForm } from '@/components/ui/use-retained-form';
+import { FormFeedback } from '@/components/ui/form-feedback';
+import { LoaderCircle } from 'lucide-react';
 import { useActionState, useState } from 'react';
 import { financeAction } from './actions';
 import { expenseMessages, categoryNames } from './messages';
@@ -82,8 +85,9 @@ export function ExpenseForm({
   } catch {
     invalid = true;
   }
+  const retainForm = useRetainedForm(state.error, pending);
   return (
-    <form action={action} className="form">
+    <form onSubmit={retainForm} action={action} className="form">
       <fieldset disabled={pending}>
         <input type="hidden" name="id" value={requestId} />
         <input type="hidden" name="version" value={expectedVersion} />
@@ -270,21 +274,13 @@ export function ExpenseForm({
           )}
         </section>
       )}
-      {state.error && (
-        <p className="notice error" role="alert">
-          {state.error}
-        </p>
-      )}
-      {state.success && (
-        <p className="notice success" role="status">
-          {state.success}
-        </p>
-      )}
+      <FormFeedback error={state.error} success={state.success} pending={pending} />
       <button
         type="submit"
         className="button"
         disabled={pending || invalid || Boolean(state.success)}
       >
+        {pending && <LoaderCircle className="ui-spinner" size={18} aria-hidden="true" />}
         {pending ? t.saving : operation === 'confirm' ? t.confirm : t.save}
       </button>
       {state.success && version === 0 && operation !== 'confirm' && (

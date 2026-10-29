@@ -1,4 +1,5 @@
 'use client';
+import { WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 export function Connectivity({ message }: { message: string }) {
   const [offline, setOffline] = useState(false);
@@ -14,6 +15,7 @@ export function Connectivity({ message }: { message: string }) {
   }, []);
   return offline ? (
     <div className="offline" role="status">
+      <WifiOff size={18} aria-hidden="true" />
       {message}
     </div>
   ) : null;

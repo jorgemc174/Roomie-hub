@@ -1,3 +1,5 @@
+import { CreatePanel } from '@/components/ui/create-panel';
+import { EmptyState } from '@/components/ui/empty-state';
 import { CommunityNav } from '@/features/community/nav';
 import Link from 'next/link';
 import { getHome, requireUser } from '@/lib/data';
@@ -18,7 +20,7 @@ export async function ActivitiesPage({
 }) {
   const home = await getHome(homeId),
     { db, user } = await requireUser(),
-    { locale } = await i18n(),
+    { locale, t: ui } = await i18n(),
     t = calendarMessages(locale),
     tomorrow = addDays(homeDate(home.timezone), 1),
     base = `/homes/${homeId}/community/activities`,
@@ -98,9 +100,16 @@ export async function ActivitiesPage({
         </div>
       </header>
       <CommunityNav homeId={homeId} locale={locale} tab="activities" />
-      <p>{t.timeHelp}</p>
-      <details className="panel">
-        <summary>{t.newActivity}</summary>
+      <details className="ui-help">
+        <summary>{t.timezone}</summary>
+        <p>{t.timeHelp}</p>
+      </details>
+      <CreatePanel
+        title={t.newActivity}
+        closeLabel={ui.closePanel}
+        id="create-activity"
+        defaultOpen={search.create === 'activity'}
+      >
         <p>{t.creatorJoins}</p>
         <CalendarForm
           homeId={homeId}
@@ -112,7 +121,7 @@ export async function ActivitiesPage({
         >
           {fields()}
         </CalendarForm>
-      </details>
+      </CreatePanel>
       <nav className="filter-links" aria-label={t.filter}>
         <Link href={base} aria-current={view === 'upcoming' ? 'page' : undefined}>
           {t.upcoming}
@@ -124,7 +133,7 @@ export async function ActivitiesPage({
           {t.calendar} →
         </Link>
       </nav>
-      {!shown.length && <p>{t.noActivities}</p>}
+      {!shown.length && <EmptyState title={t.noActivities} />}
       {shown.map((a) => {
         const participants = members.filter((m) => m.activity_id === a.id && m.attending),
           joined = participants.some((m) => m.user_id === user.id);

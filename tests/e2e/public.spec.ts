@@ -3,6 +3,22 @@ import { test, expect } from '@playwright/test';
 test.afterEach(async ({ page }) => {
   await page.waitForLoadState('networkidle');
 });
+test('failed sign-in preserves entered values and focuses actionable feedback', async ({
+  page,
+}) => {
+  // The test backend is deliberately unavailable; this exercises the real failed action.
+  await page.goto('/login');
+  const email = page.getByLabel('Correo electrónico', { exact: true });
+  const password = page.getByLabel('Contraseña', { exact: true });
+  await email.fill('retained@example.test');
+  await password.fill('local-retained-password');
+  await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
+  await expect(page.locator('.form-feedback [role="alert"]')).toBeVisible();
+  await expect(email).toHaveValue('retained@example.test');
+  await expect(password).toHaveValue('local-retained-password');
+  await expect(page.locator('.form-feedback')).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Iniciar sesión', exact: true })).toBeEnabled();
+});
 test('mobile sign-in keeps a visible main heading and an accessible password toggle', async ({
   page,
 }) => {
@@ -32,6 +48,7 @@ test('public routes, translations and theme persist without overflow', async ({
   await page.getByRole('button', { name: 'Guardar cambios' }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('meta[name=theme-color]')).toHaveAttribute('content', '#111716');
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Good to have you here.' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -53,6 +70,7 @@ test('public routes, translations and theme persist without overflow', async ({
   await page.getByLabel('Appearance').selectOption('light');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('meta[name=theme-color]')).toHaveAttribute('content', '#f4f6f3');
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
   await page.goto('/login');
   await page.screenshot({

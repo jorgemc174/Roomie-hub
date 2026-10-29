@@ -1,6 +1,8 @@
 'use client';
 import Link from 'next/link';
-import { Bell } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Feedback } from '@/components/ui/feedback';
+import { Bell, LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { browserClient } from '@/lib/supabase/browser';
 import { useLocale } from '@/lib/i18n/provider';
@@ -78,6 +80,7 @@ export function Inbox({ initial }: { initial: Notice[] }) {
   const load = useCallback(
     async (before: Notice | null) => {
       setPending(true);
+      setError('');
       try {
         let q = browserClient()
           .from('notifications')
@@ -103,6 +106,7 @@ export function Inbox({ initial }: { initial: Notice[] }) {
   );
   async function mark(id?: string) {
     setPending(true);
+    setError('');
     try {
       if (!navigator.onLine || !(await readNotices(id))) throw new Error();
       await load(cursor);
@@ -113,24 +117,32 @@ export function Inbox({ initial }: { initial: Notice[] }) {
     }
   }
   return (
-    <div className="stack">
-      <div className="row wrap">
-        <Link href="/notifications/preferences">{t.preferences}</Link>
-        <button disabled={pending} onClick={() => void mark()}>
+    <div className="stack" aria-busy={pending}>
+      <div className="notification-toolbar">
+        <Link className="button secondary" href="/notifications/preferences">
+          {t.preferences}
+        </Link>
+        <button
+          className="button secondary"
+          disabled={pending || !rows.some((n) => !n.read_at)}
+          onClick={() => void mark()}
+        >
           {t.all}
         </button>
-        <button disabled={pending} onClick={() => void load(null)}>
+        <button className="button secondary" disabled={pending} onClick={() => void load(null)}>
           {t.recent}
         </button>
       </div>
-      {error && (
-        <p role="alert" className="notice error">
-          {error}
+      {pending && (
+        <p className="ui-inline-loading" role="status">
+          <LoaderCircle size={18} className="ui-spinner" aria-hidden="true" />
+          {t.loading}
         </p>
       )}
-      {!rows.length && <p>{t.empty}</p>}
+      {error && <Feedback kind="error">{error}</Feedback>}
+      {!rows.length && !pending && <EmptyState title={t.empty} icon={<Bell size={24} />} />}
       {rows.map((n) => (
-        <article key={n.id} className="panel">
+        <article key={n.id} className={`panel notification-card ${!n.read_at ? 'unread' : ''}`}>
           <h2>
             <Link href={safeNext(n.target_url)}>{n.title}</Link>
             {!n.read_at && (
@@ -147,13 +159,17 @@ export function Inbox({ initial }: { initial: Notice[] }) {
             )}
           </time>
           {!n.read_at && (
-            <button disabled={pending} onClick={() => void mark(n.id)}>
+            <button className="button secondary" disabled={pending} onClick={() => void mark(n.id)}>
               {t.read}
             </button>
           )}
         </article>
       ))}
-      <button disabled={pending || rows.length < 50} onClick={() => void load(rows.at(-1) ?? null)}>
+      <button
+        className="button secondary"
+        disabled={pending || rows.length < 50}
+        onClick={() => void load(rows.at(-1) ?? null)}
+      >
         {t.older}
       </button>
     </div>

@@ -1,8 +1,9 @@
+import { cache } from 'react';
 import { redirect, notFound } from 'next/navigation';
 import { configured } from './supabase/config';
 import { supabase } from './supabase/server';
 import type { Home, Profile, Member } from './models';
-export async function requireUser() {
+export const requireUser = cache(async function requireUser() {
   if (!configured()) redirect('/setup');
   const db = await supabase();
   const {
@@ -11,22 +12,22 @@ export async function requireUser() {
   } = await db.auth.getUser();
   if (error || !user) redirect('/login');
   return { db, user };
-}
-export async function getProfile() {
+});
+export const getProfile = cache(async function getProfile() {
   const { db, user } = await requireUser();
   const { data, error } = await db.from('profiles').select('*').eq('id', user.id).single();
   if (error) throw new Error('profile_read_failed');
   return data as Profile;
-}
-export async function getHome(id: string) {
+});
+export const getHome = cache(async function getHome(id: string) {
   const { db } = await requireUser();
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { data, error } = await db.from('homes').select('*').eq('id', id).maybeSingle();
   if (error) throw new Error('home_read_failed');
   if (!data) notFound();
   return data as Home;
-}
-export async function getMembers(id: string) {
+});
+export const getMembers = cache(async function getMembers(id: string) {
   const { db } = await requireUser();
   const { data, error } = await db
     .from('home_members')
@@ -36,7 +37,7 @@ export async function getMembers(id: string) {
     .order('joined_at');
   if (error) throw new Error('members_read_failed');
   return data as unknown as Member[];
-}
+});
 export async function signedImage(bucket: 'avatars' | 'home-images', path: string | null) {
   if (!path) return null;
   const db = await supabase();

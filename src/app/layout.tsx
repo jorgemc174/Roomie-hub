@@ -3,6 +3,7 @@ import { i18n } from '@/lib/i18n/server';
 import { Connectivity } from '@/components/connectivity';
 import { LocaleProvider } from '@/lib/i18n/provider';
 import './globals.css';
+import '../styles/system.css';
 import { Pwa } from '@/components/pwa';
 export const metadata: Metadata = {
   title: { default: 'RoomieHub', template: '%s · RoomieHub' },
@@ -11,14 +12,15 @@ export const metadata: Metadata = {
   icons: { icon: '/icon.svg', apple: '/icons/icon-192.png' },
   appleWebApp: { capable: true, title: 'RoomieHub' },
 };
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ddefe4' },
-    { media: '(prefers-color-scheme: dark)', color: '#161d1a' },
-  ],
-};
+export async function generateViewport(): Promise<Viewport> {
+  const { theme } = await i18n();
+  return {
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: theme === 'dark' ? '#111716' : '#f4f6f3',
+    colorScheme: theme === 'dark' ? 'dark' : 'light',
+  };
+}
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { locale, theme, t } = await i18n();
   return (

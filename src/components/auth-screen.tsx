@@ -76,7 +76,15 @@ export async function AuthScreen({
             {kind !== 'reset' && (
               <label>
                 {t.email}
-                <input name="email" type="email" autoComplete="email" required maxLength={254} />
+                <input
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  required
+                  maxLength={254}
+                />
               </label>
             )}
             {kind !== 'recover' && (

@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/ui/page-header';
 import Link from 'next/link';
 import { i18n } from '@/lib/i18n/server';
 import { homeAction } from '@/app/actions';
@@ -10,12 +11,7 @@ export default async function NewHome() {
       <Link href="/homes" className="back-link">
         ← {t.homes}
       </Link>
-      <header className="page-head">
-        <div>
-          <h1>{t.createHome}</h1>
-          <p>{t.createBody}</p>
-        </div>
-      </header>
+      <PageHeader title={t.createHome} description={t.createBody} />
       <section className="panel">
         <ActionForm
           action={homeAction.bind(null, 'create')}

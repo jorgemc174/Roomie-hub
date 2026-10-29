@@ -1,3 +1,5 @@
+import { CreatePanel } from '@/components/ui/create-panel';
+import { EmptyState } from '@/components/ui/empty-state';
 import { OrganizationNav } from './nav';
 import { ViewFilter } from '@/components/view-filter';
 import { expenseMessages } from '@/features/expenses/messages';
@@ -22,7 +24,7 @@ export async function OrganizationPage({
 }) {
   const home = await getHome(homeId);
   const { db, user } = await requireUser();
-  const { locale } = await i18n();
+  const { locale, t: ui } = await i18n();
   const t = organizationMessages(locale);
   const today = homeDate(home.timezone ?? 'UTC');
   const requested = typeof search.from === 'string' ? search.from : '';
@@ -178,8 +180,12 @@ export async function OrganizationPage({
                 {t.manage}
               </Link>
             </div>
-            <details className="org-disclosure">
-              <summary className="button">{t.newTask}</summary>
+            <CreatePanel
+              title={t.newTask}
+              closeLabel={ui.closePanel}
+              id="create-task"
+              defaultOpen={search.create === 'task'}
+            >
               <div className="panel">
                 <ChoreForm
                   homeId={homeId}
@@ -190,7 +196,7 @@ export async function OrganizationPage({
                   homeTimezone={home.timezone}
                 />
               </div>
-            </details>
+            </CreatePanel>
           </div>
           {view === 'manage' ? (
             <>
@@ -231,7 +237,22 @@ export async function OrganizationPage({
                 </label>
                 <button className="button secondary">{t.apply}</button>
               </form>
-              {taskRows.length === 0 && <p className="panel">{t.empty}</p>}
+              {taskRows.length === 0 && (
+                <EmptyState
+                  title={
+                    view === 'mine'
+                      ? t.emptyMine
+                      : view === 'cancelled'
+                        ? t.emptyCancelled
+                        : t.emptyTasks
+                  }
+                  action={
+                    <Link className="button secondary" href={`${base}?create=task`}>
+                      {t.newTask}
+                    </Link>
+                  }
+                />
+              )}
               <div className="task-list">
                 {taskRows.map((i) => {
                   const status = i.cancelled_at
@@ -327,8 +348,12 @@ export async function OrganizationPage({
       {tab === 'absences' && (
         <>
           <p>{t.absenceHelp}</p>
-          <details className="panel">
-            <summary>{t.absent}</summary>
+          <CreatePanel
+            title={t.absent}
+            closeLabel={ui.closePanel}
+            id="create-absence"
+            defaultOpen={search.create === 'absence'}
+          >
             <ActionForm action={action('save_absence')} label={t.save} pendingLabel={t.saving}>
               <label>
                 {t.person}
@@ -351,8 +376,17 @@ export async function OrganizationPage({
                 </label>
               </div>
             </ActionForm>
-          </details>
-          {!absences.data?.length && <p className="panel">{t.empty}</p>}
+          </CreatePanel>
+          {!absences.data?.length && (
+            <EmptyState
+              title={t.emptyAbsences}
+              action={
+                <Link className="button secondary" href={`${base}?tab=absences&create=absence`}>
+                  {t.absent}
+                </Link>
+              }
+            />
+          )}
           {(absences.data ?? []).map((a) => (
             <article className="panel" key={a.id}>
               <h2>{a.user_name}</h2>
@@ -396,16 +430,29 @@ export async function OrganizationPage({
       )}
       {tab === 'shopping' && (
         <>
-          <details className="panel">
-            <summary>{t.newList}</summary>
+          <CreatePanel
+            title={t.newList}
+            closeLabel={ui.closePanel}
+            id="create-list"
+            defaultOpen={search.create === 'list'}
+          >
             <ActionForm action={action('create_list')} label={t.newList} pendingLabel={t.saving}>
               <label>
                 {t.name}
                 <input name="name" required maxLength={100} />
               </label>
             </ActionForm>
-          </details>
-          {!lists.data?.length && <p className="panel">{t.empty}</p>}
+          </CreatePanel>
+          {!lists.data?.length && (
+            <EmptyState
+              title={t.emptyShopping}
+              action={
+                <Link className="button secondary" href={`${base}?tab=shopping&create=list`}>
+                  {t.newList}
+                </Link>
+              }
+            />
+          )}
           {(lists.data ?? []).map((list) => {
             const products = (items.data ?? []).filter((i) => i.shopping_list_id === list.id);
             return (
