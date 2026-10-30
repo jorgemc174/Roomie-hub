@@ -77,3 +77,14 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Fase 6 autorizada
 
 Conservar 001–009. Nuevas migraciones aditivas; chat con autoría propia, bajas auditadas, adjuntos privados y cursor. Notificaciones canónicas por destinatario, sin autores de ratings en ningún canal. Service-role solo en worker servidor de entregas, nunca en flujo de usuario ni NEXT_PUBLIC. Credenciales email/push separadas y canales externos opt-in. Cron de producción independiente de npm dev. Service worker no cachea datos privados/auth ni simula escrituras offline.
+
+## Sistema de diseño y verificación UI/UX
+
+- Leer `PRODUCT.md`, `DESIGN.md` y `UI_AUDIT.md` antes de cambiar interfaz. Los requisitos de negocio anteriores siguen siendo vinculantes. Conservar verde, seis secciones, acceso a Mis pisos/logout en Perfil y URLs existentes.
+- Fuentes de sistema sin descargas; roles de tipografía, radios y espaciado en `src/styles/system.css`. Las variables de color semántico claro/oscuro están en `src/app/globals.css`. No añadir otra capa de overrides para corregir un componente: buscar su regla y el token que corresponde.
+- Antes de modificar, reproducir el problema con capturas o evidencia concreta. Distinguir errores de preferencias de detector. Las skills Impeccable y Taste se aplican en modo aplicación; ninguna receta sustituye los contratos del producto ni autoriza datos inventados, dependencias o créditos de pago.
+- Las tareas siempre muestran el periodo de cada ocurrencia, incluso al abrir un enlace `#task-ID`; agrupar no puede perder instancias ni alterar operaciones. El chat vacío no reserva una pantalla de historial: su compositor debe ser alcanzable en la primera vista móvil. Valorar precede a los detalles contables, que siguen accesibles.
+- Preservar componentes `CreatePanel`, `SectionDisclosure`, `ActionForm`, `SectionTabs` y enlaces de cuenta. No usar roles de menú para formularios. Mantener borradores al plegar, foco visible, feedback pending/error/success, áreas táctiles y movimiento reducido.
+- Verificar 320/390/768/1440 px, claro/oscuro, inglés/español, formularios desplegados, historial y enlaces profundos. No confundir emulación Chromium con una prueba en Android físico.
+- Regresiones locales: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `node scripts/test-navigation-ui.mjs`. Para pantallas privadas, arrancar la app contra desarrollo y ejecutar `node scripts/verify-authenticated-ui.mjs` con `E2E_USER_EMAIL` y `E2E_USER_PASSWORD` configurados de forma segura. El runner no envía formularios de negocio; las reconciliaciones normales de página siguen ejecutándose. No sustituirlo por fixtures administrativos.
+- En este entorno, Node puede necesitar `NODE_USE_ENV_PROXY=1` para la conexión HTTPS autorizada; conservar proxy y CA. No imprimir valores de variables, sesiones o invitaciones. Capturas y resultados privados van en rutas ignoradas, nunca en Git.

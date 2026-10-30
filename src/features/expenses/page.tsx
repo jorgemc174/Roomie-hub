@@ -434,6 +434,7 @@ export async function ExpensesPage({
             id="payment-history"
             defaultOpen={page > 0 || search.payments === 'history'}
           >
+            {!payments.length && <p>{t.noPayments}</p>}
             {payments.map((p) => (
               <p key={p.id}>
                 {date(p.payment_date)} · {p.from_name} → {p.to_name}:{' '}
@@ -509,6 +510,7 @@ export async function ExpensesPage({
         <section className="panel">
           <h2>{t.audit}</h2>
           <p>{t.deletedHelp}</p>
+          {!events.length && <p>{t.noHistory}</p>}
           {events.map((e) => (
             <details key={e.id}>
               <summary>

@@ -14,9 +14,6 @@ export default async function Homes() {
     <>
       <header className="page-head">
         <div>
-          <p className="eyebrow" style={{ marginBottom: 12 }}>
-            {t.tagline}
-          </p>
           <h1>{t.homes}</h1>
           <p>{t.homesBody}</p>
         </div>

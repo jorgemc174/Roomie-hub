@@ -1,6 +1,7 @@
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { OrganizationNav, OrganizationLoadError } from './nav';
+import { groupTaskPeriods, TaskPeriodHeading, TaskPeriodDates } from './task-periods';
 import { TaskNavigation } from './task-navigation';
 import { SectionDisclosure } from '@/components/section-disclosure';
 import { expenseMessages } from '@/features/expenses/messages';
@@ -81,7 +82,6 @@ export async function OrganizationPage({
     <div className="organization">
       <header className="page-head">
         <div>
-          <p className="eyebrow">{t.title}</p>
           <h1>
             {tab === 'shopping'
               ? t.shopping
@@ -182,72 +182,87 @@ export async function OrganizationPage({
                   }
                 />
               )}
+              {taskRows.some((i) => !i.completed_at && !i.cancelled_at && i.period_end <= from) && (
+                <p className="task-range-note">{t.backlogHelp}</p>
+              )}
               <div className="task-list">
-                {taskRows.map((i) => {
-                  const status = i.cancelled_at
-                    ? 'cancelled'
-                    : instanceStatus(i.deadline_at, i.completed_at, new Date().toISOString());
-                  return (
-                    <article className={`task-row ${status}`} key={i.id} id={`task-${i.id}`}>
-                      <div className="task-content">
-                        <div className="section-heading">
-                          <h2>{i.task_name}</h2>
-                          <span className={`badge ${status}`}>{t[status]}</span>
-                        </div>
-
-                        <p>
-                          {t.assigned}: <strong>{i.assignee_name}</strong>
-                        </p>
-                        {i.deadline_at && (
-                          <p>
-                            {t.deadline}: {stamp(i.deadline_at)}
-                          </p>
-                        )}
-                        {i.assignment_blocked && <p className="notice error">{t.blocked}</p>}
-                        {i.cancelled_at ? (
-                          <p>
-                            {t.cancelled} · {stamp(i.cancelled_at)}
-                          </p>
-                        ) : i.completed_at ? (
-                          <p>
-                            {t.completedBy}: {i.completed_by_name} · {stamp(i.completed_at)}
-                          </p>
-                        ) : (
-                          <ActionForm
-                            action={action('complete_chore')}
-                            label={t.complete}
-                            pendingLabel={t.saving}
-                          >
-                            {hidden('id', i.id)}
-                          </ActionForm>
-                        )}
-                        <details>
-                          <summary>{t.detailsHistory}</summary>
-                          <p>
-                            {date(i.period_start)} – {date(addDays(i.period_end, -1))} ·{' '}
-                            {t.difficulty}: {i.difficulty}/5
-                          </p>
-                          <ul>
-                            {(events.data ?? [])
-                              .filter((e) => e.instance_id === i.id)
-                              .map((e) => (
-                                <li key={e.id}>
-                                  {e.reason === 'generated'
-                                    ? t.generatedReason
-                                    : e.reason === 'blocked'
-                                      ? t.blockedReason
-                                      : e.reason === 'unblocked'
-                                        ? t.unblockedReason
-                                        : t.reassignedReason}
-                                  : {e.assignee_name} · {stamp(e.created_at)}
-                                </li>
-                              ))}
-                          </ul>
-                        </details>
-                      </div>
-                    </article>
-                  );
-                })}
+                {groupTaskPeriods(taskRows).map((group) => (
+                  <section className="task-period" key={`${group.start}/${group.end}`}>
+                    <TaskPeriodHeading start={group.start} end={group.end} locale={locale} />
+                    {group.items.map((i) => {
+                      const status = i.cancelled_at
+                        ? 'cancelled'
+                        : instanceStatus(i.deadline_at, i.completed_at, new Date().toISOString());
+                      return (
+                        <article className={`task-row ${status}`} key={i.id} id={`task-${i.id}`}>
+                          <div className="task-content">
+                            <div className="section-heading">
+                              <div className="task-identity">
+                                <h3>{i.task_name}</h3>
+                                <p className="task-occurrence-date">
+                                  <TaskPeriodDates
+                                    start={i.period_start}
+                                    end={i.period_end}
+                                    locale={locale}
+                                  />
+                                </p>
+                              </div>
+                              <span className={`badge ${status}`}>{t[status]}</span>
+                            </div>
+                            <p>
+                              {t.assigned}: <strong>{i.assignee_name}</strong>
+                            </p>
+                            {i.deadline_at && (
+                              <p>
+                                {t.deadline}: {stamp(i.deadline_at)}
+                              </p>
+                            )}
+                            {i.assignment_blocked && <p className="notice error">{t.blocked}</p>}
+                            {i.cancelled_at ? (
+                              <p>
+                                {t.cancelled} · {stamp(i.cancelled_at)}
+                              </p>
+                            ) : i.completed_at ? (
+                              <p>
+                                {t.completedBy}: {i.completed_by_name} · {stamp(i.completed_at)}
+                              </p>
+                            ) : (
+                              <ActionForm
+                                action={action('complete_chore')}
+                                label={t.complete}
+                                pendingLabel={t.saving}
+                              >
+                                {hidden('id', i.id)}
+                              </ActionForm>
+                            )}
+                            <details>
+                              <summary>{t.detailsHistory}</summary>
+                              <p>
+                                {t.difficulty}: {i.difficulty}/5
+                              </p>
+                              <ul>
+                                {(events.data ?? [])
+                                  .filter((e) => e.instance_id === i.id)
+                                  .map((e) => (
+                                    <li key={e.id}>
+                                      {e.reason === 'generated'
+                                        ? t.generatedReason
+                                        : e.reason === 'blocked'
+                                          ? t.blockedReason
+                                          : e.reason === 'unblocked'
+                                            ? t.unblockedReason
+                                            : t.reassignedReason}
+                                      : {e.assignee_name} · {stamp(e.created_at)}
+                                    </li>
+                                  ))}
+                              </ul>
+                            </details>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </section>
+                ))}
               </div>
             </>
           )}

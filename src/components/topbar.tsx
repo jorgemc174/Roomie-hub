@@ -17,7 +17,7 @@ export function Topbar({
     <header className="topbar">
       {homeId && homeName ? (
         <Link className="workspace-identity" href={`/homes/${homeId}`}>
-          <span className="eyebrow">{t.brand}</span>
+          <span className="workspace-brand">{t.brand}</span>
           <strong>{homeName}</strong>
         </Link>
       ) : (

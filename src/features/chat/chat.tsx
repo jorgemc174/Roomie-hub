@@ -197,8 +197,11 @@ export function Chat({
       timeZone: timezone,
     }).format(new Date(value));
   return (
-    <div className="chat-shell">
-      <p className="muted text-sm">{t.removedPolicy}</p>
+    <div className={`chat-shell${page.messages.length ? '' : ' is-empty'}`}>
+      <details className="ui-help chat-policy">
+        <summary>{t.messagePolicy}</summary>
+        <p>{t.removedPolicy}</p>
+      </details>
       {(!connected || error) && (
         <p role="alert" className="notice error">
           {error || t.error}{' '}
@@ -207,20 +210,22 @@ export function Chat({
           </button>
         </p>
       )}
-      <div className="row wrap">
-        <button
-          disabled={pending || page.messages.length < 50}
-          onClick={() => void refresh(page.messages[0] ?? null, true)}
-        >
-          {t.older}
-        </button>
-        {cursor && <button onClick={() => void refresh(null, true)}>{t.recent}</button>}
-        {newMessages && (
-          <button className="primary" onClick={() => void refresh(null, true)}>
-            {t.newMessages}
+      {(page.messages.length > 0 || cursor || newMessages) && (
+        <div className="row wrap">
+          <button
+            disabled={pending || page.messages.length < 50}
+            onClick={() => void refresh(page.messages[0] ?? null, true)}
+          >
+            {t.older}
           </button>
-        )}
-      </div>
+          {cursor && <button onClick={() => void refresh(null, true)}>{t.recent}</button>}
+          {newMessages && (
+            <button className="primary" onClick={() => void refresh(null, true)}>
+              {t.newMessages}
+            </button>
+          )}
+        </div>
+      )}
       <div
         ref={scroll}
         className="chat-log"

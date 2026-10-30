@@ -1,6 +1,7 @@
 import type { Locale } from '@/lib/i18n/dictionaries';
 const es = {
   calendar: 'Calendario',
+  calendarHelp: 'Sobre los eventos del calendario',
   reservations: 'Reservas',
   activities: 'Actividades',
   resources: 'Recursos',
@@ -86,6 +87,7 @@ const es = {
 };
 const en: Record<keyof typeof es, string> = {
   calendar: 'Calendar',
+  calendarHelp: 'About calendar events',
   reservations: 'Reservations',
   activities: 'Activities',
   resources: 'Resources',

@@ -82,7 +82,7 @@ export async function CommunityPage({
       </p>
     );
   const number = (n: number) => new Intl.NumberFormat(locale).format(Number(n));
-  const state = (b: CommunityBalance) => (
+  const state = (b: CommunityBalance, secondary = false) => (
     <dl className="community-stats">
       {(
         [
@@ -92,12 +92,14 @@ export async function CommunityPage({
           ['credits', b.credits],
           ['pending', b.pending_punishments],
         ] as const
-      ).map(([key, value]) => (
-        <div key={key}>
-          <dt>{t[key]}</dt>
-          <dd>{number(value)}</dd>
-        </div>
-      ))}
+      )
+        .filter((_, index) => (secondary ? index >= 2 : index < 2))
+        .map(([key, value]) => (
+          <div key={key}>
+            <dt>{t[key]}</dt>
+            <dd>{number(value)}</dd>
+          </div>
+        ))}
     </dl>
   );
   const reasonFields = (r?: RatingReason) => (
@@ -176,6 +178,47 @@ export async function CommunityPage({
         <h1>{tab === 'reasons' ? t.configureReasons : t.title}</h1>
       </header>
       <CommunityNav homeId={homeId} locale={locale} tab={tab} />
+      {tab === 'points' && (
+        <CreatePanel
+          title={t.rate}
+          closeLabel={ui.closePanel}
+          id="create-rating"
+          defaultOpen={search.create === 'rating'}
+        >
+          {!reasons.some((r) => r.active) ? (
+            <Link href={`${base}?tab=reasons`}>{t.initialize}</Link>
+          ) : (
+            <CommunityForm
+              homeId={homeId}
+              operation="rating"
+              id={crypto.randomUUID()}
+              locale={locale}
+              label={t.save}
+            >
+              <label>
+                {t.person}
+                <select
+                  name="person"
+                  required
+                  defaultValue={person && person !== user.id ? person : ''}
+                >
+                  <option value="" disabled>
+                    {t.person}
+                  </option>
+                  {members
+                    .filter((m) => m.user_id !== user.id)
+                    .map((m) => (
+                      <option key={m.user_id} value={m.user_id}>
+                        {m.profiles?.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <RatingFields reasons={reasons} locale={locale} />
+            </CommunityForm>
+          )}
+        </CreatePanel>
+      )}
       {report.data.more && <p className="notice">{t.more}</p>}
       {(tab === 'reasons' || report.data.more) && (
         <SectionDisclosure title={t.reconcile} defaultOpen={report.data.more}>
@@ -308,7 +351,9 @@ export async function CommunityPage({
               </h2>
               {state(current)}
               <details>
-                <summary>{t.historyHelp}</summary>
+                <summary>{t.pointDetails}</summary>
+                {state(current, true)}
+                <p>{t.historyHelp}</p>
                 <p>
                   {t.positiveHistory}: {number(current.positive_history)}
                 </p>
@@ -325,45 +370,6 @@ export async function CommunityPage({
             <summary>{t.pointRules}</summary>
             <p>{t.conversionHelp}</p>
           </details>
-          <CreatePanel
-            title={t.rate}
-            closeLabel={ui.closePanel}
-            id="create-rating"
-            defaultOpen={search.create === 'rating'}
-          >
-            {!reasons.some((r) => r.active) ? (
-              <Link href={`${base}?tab=reasons`}>{t.initialize}</Link>
-            ) : (
-              <CommunityForm
-                homeId={homeId}
-                operation="rating"
-                id={crypto.randomUUID()}
-                locale={locale}
-                label={t.save}
-              >
-                <label>
-                  {t.person}
-                  <select
-                    name="person"
-                    required
-                    defaultValue={person && person !== user.id ? person : ''}
-                  >
-                    <option value="" disabled>
-                      {t.person}
-                    </option>
-                    {members
-                      .filter((m) => m.user_id !== user.id)
-                      .map((m) => (
-                        <option key={m.user_id} value={m.user_id}>
-                          {m.profiles?.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <RatingFields reasons={reasons} locale={locale} />
-              </CommunityForm>
-            )}
-          </CreatePanel>
           {!ratings.data.length && <EmptyState title={t.empty} />}
           {ratings.data.map((r) => {
             const author = labels.data.find((a) => a.rating_id === r.id),

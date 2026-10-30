@@ -1,5 +1,6 @@
 /* RoomieHub UI system: semantic tokens and shared component contracts. */
 :root {
+  --font-ui: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -8,7 +9,10 @@
   --space-8: 32px;
   --space-12: 48px;
   --radius-control: 12px;
-  --radius-card: 20px;
+  --radius-card: 16px;
+  --text-page-title: 2rem;
+  --text-section-title: 1.125rem;
+  --panel-padding: 24px;
   --control-border: #7d8d84;
   --press: #d4e7dc;
   --motion-press: 120ms;
@@ -25,6 +29,188 @@ html {
 }
 body {
   -webkit-font-smoothing: antialiased;
+}
+::selection {
+  color: var(--ink);
+  background: var(--mint);
+}
+input,
+textarea {
+  caret-color: var(--accent);
+}
+input:not([type='checkbox']),
+select,
+textarea {
+  font-size: 1rem;
+}
+.stack > .page-head,
+.organization > .page-head {
+  margin-bottom: 0;
+}
+.task-list {
+  gap: var(--space-6);
+}
+.task-period-heading {
+  padding-block: var(--space-3);
+  font-size: 0.875rem;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+.task-period .task-row {
+  padding: var(--space-4) 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.task-period .task-content {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-3);
+}
+.task-content > .section-heading,
+.task-content > details,
+.task-content > .notice {
+  grid-column: 1 / -1;
+}
+.task-content > p {
+  grid-column: 1;
+  font-size: 0.875rem;
+}
+.task-content > .form {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+  align-self: start;
+}
+.task-identity {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.task-occurrence-date {
+  font-size: 0.8125rem;
+}
+.task-content > .form .button {
+  width: auto;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+}
+.task-content > details > summary {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.task-range-note {
+  max-width: 68ch;
+  font-size: 0.875rem;
+}
+.dashboard-member-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-4);
+}
+.dashboard-people .panel {
+  box-shadow: none;
+}
+.chat-shell.is-empty .chat-log {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  overflow: visible;
+}
+.chat-shell.is-empty {
+  gap: var(--space-3);
+}
+.chat-shell.is-empty .chat-composer {
+  padding: var(--space-3);
+  gap: var(--space-3);
+}
+.chat-shell.is-empty .ui-empty-state {
+  padding: var(--space-4);
+  min-height: 0;
+}
+.chat-shell.is-empty .ui-empty-state .ui-state-icon {
+  display: none;
+}
+.chat-policy > summary {
+  padding-block: var(--space-1);
+}
+.chat-composer textarea {
+  resize: vertical;
+}
+.workspace-identity {
+  min-height: 44px;
+  align-content: center;
+}
+.calendar-month-heading .button {
+  min-width: 44px;
+}
+.calendar-count {
+  font-size: 0.75rem;
+}
+/* Tablet keeps the same destinations, while giving the task its full width. */
+@media (min-width: 701px) and (max-width: 1050px) {
+  .app-shell {
+    display: block;
+  }
+  .sidebar {
+    display: contents;
+  }
+  .sidebar > .brand,
+  .sidebar > .home-label,
+  .sidebar-bottom {
+    display: none;
+  }
+  .side-nav {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-around;
+    gap: 0;
+    padding: 6px 16px calc(6px + env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+  }
+  .side-nav a {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 56px;
+    padding: 6px;
+    gap: 2px;
+    font-size: 0.8125rem;
+  }
+  .workspace .page {
+    padding: 24px 24px calc(108px + env(safe-area-inset-bottom));
+  }
+  .workspace .topbar {
+    padding: 12px 24px;
+  }
+  .workspace .topbar nav {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .workspace .topbar-action > span:not(.badge) {
+    display: none;
+  }
+  .workspace .page-head {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+}
+@media (max-width: 700px) {
+  :root {
+    --text-page-title: 1.625rem;
+    --panel-padding: 16px;
+  }
+  .calendar-month.panel {
+    padding: 8px;
+  }
+  .calendar-weekdays span {
+    font-size: 0.75rem;
+  }
 }
 h1,
 h2,
@@ -147,7 +333,7 @@ a:focus-visible {
   min-width: 0;
 }
 .ui-page-header h1 {
-  font-size: clamp(1.8rem, 3.3vw, 2.6rem);
+  font-size: var(--text-page-title);
 }
 .ui-page-header p {
   max-width: 58ch;
@@ -429,7 +615,7 @@ span.ui-spinner {
     width: 100%;
   }
   .ui-page-header h1 {
-    font-size: 1.8rem;
+    font-size: var(--text-page-title);
   }
   .ui-empty-state {
     padding: var(--space-8) var(--space-4);
@@ -470,11 +656,11 @@ span.ui-spinner {
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--radius-control);
   background: var(--surface);
   font-size: 0.875rem;
   font-weight: 600;
-  min-height: 64px;
+  min-height: 48px;
 }
 .ui-quick-actions a > svg:first-child {
   color: var(--accent);

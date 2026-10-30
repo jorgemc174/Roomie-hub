@@ -131,7 +131,10 @@ export async function CalendarPage({
         userId={user.id}
         events={events}
       />
-      <p>{t.sourceHelp}</p>
+      <details className="ui-help">
+        <summary>{t.calendarHelp}</summary>
+        <p>{t.sourceHelp}</p>
+      </details>
     </div>
   );
 }

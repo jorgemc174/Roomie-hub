@@ -57,7 +57,6 @@ export async function AuthScreen({
       </aside>
       <main id="main" className="auth-main">
         <div className="auth-card">
-          <p className="eyebrow">{label}</p>
           <h1>{title}</h1>
           {kind === 'recover' && <p>{t.recoverBody}</p>}
           {error && (error !== 'google' || !googleEnabled) && (

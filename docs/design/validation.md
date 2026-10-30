@@ -1,5 +1,7 @@
 # Verificación de interfaz
 
+> Registro histórico. La cuenta de desarrollo ya está configurada y se ha comprobado la navegación autenticada. Los resultados actuales, las capturas y los límites están documentados en [UI_AUDIT.md](../../UI_AUDIT.md). El apartado pendiente de esta entrega anterior describe su situación en aquel momento.
+
 ## Ejecutado
 
 - `pnpm lint`, `pnpm typecheck` y `pnpm build`.

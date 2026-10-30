@@ -1,5 +1,7 @@
 # RoomieHub — sistema de interfaz
 
+> Registro de una entrega anterior. El sistema vigente y sus decisiones verificadas se mantienen en [DESIGN.md](../../DESIGN.md) y [UI_AUDIT.md](../../UI_AUDIT.md); prevalecen cuando difieren los tokens o medidas.
+
 ## Contexto
 
 Next.js 16 App Router, React 19, TypeScript, Supabase SSR/RLS y Lucide. Aplicación de uso diario y colaboración entre compañeros de piso, móvil primero. Mantener las seis secciones, la igualdad de permisos, Mi perfil como acceso a Mis pisos/cierre de sesión y las transacciones existentes.

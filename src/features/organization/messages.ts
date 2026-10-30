@@ -12,6 +12,8 @@ const es = {
   intro: 'Lo que nos toca, sin complicaciones.',
   manage: 'Configurar tareas',
   backToTasks: 'Volver a las tareas',
+  backlogHelp:
+    'Se incluyen tareas pendientes de periodos anteriores; comprueba la fecha antes de completarlas.',
   newTask: 'Crear tarea',
   edit: 'Editar',
   save: 'Guardar',
@@ -125,6 +127,8 @@ const en: Record<keyof typeof es, string> = {
   intro: 'Our shared to-dos, kept simple.',
   manage: 'Configure tasks',
   backToTasks: 'Back to tasks',
+  backlogHelp:
+    'Unfinished tasks from earlier periods are included; check the date before completing them.',
   newTask: 'Create task',
   edit: 'Edit',
   save: 'Save',

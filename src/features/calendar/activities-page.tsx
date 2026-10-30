@@ -92,7 +92,6 @@ export async function ActivitiesPage({
     <div className="organization">
       <header className="page-head">
         <div>
-          <p className="eyebrow">{t.community}</p>
           <h1>{t.activities}</h1>
           <p>
             {t.timezone}: <strong>{home.timezone}</strong>
