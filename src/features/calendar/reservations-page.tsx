@@ -1,4 +1,5 @@
 import { CreatePanel } from '@/components/ui/create-panel';
+import { SectionDisclosure } from '@/components/section-disclosure';
 import { EmptyState } from '@/components/ui/empty-state';
 import { OrganizationNav } from '@/features/organization/nav';
 import Link from 'next/link';
@@ -135,12 +136,33 @@ export async function ReservationsPage({
         {t.calendar} →
       </Link>
       <p>{t.reservationHelp}</p>
-      <details className="ui-help">
-        <summary>{t.timezone}</summary>
+      {resources.some((x) => x.active) ? (
+        <CreatePanel
+          title={t.newReservation}
+          closeLabel={ui.closePanel}
+          id="create-reservation"
+          defaultOpen={search.create === 'reservation'}
+        >
+          <CalendarForm
+            homeId={homeId}
+            operation="reservation"
+            id={crypto.randomUUID()}
+            timezone={home.timezone}
+            locale={locale}
+            label={t.save}
+          >
+            {fields()}
+          </CalendarForm>
+        </CreatePanel>
+      ) : (
+        <p className="notice">{t.noResources}</p>
+      )}
+      <SectionDisclosure
+        title={t.manageResources}
+        defaultOpen={!resources.some((x) => x.active)}
+        id="reservation-settings"
+      >
         <p>{t.timeHelp}</p>
-      </details>
-      <details className="panel" open={!resources.some((x) => x.active)}>
-        <summary>{t.resources}</summary>
         <p>{t.resourceHelp}</p>
         <CalendarForm
           homeId={homeId}
@@ -200,30 +222,12 @@ export async function ReservationsPage({
             </CalendarForm>
           </details>
         ))}
-      </details>
-      {resources.some((x) => x.active) ? (
-        <CreatePanel
-          title={t.newReservation}
-          closeLabel={ui.closePanel}
-          id="create-reservation"
-          defaultOpen={search.create === 'reservation'}
-        >
-          <CalendarForm
-            homeId={homeId}
-            operation="reservation"
-            id={crypto.randomUUID()}
-            timezone={home.timezone}
-            locale={locale}
-            label={t.save}
-          >
-            {fields()}
-          </CalendarForm>
-        </CreatePanel>
-      ) : (
-        <p className="notice">{t.noResources}</p>
-      )}
-      <section className="panel">
-        <h2>{t.availability}</h2>
+      </SectionDisclosure>
+      <SectionDisclosure
+        title={t.availability}
+        kind="filters"
+        defaultOpen={view !== 'upcoming' || Boolean(resource)}
+      >
         <form className="form" method="get">
           <div className="form-row">
             <label>
@@ -255,7 +259,7 @@ export async function ReservationsPage({
           </div>
           <button className="button">{t.filter}</button>
         </form>
-      </section>
+      </SectionDisclosure>
       {!shown.length && <EmptyState title={t.noReservations} />}
       {shown.map((b) => (
         <article className="panel" key={b.id} id={`reservation-${b.id}`}>

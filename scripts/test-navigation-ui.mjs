@@ -5,7 +5,7 @@ const require = createRequire(import.meta.url);
 const { build } = createRequire(require.resolve('tsx'))('esbuild');
 import { chromium, expect } from '@playwright/test';
 import { createServer } from 'node:http';
-import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, readdir, mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 const root = process.cwd(),
@@ -50,6 +50,8 @@ const browser = await chromium.launch({
   executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || '/usr/bin/chromium',
 });
 let scenarios = 0;
+const screenshotDirectory = process.env.NAVIGATION_SCREENSHOTS_DIR;
+if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true });
 try {
   for (const viewport of [
     { width: 390, height: 844 },
@@ -226,8 +228,160 @@ try {
     scenarios++;
     await context.close();
   }
+  for (const viewport of [
+    { width: 320, height: 720 },
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ]) {
+    const context = await browser.newContext({
+      viewport,
+      isMobile: viewport.width < 600,
+      hasTouch: viewport.width < 600,
+    });
+    const page = await context.newPage(),
+      errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const base = `http://127.0.0.1:${address.port}/homes/menus`;
+    const capture = async (name) => {
+      if (screenshotDirectory)
+        await page.screenshot({
+          path: path.join(screenshotDirectory, `${viewport.width}-${name}.png`),
+          fullPage: true,
+          animations: 'disabled',
+        });
+    };
+    await page.goto(`${base}/organization?view=all&from=2026-10-03`);
+    const view = page.getByRole('combobox', { name: 'Tareas', exact: true });
+    await expect(view.locator('option')).toHaveCount(3);
+    await expect(view).toHaveValue('/homes/menus/organization?view=all&from=2026-10-03');
+    const labelFits = await view.evaluate((select) => {
+      const style = getComputedStyle(select),
+        canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      context.font = style.font;
+      return (
+        context.measureText(select.selectedOptions[0].text).width <=
+        select.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+      );
+    });
+    expect(labelFits).toBe(true);
+    if (viewport.width === 320) {
+      const allTabsVisible = await page.locator('nav.section-tabs').evaluate((nav) => {
+        const right = nav.getBoundingClientRect().right;
+        return Array.from(nav.querySelectorAll('a')).every(
+          (link) => link.getBoundingClientRect().right <= right + 1,
+        );
+      });
+      expect(allTabsVisible).toBe(true);
+    }
+    await capture('tasks-light');
+    await page.getByRole('link', { name: 'Configurar tareas', exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get('view') === 'manage');
+    await expect(page.getByRole('combobox')).toHaveCount(0);
+    await expect(
+      page.getByRole('heading', { name: 'Configurar tareas', exact: true }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'Volver a las tareas', exact: true }).click();
+    await expect(view).toHaveValue('/homes/menus/organization?view=all&from=2026-10-03');
+    scenarios++;
+    await page.goto(`${base}/expenses?tab=balances`);
+    const panel = page.locator('.ui-create-panel');
+    await expect(panel.getByLabel('Campo de prueba')).not.toBeVisible();
+    await panel.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    await panel.getByLabel('Campo de prueba').fill('Draft retained');
+    await panel.getByRole('button', { name: 'Cerrar formulario' }).click();
+    await expect(panel.locator('summary')).toBeFocused();
+    await panel.locator('summary').click();
+    await expect(panel.getByLabel('Campo de prueba')).toHaveValue('Draft retained');
+    await panel.getByRole('button', { name: 'Enviar prueba' }).click();
+    await expect(page.locator('[data-testid=menu-submitted]')).toHaveText('1');
+    scenarios++;
+    await page.getByRole('link', { name: 'Historial de cambios', exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get('tab') === 'history');
+    await expect(page.locator('nav.section-tabs a')).toHaveCount(3);
+    await expect(
+      page.getByRole('link', { name: 'Historial de cambios', exact: true }),
+    ).toHaveAttribute('aria-current', 'page');
+    await capture('expenses-light');
+    await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+    await capture('expenses-dark');
+    scenarios++;
+    await page.goto(`${base}/community`);
+    const filter = page.locator('.section-disclosure');
+    await expect(filter.getByLabel('Campo de prueba')).not.toBeVisible();
+    await filter.locator('summary').focus();
+    await page.keyboard.press('Space');
+    await filter.getByLabel('Campo de prueba').fill('Filter retained');
+    await filter.locator('summary').click();
+    await filter.locator('summary').click();
+    await expect(filter.getByLabel('Campo de prueba')).toHaveValue('Filter retained');
+    await page.goto(`${base}/community?person=filter-test`);
+    await expect(filter.getByLabel('Campo de prueba')).toBeVisible();
+    await page.getByRole('link', { name: 'Ajustes de puntos', exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get('tab') === 'reasons');
+    await expect(
+      page.getByRole('link', { name: 'Ajustes de puntos', exact: true }),
+    ).toHaveAttribute('aria-current', 'page');
+    scenarios++;
+    await page.goto(`${base}/chat`);
+    const options = page.locator('.message-actions');
+    await expect(page.getByRole('button', { name: 'Responder', exact: true })).toBeVisible();
+    await expect(options.locator('summary')).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Editar', exact: true })).not.toBeVisible();
+    await options.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: 'Reaccionar 👍', exact: true }).click();
+    await expect(page.locator('[data-testid=menu-action]')).toHaveText('👍:false');
+    await page.getByRole('button', { name: 'Editar', exact: true }).click();
+    await expect(page.getByLabel('Compositor de prueba')).toBeFocused();
+    await expect(page.locator('[data-testid=menu-action]')).toHaveText('edit');
+    await page.getByRole('button', { name: 'Responder', exact: true }).click();
+    await expect(page.locator('[data-testid=menu-action]')).toHaveText('reply');
+    await page.getByRole('button', { name: 'Eliminar', exact: true }).click();
+    await expect(page.locator('[data-testid=menu-action]')).toHaveText('confirmation');
+    await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+    await expect
+      .poll(() =>
+        options.locator('summary').evaluate((element) => {
+          const luminance = (rgb) => {
+            const channels = rgb
+              .match(/[\d.]+/g)
+              .slice(0, 3)
+              .map((channel) => {
+                const value = Number(channel) / 255;
+                return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+              });
+            return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+          };
+          const foreground = luminance(getComputedStyle(element).color);
+          const background = luminance(
+            getComputedStyle(element.closest('.chat-message')).backgroundColor,
+          );
+          return (
+            (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
+          );
+        }),
+      )
+      .toBeGreaterThanOrEqual(4.5);
+    await capture('chat-dark');
+    scenarios++;
+    await page.goto(`${base}/chat?foreign=1`);
+    await options.locator('summary').click();
+    await expect(page.getByRole('button', { name: 'Editar', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Eliminar', exact: true })).toBeVisible();
+    await page.goto(`${base}/chat?pending=1`);
+    await options.locator('summary').click();
+    for (const button of await page.getByRole('button').all()) await expect(button).toBeDisabled();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      viewport.width,
+    );
+    expect(errors).toEqual([]);
+    scenarios++;
+    await context.close();
+  }
   console.log(
-    `${scenarios} browser scenarios passed: touch tabs, form state, calendar history and contextual account return links on mobile and desktop.`,
+    `${scenarios} browser scenarios passed: touch tabs, calendar/account history, internal menus, drafts, keyboard actions and dark-mode contrast on mobile and desktop.`,
   );
 } finally {
   await browser.close();

@@ -1,6 +1,7 @@
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
-import { SectionTabs } from '@/components/section-tabs';
+import { ExpensesNav } from './nav';
+import { SectionDisclosure } from '@/components/section-disclosure';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
@@ -248,15 +249,7 @@ export async function ExpensesPage({
             : `${BigInt(me) > 0n ? t.owed : t.owe} ${formatMoney(BigInt(me) < 0n ? -BigInt(me) : me, home.currency, locale)}`}
         </strong>
       </section>
-      <SectionTabs
-        label={t.title}
-        items={[
-          ['expenses', t.movements],
-          ['balances', t.balances],
-          ['recurring', t.recurring],
-          ['history', t.history],
-        ].map(([key, label]) => ({ href: `${base}?tab=${key}`, label, current: tab === key }))}
-      />
+      <ExpensesNav homeId={homeId} locale={locale} tab={tab} />
       {tab === 'expenses' && (
         <>
           <CreatePanel
@@ -383,8 +376,12 @@ export async function ExpensesPage({
               </p>
             ))}
           </section>
-          <section className="panel">
-            <h2>{t.recordPayment}</h2>
+          <CreatePanel
+            title={t.recordPayment}
+            closeLabel={ui.closePanel}
+            id="record-payment"
+            defaultOpen={search.create === 'payment'}
+          >
             <ActionForm
               action={financeAction.bind(null, homeId, 'payment')}
               label={t.recordPayment}
@@ -430,31 +427,41 @@ export async function ExpensesPage({
                 <input name="date" type="date" defaultValue={today} required />
               </label>
             </ActionForm>
-          </section>
-          <section className="panel">
-            <h2>{t.payments}</h2>
+          </CreatePanel>
+          <SectionDisclosure
+            title={t.payments}
+            kind="history"
+            id="payment-history"
+            defaultOpen={page > 0 || search.payments === 'history'}
+          >
             {payments.map((p) => (
               <p key={p.id}>
                 {date(p.payment_date)} · {p.from_name} → {p.to_name}:{' '}
                 {formatMoney(p.amount, p.currency, locale)}
               </p>
             ))}
-          </section>
+          </SectionDisclosure>
         </>
       )}
       {tab === 'recurring' && (
         <>
           <p>{t.recurrenceHelp}</p>
           {generated.data.more && <p className="notice">{t.more}</p>}
-          <ActionForm
-            action={financeAction.bind(null, homeId, 'generate')}
-            label={t.generate}
-            pendingLabel={t.saving}
-          />
-          <details className="panel">
-            <summary>{t.newRecurring}</summary>
+          <SectionDisclosure title={t.generate} defaultOpen={generated.data.more}>
+            <ActionForm
+              action={financeAction.bind(null, homeId, 'generate')}
+              label={t.generate}
+              pendingLabel={t.saving}
+            />
+          </SectionDisclosure>
+          <CreatePanel
+            title={t.newRecurring}
+            closeLabel={ui.closePanel}
+            id="new-recurring"
+            defaultOpen={search.create === 'recurring'}
+          >
             <ExpenseForm {...props} operation="recurring" id={crypto.randomUUID()} />
-          </details>
+          </CreatePanel>
           {occurrences
             .filter((i) => i.status === 'pending')
             .map((i) => (
@@ -515,12 +522,18 @@ export async function ExpensesPage({
       )}
       <nav className="row wrap" aria-label={t.pages}>
         {page > 0 && (
-          <Link className="button secondary" href={`${base}?tab=${tab}&page=${page - 1}`}>
+          <Link
+            className="button secondary"
+            href={`${base}?tab=${tab}&page=${page - 1}${tab === 'balances' ? '&payments=history#payment-history' : ''}`}
+          >
             {t.previousPage}
           </Link>
         )}
         {hasNext && (
-          <Link className="button secondary" href={`${base}?tab=${tab}&page=${page + 1}`}>
+          <Link
+            className="button secondary"
+            href={`${base}?tab=${tab}&page=${page + 1}${tab === 'balances' ? '&payments=history#payment-history' : ''}`}
+          >
             {t.nextPage}
           </Link>
         )}

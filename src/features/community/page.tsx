@@ -1,3 +1,5 @@
+import { CreatePanel } from '@/components/ui/create-panel';
+import { SectionDisclosure } from '@/components/section-disclosure';
 import { EmptyState } from '@/components/ui/empty-state';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser, signedImage } from '@/lib/data';
@@ -18,7 +20,7 @@ export async function CommunityPage({
 }) {
   const home = await getHome(homeId),
     { db, user } = await requireUser(),
-    { locale } = await i18n(),
+    { locale, t: ui } = await i18n(),
     t = communityMessages(locale),
     base = `/homes/${homeId}/community`;
   const tab =
@@ -171,22 +173,24 @@ export async function CommunityPage({
   return (
     <div className="organization">
       <header className="page-head">
-        <h1>{t.title}</h1>
+        <h1>{tab === 'reasons' ? t.configureReasons : t.title}</h1>
       </header>
       <CommunityNav homeId={homeId} locale={locale} tab={tab} />
       {report.data.more && <p className="notice">{t.more}</p>}
-      <details className="panel">
-        <summary>{t.reconcile}</summary>
-        <CommunityForm
-          homeId={homeId}
-          operation="reconcile"
-          id={crypto.randomUUID()}
-          locale={locale}
-          label={t.reconcile}
-        />
-      </details>
+      {(tab === 'reasons' || report.data.more) && (
+        <SectionDisclosure title={t.reconcile} defaultOpen={report.data.more}>
+          <CommunityForm
+            homeId={homeId}
+            operation="reconcile"
+            id={crypto.randomUUID()}
+            locale={locale}
+            label={t.reconcile}
+          />
+        </SectionDisclosure>
+      )}
       {tab === 'reasons' && (
         <>
+          <h2>{t.reasons}</h2>
           <CommunityForm
             homeId={homeId}
             operation="initialize"
@@ -260,28 +264,34 @@ export async function CommunityPage({
         </section>
       )}
       {(tab === 'points' || tab === 'punishments') && (
-        <form method="get" className="form panel">
-          <input type="hidden" name="tab" value={tab} />
-          <label>
-            {t.person}
-            <select name="person" defaultValue={person}>
-              <option value="">{t.all}</option>
-              {balances.map((b) => (
-                <option value={b.user_id} key={b.user_id}>
-                  {b.user_name}
-                  {b.active ? '' : ' · ' + t.former}
-                </option>
-              ))}
-            </select>
-          </label>
-          {tab === 'points' && (
-            <label className="checkbox">
-              <input type="checkbox" name="history" defaultChecked={history} />
-              {t.history}
+        <SectionDisclosure
+          title={t.filters}
+          kind="filters"
+          defaultOpen={Boolean(person || history)}
+        >
+          <form method="get" className="form">
+            <input type="hidden" name="tab" value={tab} />
+            <label>
+              {t.person}
+              <select name="person" defaultValue={person}>
+                <option value="">{t.all}</option>
+                {balances.map((b) => (
+                  <option value={b.user_id} key={b.user_id}>
+                    {b.user_name}
+                    {b.active ? '' : ' · ' + t.former}
+                  </option>
+                ))}
+              </select>
             </label>
-          )}
-          <button className="button">{t.filter}</button>
-        </form>
+            {tab === 'points' && (
+              <label className="checkbox">
+                <input type="checkbox" name="history" defaultChecked={history} />
+                {t.history}
+              </label>
+            )}
+            <button className="button">{t.filter}</button>
+          </form>
+        </SectionDisclosure>
       )}
       {tab === 'punishments' && (
         <>
@@ -311,9 +321,16 @@ export async function CommunityPage({
               </Link>
             </section>
           )}
-          <p>{t.conversionHelp}</p>
-          <details className="panel">
-            <summary>{t.rate}</summary>
+          <details className="ui-help">
+            <summary>{t.pointRules}</summary>
+            <p>{t.conversionHelp}</p>
+          </details>
+          <CreatePanel
+            title={t.rate}
+            closeLabel={ui.closePanel}
+            id="create-rating"
+            defaultOpen={search.create === 'rating'}
+          >
             {!reasons.some((r) => r.active) ? (
               <Link href={`${base}?tab=reasons`}>{t.initialize}</Link>
             ) : (
@@ -346,7 +363,7 @@ export async function CommunityPage({
                 <RatingFields reasons={reasons} locale={locale} />
               </CommunityForm>
             )}
-          </details>
+          </CreatePanel>
           {!ratings.data.length && <EmptyState title={t.empty} />}
           {ratings.data.map((r) => {
             const author = labels.data.find((a) => a.rating_id === r.id),

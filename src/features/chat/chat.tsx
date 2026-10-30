@@ -7,7 +7,8 @@ import { useLocale } from '@/lib/i18n/provider';
 import { chatMessages } from './messages';
 import { chatCommand } from './actions';
 import { textParts } from './logic';
-import { emojis, type ChatPage, type ChatMessage } from './models';
+import { type ChatPage, type ChatMessage } from './models';
+import { MessageActions } from './message-actions';
 type Cursor = { created_at: string; id: string } | null;
 export function Chat({
   homeId,
@@ -322,65 +323,32 @@ export function Chat({
                         </button>
                       ))}
                   </div>
-                  <details className="chat-reaction-picker">
-                    <summary>{t.reaction}</summary>
-                    <div className="row wrap chat-reactions">
-                      {emojis.map((emoji) => {
-                        const r = page.reactions.find(
-                          (r) => r.message_id === m.id && r.emoji === emoji,
-                        );
-                        return (
-                          <button
-                            key={emoji}
-                            disabled={pending}
-                            aria-label={`${t.reaction} ${emoji}`}
-                            aria-pressed={r?.mine ?? false}
-                            onClick={() => {
-                              const f = new FormData();
-                              f.set('id', m.id);
-                              f.set('emoji', emoji);
-                              f.set('enabled', String(!r?.mine));
-                              void command('reaction', f);
-                            }}
-                          >
-                            {emoji} {r?.count || ''}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </details>
-                  <div className="row wrap">
-                    <button
-                      disabled={pending}
-                      onClick={() => {
-                        setReply(m);
-                        setEditing(null);
-                        formRef.current?.querySelector('textarea')?.focus();
-                      }}
-                    >
-                      {t.reply}
-                    </button>
-                    <details className="message-actions">
-                      <summary>{t.actions}</summary>
-                      {m.author_user_id === userId && (
-                        <button
-                          disabled={pending}
-                          onClick={() => {
-                            setEditing(m);
-                            setBody(m.body);
-                            setReply(null);
-                            setFiles([]);
-                            formRef.current?.querySelector('textarea')?.focus();
-                          }}
-                        >
-                          {t.edit}
-                        </button>
-                      )}
-                      <button disabled={pending} onClick={() => setRemoving(m.id)}>
-                        {t.remove}
-                      </button>
-                    </details>
-                  </div>
+                  <MessageActions
+                    locale={locale}
+                    pending={pending}
+                    own={m.author_user_id === userId}
+                    reactions={page.reactions.filter((r) => r.message_id === m.id)}
+                    onReply={() => {
+                      setReply(m);
+                      setEditing(null);
+                      formRef.current?.querySelector('textarea')?.focus();
+                    }}
+                    onEdit={() => {
+                      setEditing(m);
+                      setBody(m.body);
+                      setReply(null);
+                      setFiles([]);
+                      formRef.current?.querySelector('textarea')?.focus();
+                    }}
+                    onRemove={() => setRemoving(m.id)}
+                    onReaction={(emoji, enabled) => {
+                      const f = new FormData();
+                      f.set('id', m.id);
+                      f.set('emoji', emoji);
+                      f.set('enabled', String(enabled));
+                      void command('reaction', f);
+                    }}
+                  />
                   {removing === m.id && (
                     <div className="notice">
                       <button

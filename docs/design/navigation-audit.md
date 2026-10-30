@@ -1,5 +1,7 @@
 # Auditoría de arquitectura de información y navegación
 
+La reorganización posterior de los menús internos, solicitada expresamente por el usuario, está documentada en [Menús internos: organización por tarea](internal-menus.md). Las decisiones conservadoras de la auditoría inicial se interpretan con ese nuevo alcance.
+
 ## Alcance y método
 
 Base publicada revisada: `b465187`. Hay una sola aplicación Next.js/React, adaptable e instalable como PWA; el repositorio no contiene una aplicación Android nativa independiente. Android se comprueba con Chromium y emulación Pixel 7; no se afirma una prueba en un teléfono físico.

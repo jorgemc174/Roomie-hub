@@ -1,7 +1,8 @@
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { OrganizationNav, OrganizationLoadError } from './nav';
-import { ViewFilter } from '@/components/view-filter';
+import { TaskNavigation } from './task-navigation';
+import { SectionDisclosure } from '@/components/section-disclosure';
 import { expenseMessages } from '@/features/expenses/messages';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser } from '@/lib/data';
@@ -81,7 +82,15 @@ export async function OrganizationPage({
       <header className="page-head">
         <div>
           <p className="eyebrow">{t.title}</p>
-          <h1>{tab === 'shopping' ? t.shopping : tab === 'absences' ? t.absences : t.tasks}</h1>
+          <h1>
+            {tab === 'shopping'
+              ? t.shopping
+              : tab === 'absences'
+                ? t.absences
+                : view === 'manage'
+                  ? t.manage
+                  : t.tasks}
+          </h1>
           <p>{t.intro}</p>
         </div>
       </header>
@@ -93,27 +102,13 @@ export async function OrganizationPage({
               {t.unavailable}
             </p>
           )}
-          <div className="section-heading task-toolbar">
-            <div className="task-view-controls">
-              <ViewFilter
-                label={t.tasks}
-                value={`${base}?view=${view}&from=${from}`}
-                options={(view === 'manage'
-                  ? (['manage', 'mine', 'all', 'cancelled'] as const)
-                  : (['mine', 'all', 'cancelled'] as const)
-                ).map((k) => ({
-                  href: `${base}?view=${k}&from=${from}`,
-                  label: t[k],
-                }))}
-              />
-              <Link
-                className="text-link"
-                href={`${base}?view=manage&from=${from}`}
-                aria-current={view === 'manage' ? 'page' : undefined}
-              >
-                {t.manage}
-              </Link>
-            </div>
+          <TaskNavigation
+            homeId={homeId}
+            locale={locale}
+            view={view}
+            from={from}
+            returnView={typeof search.returnView === 'string' ? search.returnView : undefined}
+          >
             <CreatePanel
               title={t.newTask}
               closeLabel={ui.closePanel}
@@ -131,7 +126,7 @@ export async function OrganizationPage({
                 />
               </div>
             </CreatePanel>
-          </div>
+          </TaskNavigation>
           {view === 'manage' ? (
             <>
               <details className="panel">
@@ -256,22 +251,23 @@ export async function OrganizationPage({
               </div>
             </>
           )}
-          <details className="panel">
-            <summary>{t.generate}</summary>
-            <p>{t.generationHelp}</p>
-            <ActionForm action={action('generate')} label={t.generate} pendingLabel={t.saving}>
-              <div className="form-row">
-                <label>
-                  {t.from}
-                  <input name="from" type="date" defaultValue={from} required />
-                </label>
-                <label>
-                  {t.through}
-                  <input name="through" type="date" defaultValue={addDays(today, 1)} required />
-                </label>
-              </div>
-            </ActionForm>
-          </details>
+          {(view === 'manage' || Boolean(result.data?.blocked)) && (
+            <SectionDisclosure title={t.generate} defaultOpen={Boolean(result.data?.blocked)}>
+              <p>{t.generationHelp}</p>
+              <ActionForm action={action('generate')} label={t.generate} pendingLabel={t.saving}>
+                <div className="form-row">
+                  <label>
+                    {t.from}
+                    <input name="from" type="date" defaultValue={from} required />
+                  </label>
+                  <label>
+                    {t.through}
+                    <input name="through" type="date" defaultValue={addDays(today, 1)} required />
+                  </label>
+                </div>
+              </ActionForm>
+            </SectionDisclosure>
+          )}
           <p>
             <small>
               {t.localDates} {home.timezone}

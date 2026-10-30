@@ -3,6 +3,7 @@ import { CalendarView } from '../../../src/features/calendar/calendar-view';
 import { useMemo, useState } from 'react';
 import { AccountLink, AccountReturn } from '../../../src/components/account-navigation';
 import { OrganizationLoadError } from '../../../src/features/organization/nav';
+import { MenusFixture } from './menus';
 import { createRoot } from 'react-dom/client';
 import { RouterContext } from './router';
 import { SectionTabs } from '../../../src/components/section-tabs';
@@ -28,6 +29,7 @@ function App() {
   const router = useMemo(() => ({ push: (href: string) => setPath(href) }), []);
   const current = new URL(path, 'http://fixture.local').searchParams.get('tab') || 'tasks';
   const fixtureMonth = new URLSearchParams(location.search).get('month') || '2026-10';
+  if (location.pathname.startsWith('/homes/menus/')) return <MenusFixture />;
   if (
     /^\/(profile|notifications)(\/|$)/.test(location.pathname) ||
     location.pathname.includes('11111111-1111-4111-8111-111111111111')

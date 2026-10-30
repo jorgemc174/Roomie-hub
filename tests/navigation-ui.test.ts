@@ -1,11 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
+import { jsx } from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PathnameContext } from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
 import { Navigation } from '../src/components/navigation';
 import { OrganizationNav, OrganizationLoadError } from '../src/features/organization/nav';
 import { CommunityNav } from '../src/features/community/nav';
+import { ExpensesNav } from '../src/features/expenses/nav';
+import { SectionDisclosure } from '../src/components/section-disclosure';
+import { MessageActions } from '../src/features/chat/message-actions';
 import { es, en } from '../src/lib/i18n/dictionaries';
 
 test('nested workspace routes retain exactly one active section in both languages', () => {
@@ -62,7 +66,60 @@ test('community configuration remains accessible outside its section tabs', () =
   const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
   assert.ok(!nav.includes('tab=reasons'));
   assert.ok(html.includes('href="/homes/test/community?tab=reasons"'));
-  assert.ok(html.includes('Configurar motivos'));
+  assert.ok(html.includes('Ajustes de puntos'));
+});
+
+test('expenses separates three routine destinations from its change history and keeps deep links active', () => {
+  for (const tab of ['expenses', 'balances', 'recurring', 'history']) {
+    const html = renderToStaticMarkup(
+      createElement(ExpensesNav, { homeId: 'test', locale: 'es', tab }),
+    );
+    const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
+    assert.equal((nav.match(/<a\b/g) ?? []).length, 3);
+    assert.ok(!nav.includes('tab=history'));
+    assert.ok(html.includes('Historial de cambios'));
+    const active = (html.match(/<a\b[^>]*>/g) ?? []).filter((link) =>
+      link.includes('aria-current="page"'),
+    );
+    assert.equal(active.length, 1);
+    assert.ok(active[0].includes(`href="/homes/test/expenses?tab=${tab}"`));
+  }
+});
+
+test('settings and filter disclosures support native keyboard controls and explicit active state', () => {
+  const closed = renderToStaticMarkup(
+    jsx(SectionDisclosure, { title: 'Settings', children: 'Controls' }),
+  );
+  const open = renderToStaticMarkup(
+    jsx(SectionDisclosure, { title: 'Filters', defaultOpen: true, children: 'Controls' }),
+  );
+  assert.ok(closed.includes('<summary>'));
+  assert.ok(!closed.includes('open=""'));
+  assert.ok(open.includes('open=""'));
+  assert.ok(!open.includes('role="menu"'));
+});
+
+test('message options preserve edit ownership, reactions and pending safeguards', () => {
+  const props = {
+    locale: 'es' as const,
+    pending: false,
+    own: false,
+    reactions: [],
+    onReply() {},
+    onEdit() {},
+    onRemove() {},
+    onReaction() {},
+  };
+  const other = renderToStaticMarkup(createElement(MessageActions, props));
+  assert.ok(!other.includes('>Editar</button>'));
+  assert.ok(other.includes('>Eliminar</button>'));
+  assert.equal((other.match(/<summary>/g) ?? []).length, 1);
+  assert.equal((other.match(/aria-pressed=/g) ?? []).length, 6);
+  const own = renderToStaticMarkup(
+    createElement(MessageActions, { ...props, own: true, pending: true }),
+  );
+  assert.ok(own.includes('>Editar</button>'));
+  assert.equal((own.match(/<button\b/g) ?? []).length, (own.match(/disabled=""/g) ?? []).length);
 });
 
 test('organization load errors keep secondary routes and retry destination available', () => {
