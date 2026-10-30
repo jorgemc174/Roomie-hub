@@ -1,8 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { readCalendarNavigation, calendarNavigationHref } from './navigation';
 import type { Locale } from '@/lib/i18n/dictionaries';
-import type { CalendarEvent, EventSource } from './models';
+import type { CalendarEvent } from './models';
 import { calendarMessages } from './messages';
 import {
   adjacentMonth,
@@ -34,11 +35,9 @@ export function CalendarView({
   events: CalendarEvent[];
 }) {
   const t = calendarMessages(locale),
-    [types, setTypes] = useState<EventSource[]>(eventSources),
-    [mine, setMine] = useState(false),
-    [selected, setSelected] = useState(selectedDay);
-  const day = selected.startsWith(month) ? selected : selectedDay,
-    filtered = filterEvents(events, types, mine, userId),
+    search = useSearchParams();
+  const { day, types, mine } = readCalendarNavigation(search, month, selectedDay);
+  const filtered = filterEvents(events, types, mine, userId),
     days = monthDays(month, weekStart),
     agenda = filtered.filter((e) => eventOnDay(e, day, timezone));
   const label = (d: string, options: Intl.DateTimeFormatOptions) =>
@@ -46,6 +45,14 @@ export function CalendarView({
       new Date(`${d}T12:00:00Z`),
     );
   const base = `/homes/${homeId}/calendar`;
+  const href = (changes: Parameters<typeof calendarNavigationHref>[2]) =>
+    calendarNavigationHref(base, search, changes);
+  function update(changes: Parameters<typeof calendarNavigationHref>[2]) {
+    const next = href(changes);
+    if (`${window.location.pathname}${window.location.search}` === next) return;
+    // Day/filter selection is not a new screen: keep Back free of intermediate clicks.
+    window.history.replaceState(null, '', next);
+  }
   return (
     <div className="calendar-view stack">
       <div className="calendar-toolbar">
@@ -62,14 +69,23 @@ export function CalendarView({
                   type="checkbox"
                   checked={types.includes(type)}
                   onChange={(e) =>
-                    setTypes(e.target.checked ? [...types, type] : types.filter((x) => x !== type))
+                    update({
+                      types: (e.target.checked
+                        ? eventSources.filter((x) => types.includes(x) || x === type)
+                        : types.filter((x) => x !== type)
+                      ).join(','),
+                    })
                   }
                 />
                 <span className={`event-kind kind-${type}`}>{t[type]}</span>
               </label>
             ))}
             <label className="checkbox">
-              <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={mine}
+                onChange={(e) => update({ mine: e.target.checked ? '1' : null })}
+              />
               {t.mine}
             </label>
           </fieldset>
@@ -77,8 +93,13 @@ export function CalendarView({
         <div className="calendar-quick-actions">
           <Link
             className="button secondary"
-            href={`${base}?month=${today.slice(0, 7)}&day=${today}`}
-            onClick={() => setSelected(today)}
+            href={href({ month: today.slice(0, 7), day: today })}
+            onNavigate={(event) => {
+              if (today.startsWith(month)) {
+                event.preventDefault();
+                if (day !== today) update({ month: today.slice(0, 7), day: today });
+              }
+            }}
           >
             {t.today}
           </Link>
@@ -88,7 +109,7 @@ export function CalendarView({
         <div className="calendar-month-heading">
           <Link
             className="button secondary"
-            href={`${base}?month=${adjacentMonth(month, -1)}`}
+            href={href({ month: adjacentMonth(month, -1), day: null })}
             aria-label={t.previous}
           >
             ←
@@ -96,7 +117,7 @@ export function CalendarView({
           <h2>{label(`${month}-01`, { month: 'long', year: 'numeric' })}</h2>
           <Link
             className="button secondary"
-            href={`${base}?month=${adjacentMonth(month, 1)}`}
+            href={href({ month: adjacentMonth(month, 1), day: null })}
             aria-label={t.next}
           >
             →
@@ -119,7 +140,9 @@ export function CalendarView({
                 aria-current={d === today ? 'date' : undefined}
                 aria-pressed={d === day}
                 aria-label={`${label(d, { dateStyle: 'full' })}: ${count} ${t.events}`}
-                onClick={() => setSelected(d)}
+                onClick={() => {
+                  if (d !== day) update({ day: d });
+                }}
               >
                 <span>{Number(d.slice(8))}</span>
                 {count > 0 && <span className="calendar-count">{count}</span>}

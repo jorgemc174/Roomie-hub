@@ -1,3 +1,4 @@
+import { SwipeNavigation } from '@/components/swipe-navigation';
 import Link from 'next/link';
 import { Settings, House } from 'lucide-react';
 import { getHome, signedImage } from '@/lib/data';
@@ -45,6 +46,7 @@ export default async function WorkspaceLayout({
           {children}
         </main>
       </div>
+      <SwipeNavigation label={t.loading} />
       <HomeSync homeId={homeId} />
     </div>
   );

@@ -19,6 +19,31 @@ test('failed sign-in preserves entered values and focuses actionable feedback', 
   await expect(page.locator('.form-feedback')).toBeFocused();
   await expect(page.getByRole('button', { name: 'Iniciar sesión', exact: true })).toBeEnabled();
 });
+test('invitation destination survives recovery and returning to sign-in', async ({ page }) => {
+  const next = '/homes/join?code=' + 'a'.repeat(32);
+  await page.goto('/login?next=' + encodeURIComponent(next));
+  await page.getByRole('link', { name: '¿Has olvidado tu contraseña?', exact: true }).click();
+  await page.waitForURL((url) => url.pathname === '/forgot-password');
+  expect(new URL(page.url()).searchParams.get('next')).toBe(next);
+  await page.getByRole('link', { name: 'Iniciar sesión', exact: true }).click();
+  await page.waitForURL((url) => url.pathname === '/login');
+  expect(new URL(page.url()).searchParams.get('next')).toBe(next);
+  for (const field of await page.locator('input[name=next]').all())
+    await expect(field).toHaveValue(next);
+});
+test('recovery navigation sanitizes external or ambiguous return destinations', async ({
+  page,
+}) => {
+  for (const query of [
+    'next=' + encodeURIComponent('https://outside.invalid/'),
+    'next=/homes&next=/unexpected',
+  ]) {
+    await page.goto('/forgot-password?' + query);
+    await page.getByRole('link', { name: 'Iniciar sesión', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === '/login');
+    expect(new URL(page.url()).searchParams.get('next')).toBe('/homes');
+  }
+});
 test('mobile sign-in keeps a visible main heading and an accessible password toggle', async ({
   page,
 }) => {

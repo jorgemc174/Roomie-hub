@@ -98,7 +98,10 @@ export async function AuthScreen({
               />
             )}
             {kind === 'login' && (
-              <Link className="text-link" href="/forgot-password">
+              <Link
+                className="text-link"
+                href={`/forgot-password?next=${encodeURIComponent(next)}`}
+              >
                 {t.forgot}
               </Link>
             )}

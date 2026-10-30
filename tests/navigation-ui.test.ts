@@ -47,9 +47,10 @@ test('reservations keeps all organization destinations available in a stable ord
     const html = renderToStaticMarkup(
       createElement(OrganizationNav, { homeId: 'test', locale: 'es', tab }),
     );
-    assert.ok(html.indexOf('>Tareas</a>') < html.indexOf('>Compra</a>'));
-    assert.ok(html.indexOf('>Compra</a>') < html.indexOf('>Reservas</a>'));
-    assert.ok(html.indexOf('>Reservas</a>') < html.indexOf('>Ausencias</a>'));
+    const labels = Array.from(html.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/g), (match) =>
+      match[1].replace(/<[^>]*>/g, ''),
+    );
+    assert.deepEqual(labels, ['Tareas', 'Compra', 'Reservas', 'Ausencias']);
     assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1);
   }
 });

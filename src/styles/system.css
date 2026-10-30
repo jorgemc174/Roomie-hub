@@ -523,3 +523,58 @@ span.ui-spinner {
 .calendar-count {
   font-variant-numeric: tabular-nums;
 }
+
+/* Feedback for real router transitions; touch gestures only switch existing tabs. */
+.side-nav a {
+  position: relative;
+}
+.link-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+.link-progress.is-pending {
+  opacity: 1;
+  animation: navigation-pulse 900ms ease-in-out infinite alternate;
+}
+.route-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 3px;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0;
+  background: var(--accent);
+}
+.route-progress.is-pending {
+  opacity: 1;
+  animation: navigation-pulse 900ms ease-in-out infinite alternate;
+}
+@media (pointer: coarse) {
+  main[data-swipe-surface]:has(nav.section-tabs [aria-current]) {
+    touch-action: pan-y pinch-zoom;
+    transition: transform 120ms var(--ease-out);
+  }
+  main[data-swipe-active] {
+    transform: translateX(var(--swipe-drag, 0));
+    transition: none;
+  }
+}
+@keyframes navigation-pulse {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  main[data-swipe-surface] {
+    transform: none;
+  }
+}

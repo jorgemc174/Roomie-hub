@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { NavigationHint } from './navigation-hint';
 import { useEffect, useRef } from 'react';
 
 export type SectionTab = { href: string; label: string; current: boolean };
@@ -18,6 +19,7 @@ export function SectionTabs({ label, items }: { label: string; items: SectionTab
       {items.map(({ href, label, current }) => (
         <Link key={href} href={href} aria-current={current ? 'page' : undefined}>
           {label}
+          <NavigationHint />
         </Link>
       ))}
     </nav>

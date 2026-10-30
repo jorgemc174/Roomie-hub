@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { NavigationHint } from './navigation-hint';
 import { usePathname } from 'next/navigation';
 import { House, CalendarDays, ListTodo, Wallet, Heart, MessageCircle } from 'lucide-react';
 import type { Messages } from '@/lib/i18n/dictionaries';
@@ -45,6 +46,7 @@ export function Navigation({ homeId, t }: { homeId: string; t: Messages }) {
                     ? t.liveTogether
                     : t[key]}
             </span>
+            <NavigationHint />
           </Link>
         );
       })}
