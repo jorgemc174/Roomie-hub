@@ -107,7 +107,7 @@ Las flechas desde Inicio representan las seis secciones y los accesos persistent
 4. Apartar los cambios experimentales previos de color, modales y consultas. Se han preservado para una tarea separada; no se publican aquí.
 5. Repetir los recorridos afectados y comparar acciones y restauración de estado. Donde falte sesión real, mantener esa limitación visible.
 
-## Verificación y comparación después de los cambios
+## Verificación y comparación de la primera entrega (`68c6dce`)
 
 | Cambio                           | Antes                                                                                                | Después                                                                                                                                                    | Comprobación                                                                                                                                           |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -129,3 +129,49 @@ Las flechas desde Inicio representan las seis secciones y los accesos persistent
 ### Límites y siguiente validación necesaria
 
 Las mejoras del calendario están comprobadas a nivel de componente real y de URLs; queda la integración autenticada con Supabase. Los flujos privados y la latencia real necesitan una cuenta de desarrollo inyectada de forma segura. Hasta entonces H1–H3 continúan como hipótesis o problemas reportados sin causa validada; no justifican reconstruir pantallas, añadir modales o reorganizar menús.
+
+## Ampliación tras la petición de aplicar las mejoras pendientes
+
+Base de esta ampliación: `68c6dce`. Se revisaron los enlaces de cuenta, las ramas de renderizado y las lecturas de Organización y Convivencia. Las decisiones se presentaron antes de implementarlas: conservar el contexto al abrir pantallas de cuenta, evitar lecturas que no se utilizan y mantener las pestañas y el destino de reintento ante errores. No se recupera automáticamente el trabajo experimental archivado de colores y modales.
+
+### Hallazgos y soluciones
+
+| ID                           | Evidencia concreta                                                                                                                                                                                                             | Consecuencia                                                                                                                       | Solución mínima aplicada                                                                                                                                                                                    | Prioridad y riesgo                                                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| H2, ahora acotado            | Los enlaces del `Topbar` y de la campana solo llevaban a `/profile` y `/notifications`. En cuenta no existía un enlace al apartado de origen. Preferencias tampoco ofrecía retorno a su entrada desde Perfil o Notificaciones. | El usuario dependía del historial del navegador o de volver por Mis pisos; los enlaces no transportaban el contexto.               | Enlaces de cuenta reutilizables con `returnTo` validado a una pantalla del workspace; un enlace Volver conserva ruta, filtros y ancla. Preferencias retorna a Perfil o Notificaciones según su procedencia. | Media; bajo. Solo enlaces, sin cambios en autenticación ni permisos.                                                    |
+| H1, causa parcial comprobada | Organización esperaba siete lecturas de tablas paginadas en cualquier pestaña. Convivencia leía motivos, castigos y redenciones incluso para Ranking, aunque esas colecciones no se renderizan allí.                           | Más lecturas y transferencia al cambiar pestañas; un error de una tabla ajena podía impedir abrir el apartado visible.             | Cargadores tipados que ejecutan únicamente las lecturas necesarias para la pestaña. Se mantienen las mismas condiciones, orden, paginación y manejo de errores de los datos necesarios.                     | Alta por la espera reportada; bajo para esta optimización acotada. No se afirma una reducción concreta de milisegundos. |
+| N4                           | En Organización, los tres retornos de error eliminaban las pestañas. Los dos enlaces de reintento usaban la ruta base sin `tab`, `from` o `view`.                                                                              | Para salir del error había que volver a entrar al módulo; reintentar Compra/Ausencias podía terminar en Tareas y perder el filtro. | Componente de error que reutiliza `OrganizationNav` y conserva la query de la pantalla al reintentar.                                                                                                       | Media; bajo. No modifica el error ni las operaciones que lo producen.                                                   |
+
+La evidencia de H2 y N4 combina enlaces y ramas de renderizado del código real con pruebas de sus componentes en navegador. No equivale a un recorrido privado contra Supabase. La evidencia de H1 combina las ramas consumidoras con pruebas del transporte de consultas; no son mediciones de latencia de producción.
+
+### Comparación de recorridos y lecturas
+
+- Piso → Perfil o Notificaciones → Volver: ahora son dos enlaces y se recupera la URL exacta de origen. Antes solo era posible volver con el historial o recorrer Mi perfil → Mis pisos → piso → apartado y repetir los filtros.
+- Perfil/Notificaciones → Preferencias → Volver: dos enlaces, con procedencia explícita y retorno disponible también tras recargar. No se anidan URLs de cuenta al alternar destinos repetidamente.
+- Error en Organización → Volver a cargar: un enlace conserva el apartado y los filtros. Las pestañas permiten salir directamente hacia otro apartado sin pasar por Inicio.
+
+| Lecturas paginadas del módulo, por primer lote | Antes | Después |
+| ---------------------------------------------- | ----: | ------: |
+| Organización: Tareas                           |     7 |       4 |
+| Organización: Compra                           |     7 |       2 |
+| Organización: Ausencias                        |     7 |       1 |
+| Convivencia: Puntos                            |     3 |       2 |
+| Convivencia: Castigos                          |     3 |       1 |
+| Convivencia: Ranking                           |     3 |       0 |
+| Convivencia: Motivos                           |     3 |       1 |
+
+Son las lecturas de las colecciones afectadas, no el total de peticiones de una página. Las consultas comunes de miembros, balances, autenticación y piso siguen presentes. La generación de tareas, reconciliación, contabilización, SQL, RLS, permisos y formularios permanecen intactos. Los historiales visibles siguen leyendo todos sus lotes de 500 filas; no se recortan para aparentar rapidez.
+
+### Validación de la ampliación
+
+- Compilación de producción, lint y tipos: correctos.
+- Suite completa: **149 pruebas aprobadas**, incluidas lógica y SQL/RLS. Los dos casos sensibles a la fecha UTC/Madrid descritos en la primera entrega pasan en esta ejecución; no se han modificado para ocultar su comportamiento previo.
+- Componentes en navegador: **30 escenarios aprobados**, con gestos táctiles, formularios existentes, calendario, conservación de origen entre pantallas de cuenta, recarga, Atrás/Adelante, acceso directo, rechazo de retornos externos y salida/reintento del error de Organización. Se usan Chromium, móvil táctil en retrato/paisaje y escritorio; los componentes de cuenta se prueban de forma aislada y sin datos privados ficticios.
+- Suite pública de la aplicación: **39 casos aprobados** entre escritorio, Pixel 7 emulado y el perfil móvil adicional: 36 en la variante sin Google y los tres casos restantes ejecutados aparte con `E2E_GOOGLE_ENABLED=true`. Configuración opcional `PLAYWRIGHT_CHROMIUM_EXECUTABLE` para usar el Chromium instalado en el entorno, igual que el runner de componentes.
+- Sin nuevas dependencias ni cambios de paleta, estructura principal, SQL o reglas de negocio.
+
+Ejecución reproducible: `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, `node scripts/test-navigation-ui.mjs` y `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium pnpm test:e2e` en este entorno. Para los tres casos opcionales: `E2E_GOOGLE_ENABLED=true PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium pnpm test:e2e --grep "Google connection failure"`.
+
+### Límites que siguen abiertos
+
+`E2E_USER_EMAIL` y `E2E_USER_PASSWORD` siguen sin estar configurados. Faltan recorridos autenticados con datos reales, mediciones completas de latencia y una prueba en un Android físico. Se han corregido las lecturas innecesarias comprobadas; no se declara resuelta toda la lentitud reportada. H3 no se convierte en una política general de persistencia: el retorno desde cuenta conserva la URL, pero no se añade almacenamiento de navegación ni se alteran los filtros de otros módulos sin evidencia de pérdida concreta.

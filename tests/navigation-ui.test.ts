@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PathnameContext } from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
 import { Navigation } from '../src/components/navigation';
-import { OrganizationNav } from '../src/features/organization/nav';
+import { OrganizationNav, OrganizationLoadError } from '../src/features/organization/nav';
 import { CommunityNav } from '../src/features/community/nav';
 import { es, en } from '../src/lib/i18n/dictionaries';
 
@@ -63,4 +63,22 @@ test('community configuration remains accessible outside its section tabs', () =
   assert.ok(!nav.includes('tab=reasons'));
   assert.ok(html.includes('href="/homes/test/community?tab=reasons"'));
   assert.ok(html.includes('Configurar motivos'));
+});
+
+test('organization load errors keep secondary routes and retry destination available', () => {
+  const href = '/homes/test/organization?tab=absences&from=2026-10-01&create=absence';
+  const html = renderToStaticMarkup(
+    createElement(OrganizationLoadError, {
+      homeId: 'test',
+      locale: 'es',
+      tab: 'absences',
+      retryHref: href,
+      message: 'Load failed',
+    }),
+  );
+  assert.ok(html.includes('aria-current="page"'));
+  assert.ok(html.includes('href="/homes/test/organization?tab=shopping"'));
+  assert.ok(html.includes('href="/homes/test/organization/reservations"'));
+  assert.ok(html.includes('href="' + href.replaceAll('&', '&amp;') + '"'));
+  assert.ok(html.includes('role="alert"'));
 });

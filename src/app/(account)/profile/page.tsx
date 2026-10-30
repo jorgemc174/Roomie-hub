@@ -7,6 +7,7 @@ import { i18n } from '@/lib/i18n/server';
 import { profileAction } from '@/app/actions';
 import { ActionForm } from '@/components/action-form';
 import { PreferenceFields } from '@/components/preferences';
+import { AccountLink } from '@/components/account-navigation';
 export default async function Profile() {
   const profile = await getProfile();
   const prefs = await i18n();
@@ -19,9 +20,9 @@ export default async function Profile() {
         <Link href="/homes" className="button secondary">
           {t.homes}
         </Link>
-        <Link href="/notifications/preferences">
+        <AccountLink href="/notifications/preferences">
           {notificationMessages(prefs.locale).preferences}
-        </Link>
+        </AccountLink>
         <Logout label={t.logout} pendingLabel={t.saving} errorLabel={t.requestError} />
       </section>
       <section className="panel">

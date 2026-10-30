@@ -112,6 +112,22 @@ try {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       viewport.width,
     );
+    await page.goto(`${origin}/?loadError=1&tab=absences&from=2026-10-01`);
+    const retryUrl = page.url();
+    await expect(page.getByRole('link', { name: 'Ausencias', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await expect(page.getByRole('alert')).toContainText('Isolated read error component');
+    await page.getByRole('link', { name: 'Volver a cargar', exact: true }).click();
+    await expect(page).toHaveURL(retryUrl);
+    await page.getByRole('link', { name: 'Compra', exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get('tab') === 'shopping');
+    await expect(page.getByRole('link', { name: 'Compra', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    scenarios++;
     await page.goto(`${origin}/?calendar=1&month=2026-10`);
     const day = (value) =>
       page.locator('button.calendar-day').filter({ hasText: new RegExp(`^${value}$`) });
@@ -150,8 +166,68 @@ try {
     expect(errors).toEqual([]);
     await context.close();
   }
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ]) {
+    const context = await browser.newContext({
+      viewport,
+      isMobile: viewport.width < 600,
+      hasTouch: viewport.width < 600,
+    });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const origin = `http://127.0.0.1:${address.port}`;
+    const source =
+      '/homes/11111111-1111-4111-8111-111111111111/organization?view=all&from=2026-10-01#task-example';
+    await page.goto(origin + source);
+    const profile = page.getByRole('link', { name: 'Profile', exact: true });
+    await expect
+      .poll(async () =>
+        new URL(await profile.getAttribute('href'), origin).searchParams.get('returnTo'),
+      )
+      .toBe(source);
+    await profile.click();
+    await page.waitForURL((url) => url.pathname === '/profile');
+    const returnLink = page.getByRole('link', { name: 'Back to previous view' });
+    await expect(returnLink).toHaveAttribute('href', source);
+    scenarios++;
+    await page.getByRole('link', { name: 'Preferences', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === '/notifications/preferences');
+    await page.reload();
+    expect(new URL(await returnLink.getAttribute('href'), origin).pathname).toBe('/profile');
+    await returnLink.click();
+    await page.waitForURL((url) => url.pathname === '/profile');
+    await returnLink.click();
+    await page.waitForURL(origin + source);
+    scenarios++;
+    await page.getByRole('link', { name: 'Notifications', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === '/notifications');
+    await expect(returnLink).toHaveAttribute('href', source);
+    await page.getByRole('link', { name: 'Preferences', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === '/notifications/preferences');
+    expect(new URL(await returnLink.getAttribute('href'), origin).pathname).toBe('/notifications');
+    await page.goBack();
+    await expect(returnLink).toHaveAttribute('href', source);
+    await page.goBack();
+    await page.waitForURL(origin + source);
+    await page.goForward();
+    await expect(returnLink).toHaveAttribute('href', source);
+    scenarios++;
+    await page.goto(origin + '/notifications/preferences');
+    await expect(returnLink).toHaveAttribute('href', '/notifications');
+    await page.goto(origin + '/profile?returnTo=https%3A%2F%2Foutside.invalid');
+    await expect(returnLink).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      viewport.width,
+    );
+    expect(errors).toEqual([]);
+    scenarios++;
+    await context.close();
+  }
   console.log(
-    `${scenarios} browser scenarios passed: Android touch emulation, portrait/landscape, tab directions, scroll/input exclusions, no global module swipe, unchanged form focus, drafts, submit and calendar reload/month history without extra day entries.`,
+    `${scenarios} browser scenarios passed: touch tabs, form state, calendar history and contextual account return links on mobile and desktop.`,
   );
 } finally {
   await browser.close();

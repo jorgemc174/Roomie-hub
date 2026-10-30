@@ -5,7 +5,13 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   workers: 2,
-  use: { baseURL: 'http://127.0.0.1:3100', trace: 'retain-on-failure' },
+  use: {
+    baseURL: 'http://127.0.0.1:3100',
+    trace: 'retain-on-failure',
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
+      : undefined,
+  },
   projects: [
     { name: 'android', use: { ...devices['Pixel 7'] } },
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },

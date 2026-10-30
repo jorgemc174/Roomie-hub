@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Settings, UserRound } from 'lucide-react';
 import { NotificationBell } from '@/features/notifications/inbox';
 import { Brand } from './brand';
+import { AccountLink } from './account-navigation';
 import type { Messages } from '@/lib/i18n/dictionaries';
 export function Topbar({
   t,
@@ -34,10 +35,10 @@ export function Topbar({
           </Link>
         )}
         <NotificationBell />
-        <Link className="topbar-action" href="/profile" aria-label={t.personal}>
+        <AccountLink className="topbar-action" href="/profile" aria-label={t.personal}>
           <UserRound size={20} aria-hidden="true" />
           <span>{t.personal}</span>
-        </Link>
+        </AccountLink>
       </nav>
     </header>
   );

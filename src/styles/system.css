@@ -525,6 +525,13 @@ span.ui-spinner {
 }
 
 /* Feedback for real router transitions; touch gestures only switch existing tabs. */
+.account-return {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  margin-bottom: 1rem;
+}
 .side-nav a {
   position: relative;
 }

@@ -1,6 +1,8 @@
 import { CalendarView } from '../../../src/features/calendar/calendar-view';
 // Real UI components with a local router test boundary; no mocked Supabase data.
 import { useMemo, useState } from 'react';
+import { AccountLink, AccountReturn } from '../../../src/components/account-navigation';
+import { OrganizationLoadError } from '../../../src/features/organization/nav';
 import { createRoot } from 'react-dom/client';
 import { RouterContext } from './router';
 import { SectionTabs } from '../../../src/components/section-tabs';
@@ -16,12 +18,33 @@ for (const method of ['pushState', 'replaceState'] as const) {
   };
 }
 function App() {
-  const [path, setPath] = useState('/homes/demo/organization'),
+  const [path, setPath] = useState(
+      location.pathname.startsWith('/homes/demo')
+        ? location.pathname + location.search
+        : '/homes/demo/organization',
+    ),
     [saved, setSaved] = useState(0);
   const primary = new URLSearchParams(location.search).has('primary');
   const router = useMemo(() => ({ push: (href: string) => setPath(href) }), []);
   const current = new URL(path, 'http://fixture.local').searchParams.get('tab') || 'tasks';
   const fixtureMonth = new URLSearchParams(location.search).get('month') || '2026-10';
+  if (
+    /^\/(profile|notifications)(\/|$)/.test(location.pathname) ||
+    location.pathname.includes('11111111-1111-4111-8111-111111111111')
+  )
+    return <AccountFixture />;
+  if (new URLSearchParams(location.search).has('loadError'))
+    return (
+      <main id="main" className="page">
+        <OrganizationLoadError
+          homeId="demo"
+          locale="es"
+          tab="absences"
+          retryHref={location.pathname + location.search}
+          message="Isolated read error component"
+        />
+      </main>
+    );
   if (new URLSearchParams(location.search).has('calendar'))
     return (
       <main className="page" id="main">
@@ -96,6 +119,27 @@ function App() {
         </main>
         <SwipeNavigation label="Loading…" />
       </div>
+    </RouterContext.Provider>
+  );
+}
+
+// Real contextual links and return component on native browser URLs. This is an
+// isolated navigation boundary, not a fabricated profile, inbox or login session.
+function AccountFixture() {
+  const path = location.pathname;
+  return (
+    <RouterContext.Provider value={{ path, push: () => {} }}>
+      <main id="main" className="page narrow">
+        <h1>Account navigation component tests</h1>
+        <nav className="actions" aria-label="Account links">
+          <AccountLink href="/profile">Profile</AccountLink>
+          <AccountLink href="/notifications">Notifications</AccountLink>
+          <AccountLink href="/notifications/preferences">Preferences</AccountLink>
+        </nav>
+        {!path.startsWith('/homes/') && <AccountReturn label="Back to previous view" />}
+        <p>Isolated navigation fixture; no account data.</p>
+        <div id="task-example">Source anchor</div>
+      </main>
     </RouterContext.Provider>
   );
 }

@@ -2,7 +2,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser, signedImage } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
-import { calendarRows } from '@/features/calendar/queries';
+import { readCommunityRows } from './queries';
 import { formatInstant } from '@/features/calendar/logic';
 import { communityMessages } from './messages';
 import { CommunityForm, RatingFields } from './form';
@@ -34,34 +34,10 @@ export async function CommunityPage({
         {['PGRST202', '42P01'].includes(report.error.code) ? t.migration : t.error}
       </p>
     );
-  const [reasons, members, result, punishments, redemptions] = await Promise.all([
-    calendarRows(
-      db
-        .from('rating_reasons')
-        .select('*')
-        .eq('home_id', homeId)
-        .order('kind')
-        .order('name')
-        .order('id'),
-    ),
+  const [{ reasons, punishments, redemptions }, members, result] = await Promise.all([
+    readCommunityRows(db, homeId, tab),
     getMembers(homeId),
     db.rpc('community_balances', { target: homeId }),
-    calendarRows(
-      db
-        .from('punishments')
-        .select('*')
-        .eq('home_id', homeId)
-        .order('triggered_at', { ascending: false })
-        .order('id'),
-    ),
-    calendarRows(
-      db
-        .from('rating_redemptions')
-        .select('*')
-        .eq('home_id', homeId)
-        .is('revoked_at', null)
-        .order('id'),
-    ),
   ]);
   if (result.error)
     return (

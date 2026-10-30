@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { AccountLink } from '@/components/account-navigation';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Feedback } from '@/components/ui/feedback';
 import { Bell, LoaderCircle } from 'lucide-react';
@@ -59,7 +60,7 @@ export function NotificationBell() {
     };
   }, []);
   return (
-    <Link
+    <AccountLink
       className="topbar-action notification-bell"
       href="/notifications"
       aria-label={`${t.title}${count ? ` (${count})` : ''}`}
@@ -67,7 +68,7 @@ export function NotificationBell() {
       <Bell size={20} aria-hidden="true" />
       <span>{t.title}</span>
       {count > 0 && <span className="badge">{count > 99 ? '99+' : count}</span>}
-    </Link>
+    </AccountLink>
   );
 }
 export function Inbox({ initial }: { initial: Notice[] }) {
@@ -119,9 +120,9 @@ export function Inbox({ initial }: { initial: Notice[] }) {
   return (
     <div className="stack" aria-busy={pending}>
       <div className="notification-toolbar">
-        <Link className="button secondary" href="/notifications/preferences">
+        <AccountLink className="button secondary" href="/notifications/preferences">
           {t.preferences}
-        </Link>
+        </AccountLink>
         <button
           className="button secondary"
           disabled={pending || !rows.some((n) => !n.read_at)}

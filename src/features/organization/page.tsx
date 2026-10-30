@@ -1,6 +1,6 @@
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
-import { OrganizationNav } from './nav';
+import { OrganizationNav, OrganizationLoadError } from './nav';
 import { ViewFilter } from '@/components/view-filter';
 import { expenseMessages } from '@/features/expenses/messages';
 import Link from 'next/link';
@@ -11,7 +11,7 @@ import { organizationMessages } from './messages';
 import { organizationAction } from './actions';
 import { addDays, validDate, instanceStatus } from './logic';
 import { ChoreForm } from './chore-form';
-import { readRows } from './read-rows';
+import { readOrganizationRows } from './queries';
 import { homeDate } from '@/lib/timezones';
 import { ensureOrganizationPeriod } from './generation';
 
@@ -33,95 +33,29 @@ export async function OrganizationPage({
   const view = typeof search.view === 'string' ? search.view : 'mine';
   const tab = search.tab === 'shopping' || search.tab === 'absences' ? search.tab : 'tasks';
   const base = `/homes/${homeId}/organization`;
+  const retrySearch = new URLSearchParams();
+  for (const [key, value] of Object.entries(search))
+    if (typeof value === 'string') retrySearch.set(key, value);
+  const loadError = (message: string) => (
+    <OrganizationLoadError
+      homeId={homeId}
+      locale={locale}
+      tab={tab}
+      retryHref={`${base}${retrySearch.size ? `?${retrySearch}` : ''}`}
+      message={message}
+    />
+  );
   const result = await ensureOrganizationPeriod(db, homeId, tab);
   if (tab === 'tasks' && !result.error) {
     const penalties = await db.rpc('reconcile_community', { target: homeId });
-    if (penalties.error)
-      return (
-        <p className="notice error" role="alert">
-          {t.error}
-        </p>
-      );
+    if (penalties.error) return loadError(t.error);
   }
   if (result.error)
-    return (
-      <section className="panel">
-        <h1>{t.title}</h1>
-        <p className="notice error" role="alert">
-          {['PGRST202', '42P01'].includes(result.error.code) ? t.migration : t.loadError}
-        </p>
-        <Link className="button" href={base}>
-          {t.retry}
-        </Link>
-      </section>
-    );
-  const [chores, rotations, instances, absences, lists, items, events, members] = await Promise.all(
-    [
-      readRows(db.from('chores').select('*').eq('home_id', homeId).order('created_at').order('id')),
-      readRows(
-        db
-          .from('chore_rotation_members')
-          .select('*')
-          .eq('home_id', homeId)
-          .order('chore_id')
-          .order('position'),
-      ),
-      readRows(
-        db
-          .from('chore_instances')
-          .select('*')
-          .eq('home_id', homeId)
-          .or(`period_end.gt.${from},completed_at.is.null`)
-          .lte('period_start', through)
-          .order('period_start')
-          .order('id'),
-      ),
-      readRows(
-        db
-          .from('absences')
-          .select('*')
-          .eq('home_id', homeId)
-          .is('deleted_at', null)
-          .gte('end_date', from)
-          .order('start_date')
-          .order('id'),
-      ),
-      readRows(
-        db
-          .from('shopping_lists')
-          .select('*')
-          .eq('home_id', homeId)
-          .is('deleted_at', null)
-          .order('created_at')
-          .order('id'),
-      ),
-      readRows(
-        db
-          .from('shopping_items')
-          .select('*')
-          .eq('home_id', homeId)
-          .is('deleted_at', null)
-          .order('created_at')
-          .order('id'),
-      ),
-      readRows(
-        db
-          .from('chore_assignment_events')
-          .select('*')
-          .eq('home_id', homeId)
-          .order('created_at')
-          .order('id'),
-      ),
-      getMembers(homeId),
-    ],
-  );
+    return loadError(['PGRST202', '42P01'].includes(result.error.code) ? t.migration : t.loadError);
+  const [{ chores, rotations, instances, absences, lists, items, events }, members] =
+    await Promise.all([readOrganizationRows(db, homeId, tab, from, through), getMembers(homeId)]);
   if ([chores, rotations, instances, absences, lists, items, events].some((r) => r.error))
-    return (
-      <section className="panel">
-        <p role="alert">{t.loadError}</p>
-        <Link href={base}>{t.retry}</Link>
-      </section>
-    );
+    return loadError(t.loadError);
   const action = (op: string) => organizationAction.bind(null, homeId, op);
   const date = (v: string) =>
     new Intl.DateTimeFormat(locale, {
