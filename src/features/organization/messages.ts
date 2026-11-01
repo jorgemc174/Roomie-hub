@@ -16,6 +16,8 @@ const es = {
   backToTasks: 'Volver a las tareas',
   backlogHelp:
     'Se incluyen tareas pendientes de periodos anteriores; comprueba la fecha antes de completarlas.',
+  backlog: 'Pendientes de periodos anteriores',
+  done: 'Hecha',
   newTask: 'Crear tarea',
   edit: 'Editar',
   save: 'Guardar',
@@ -133,6 +135,8 @@ const en: Record<keyof typeof es, string> = {
   backToTasks: 'Back to tasks',
   backlogHelp:
     'Unfinished tasks from earlier periods are included; check the date before completing them.',
+  backlog: 'Unfinished from earlier periods',
+  done: 'Done',
   newTask: 'Create task',
   edit: 'Edit',
   save: 'Save',

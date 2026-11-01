@@ -282,16 +282,7 @@ export async function ExpensesPage({
               />
             )}
           </CreatePanel>
-          {!expenses.some((e) => !e.deleted_at) && (
-            <EmptyState
-              title={t.empty}
-              action={
-                <Link className="button secondary" href={`${base}?create=expense`}>
-                  {t.newExpense}
-                </Link>
-              }
-            />
-          )}
+          {!expenses.some((e) => !e.deleted_at) && <EmptyState title={t.empty} />}
           {expenses
             .filter((e) => !e.deleted_at)
             .map((e) => (

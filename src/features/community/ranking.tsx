@@ -79,8 +79,10 @@ export function CommunityRanking({
                 </Link>
               </th>
               <td title={t.rankingPositivesHelp}>
-                {number(balance.positive_available)}{' '}
-                <span className="ranking-history">({number(balance.positive_history)})</span>
+                {number(balance.positive_available)}
+                {balance.positive_history !== balance.positive_available && (
+                  <span className="ranking-history"> ({number(balance.positive_history)})</span>
+                )}
               </td>
               <td>{number(balance.negative_effective)}</td>
               <td>{balance.pending_punishments > 0 ? number(balance.pending_punishments) : '—'}</td>

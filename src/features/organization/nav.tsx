@@ -89,7 +89,7 @@ export function OrganizationLoadError({
   return (
     <div className="organization">
       <PageHeader
-        title={tab === 'absences' ? t.absences : t.title}
+        title={t.title}
         action={<OrganizationOptions homeId={homeId} locale={locale} tab={tab} />}
       />
       <OrganizationNav homeId={homeId} locale={locale} tab={tab} />

@@ -7,7 +7,6 @@ import { createElement, type ReactNode } from 'react';
 import * as jsxRuntime from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 import Link from 'next/link';
-import { QuickActions } from '../src/components/ui/quick-actions';
 import { PageHeader } from '../src/components/ui/page-header';
 import { CreatePanel } from '../src/components/ui/create-panel';
 import { EmptyState } from '../src/components/ui/empty-state';
@@ -136,14 +135,29 @@ test('Home prioritizes operational summaries, keeps one tasks/shopping destinati
     const t = locale === 'es' ? es : en;
     const org = organizationMessages(locale);
     const summary = await organizationSummary(locale);
+    const { ExpenseSummary } = await component<{
+      ExpenseSummary: (props: { homeId: string }) => Promise<ReactNode>;
+    }>('src/features/expenses/summary.tsx', {
+      'next/link': { default: Link },
+      '@/lib/data': {
+        getHome: async () => ({ currency: 'EUR' }),
+        requireUser: async () => ({
+          user: { id: 'me' },
+          db: { rpc: async () => ({ data: [], error: null }) },
+        }),
+      },
+      '@/lib/i18n/server': { i18n: async () => ({ locale }) },
+      './messages': messages,
+      './money': money,
+    });
+    const expenseSummary = await ExpenseSummary({ homeId: 'test' });
     const { default: HomePage } = await component<{
       default: (props: { params: Promise<{ homeId: string }> }) => Promise<ReactNode>;
     }>('src/app/(workspace)/homes/[homeId]/page.tsx', {
-      '@/components/ui/quick-actions': { QuickActions },
       '@/components/ui/page-header': { PageHeader },
       '@/features/organization/summary': { OrganizationSummary: () => summary },
       '@/features/expenses/summary': {
-        ExpenseSummary: () => createElement('p', null, 'Own balance'),
+        ExpenseSummary: () => expenseSummary,
       },
       '@/features/community/summary': {
         CommunitySummary: () => createElement('p', null, 'Own points'),
@@ -175,9 +189,14 @@ test('Home prioritizes operational summaries, keeps one tasks/shopping destinati
     assert.ok(html.indexOf(org.pendingTasks) < html.indexOf('create=expense'));
     const invite = html.match(/<a[^>]+href="\/homes\/test\/settings#invitation"[^>]*>/)?.[0];
     assert.ok(invite);
-    assert.ok(invite.includes('class="text-link"'));
+    assert.ok(invite.includes('class="text-link home-invitation"'));
     assert.ok(!invite.includes('button'));
     assert.ok(!html.includes('ranking'));
+    assert.ok(!html.includes('ui-quick-actions'));
+    assert.equal(links.filter((href) => href.includes('create=expense')).length, 1);
+    const balancePanel = html.slice(html.indexOf('<section class="panel balance-panel"'));
+    assert.ok(balancePanel.slice(0, balancePanel.indexOf('</section>')).includes('create=expense'));
+    assert.ok(!html.includes(t.workspaceBody));
   }
 });
 
@@ -254,23 +273,30 @@ test('next event compares reservations/activities, uses the home timezone, and h
   }
 });
 
-async function expensesPage(locale: Locale, search: Record<string, string>, balance = '1250') {
+async function expensesPage(
+  locale: Locale,
+  search: Record<string, string>,
+  balance = '1250',
+  empty = false,
+) {
   const db = {
     ...reads({
-      expenses: [
-        {
-          id: 'expense',
-          title: 'Groceries',
-          amount: 2500,
-          currency: 'EUR',
-          expense_date: '2026-11-01',
-          payer: 'me',
-          payer_name: 'Pat',
-          category: 'groceries',
-          version: 2,
-          deleted_at: null,
-        },
-      ],
+      expenses: empty
+        ? []
+        : [
+            {
+              id: 'expense',
+              title: 'Groceries',
+              amount: 2500,
+              currency: 'EUR',
+              expense_date: '2026-11-01',
+              payer: 'me',
+              payer_name: 'Pat',
+              category: 'groceries',
+              version: 2,
+              deleted_at: null,
+            },
+          ],
       expense_splits: [
         { expense_id: 'expense', user_id: 'me', user_name: 'Pat', amount: 1250, weight: 1 },
       ],
@@ -406,5 +432,15 @@ test('expenses keep compact balances, row details/actions, header processing, pa
       audit.match(/<a[^>]+href="[^"]*tab=history"[^>]*>/)?.[0] ?? '',
       /aria-current="page"/,
     );
+  }
+});
+
+test('empty expenses use the existing CreatePanel as the sole creation entry in es/en', async () => {
+  for (const locale of ['es', 'en'] as const) {
+    const html = await expensesPage(locale, {}, '0', true);
+    assert.equal((html.match(/class="panel ui-create-panel"/g) ?? []).length, 1);
+    const empty = html.slice(html.indexOf('<section class="ui-empty-state"'));
+    assert.ok(empty.includes(messages.expenseMessages(locale).empty));
+    assert.ok(!empty.slice(0, empty.indexOf('</section>')).includes('<a'));
   }
 });

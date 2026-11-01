@@ -236,8 +236,37 @@ test('ranking table lists every active member once, ordered by negatives, positi
     assert.equal((body.match(/class="is-current"/g) ?? []).length, 1);
     assert.ok(rows[0].includes(t.you));
     assert.ok(rows[0].includes('src="/avatar.webp" alt=""'));
-    assert.ok(rows[0].includes('>3 <span class="ranking-history">(12)</span>'));
+    assert.ok(rows[0].includes('>3<span class="ranking-history"> (12)</span>'));
     assert.ok(rows[0].includes('<td>1</td><td>—</td>'));
     assert.ok(rows[3].includes('<td>2</td><td>2</td>'));
+  }
+});
+
+test('ranking omits duplicate history including zero, and keeps differing history secondary in es/en', () => {
+  for (const locale of ['es', 'en'] as const) {
+    const balances: CommunityBalance[] = [0, 3].map((value) => ({
+      user_id: String(value),
+      user_name: 'Roomie de prueba',
+      active: true,
+      positive_available: value,
+      positive_history: value,
+      positive_consumed: 0,
+      negative_effective: 0,
+      negative_history: 0,
+      credits: 0,
+      pending_punishments: 0,
+    }));
+    const html = renderToStaticMarkup(
+      createElement(CommunityRanking, {
+        homeId: 'test',
+        locale,
+        balances,
+        currentUserId: '0',
+        avatars: {},
+      }),
+    );
+    assert.ok(!html.includes('ranking-history'));
+    assert.ok(!html.includes('(0)'));
+    assert.ok(html.includes('Roomie de prueba'));
   }
 });

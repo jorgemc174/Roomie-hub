@@ -30,3 +30,9 @@ typecheck + lint + test (+ test:db si toca SQL) + build en verde; revisión de d
 - [x] Migraciones 202611010001-005 aplicadas y verificadas en Supabase (002/004 sin DROP).
 - [x] Integrado en master (fast-forward) y subido.
 - [ ] Pendiente: revisión visual con datos reales (requiere sesión del usuario).
+
+## Fase E — Ajustes tras revisión visual con datos reales (2026-11-01)
+Evidencia: capturas de «Piso 1» (móvil): Tareas = 14.561 px por acumulación de atrasadas y tarjetas repetitivas.
+- [x] E1 Tareas compactas: «Esta semana» primero en filas compactas; «Atrasadas (N)» plegado y agrupado; sin fecha/estado redundantes; detalles al tocar o en «⋯». Sin completar en bloque (podría ocultar retrasos).
+- [x] E2 Detalles: ranking (nombre truncado, «0 (0)»), «Crear» duplicado en estados vacíos, «Crear gasto» suelto en Inicio, título partido en Puntos, título de Organización estable.
+- Resultado E: Tareas en móvil 14.561 px → 1.573 px con datos reales (Piso 1); 206 pruebas y build en verde.

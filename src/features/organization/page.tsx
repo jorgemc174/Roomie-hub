@@ -3,7 +3,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { OrganizationNav, OrganizationOptions, OrganizationLoadError } from './nav';
 import { OptionsMenu } from '@/components/ui/options-menu';
 import { PageHeader } from '@/components/ui/page-header';
-import { groupTaskPeriods, TaskPeriodHeading, TaskPeriodDates } from './task-periods';
+import { TaskList } from './task-list';
 import { TaskNavigation } from './task-navigation';
 import { SectionDisclosure } from '@/components/section-disclosure';
 import { expenseMessages } from '@/features/expenses/messages';
@@ -13,7 +13,7 @@ import { i18n } from '@/lib/i18n/server';
 import { ActionForm } from '@/components/action-form';
 import { organizationMessages } from './messages';
 import { organizationAction } from './actions';
-import { addDays, validDate, instanceStatus } from './logic';
+import { addDays, validDate } from './logic';
 import { ChoreForm } from './chore-form';
 import { readOrganizationRows } from './queries';
 import { homeDate } from '@/lib/timezones';
@@ -82,15 +82,7 @@ export async function OrganizationPage({
   return (
     <div className="organization">
       <PageHeader
-        title={
-          tab === 'shopping'
-            ? t.shopping
-            : tab === 'absences'
-              ? t.absences
-              : view === 'manage'
-                ? t.manage
-                : t.tasks
-        }
+        title={t.title}
         action={
           <OrganizationOptions homeId={homeId} locale={locale} tab={tab} view={view} from={from} />
         }
@@ -169,95 +161,16 @@ export async function OrganizationPage({
                         ? t.emptyCancelled
                         : t.emptyTasks
                   }
-                  action={
-                    <Link className="button secondary" href={`${base}?create=task`}>
-                      {t.newTask}
-                    </Link>
-                  }
                 />
               )}
-              {taskRows.some((i) => !i.completed_at && !i.cancelled_at && i.period_end <= from) && (
-                <p className="task-range-note">{t.backlogHelp}</p>
-              )}
-              <div className="task-list">
-                {groupTaskPeriods(taskRows).map((group) => (
-                  <section className="task-period" key={`${group.start}/${group.end}`}>
-                    <TaskPeriodHeading start={group.start} end={group.end} locale={locale} />
-                    {group.items.map((i) => {
-                      const status = i.cancelled_at
-                        ? 'cancelled'
-                        : instanceStatus(i.deadline_at, i.completed_at, new Date().toISOString());
-                      return (
-                        <article className={`task-row ${status}`} key={i.id} id={`task-${i.id}`}>
-                          <div className="task-content">
-                            <div className="section-heading">
-                              <div className="task-identity">
-                                <h3>{i.task_name}</h3>
-                                <p className="task-occurrence-date">
-                                  <TaskPeriodDates
-                                    start={i.period_start}
-                                    end={i.period_end}
-                                    locale={locale}
-                                  />
-                                </p>
-                              </div>
-                              <span className={`badge ${status}`}>{t[status]}</span>
-                            </div>
-                            <p>
-                              {t.assigned}: <strong>{i.assignee_name}</strong>
-                            </p>
-                            {i.deadline_at && (
-                              <p>
-                                {t.deadline}: {stamp(i.deadline_at)}
-                              </p>
-                            )}
-                            {i.assignment_blocked && <p className="notice error">{t.blocked}</p>}
-                            {i.cancelled_at ? (
-                              <p>
-                                {t.cancelled} · {stamp(i.cancelled_at)}
-                              </p>
-                            ) : i.completed_at ? (
-                              <p>
-                                {t.completedBy}: {i.completed_by_name} · {stamp(i.completed_at)}
-                              </p>
-                            ) : (
-                              <ActionForm
-                                action={action('complete_chore')}
-                                label={t.complete}
-                                pendingLabel={t.saving}
-                              >
-                                {hidden('id', i.id)}
-                              </ActionForm>
-                            )}
-                            <details>
-                              <summary>{t.detailsHistory}</summary>
-                              <p>
-                                {t.difficulty}: {i.difficulty}/5
-                              </p>
-                              <ul>
-                                {(events.data ?? [])
-                                  .filter((e) => e.instance_id === i.id)
-                                  .map((e) => (
-                                    <li key={e.id}>
-                                      {e.reason === 'generated'
-                                        ? t.generatedReason
-                                        : e.reason === 'blocked'
-                                          ? t.blockedReason
-                                          : e.reason === 'unblocked'
-                                            ? t.unblockedReason
-                                            : t.reassignedReason}
-                                      : {e.assignee_name} · {stamp(e.created_at)}
-                                    </li>
-                                  ))}
-                              </ul>
-                            </details>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </section>
-                ))}
-              </div>
+              <TaskList
+                rows={taskRows}
+                events={events.data ?? []}
+                today={today}
+                locale={locale}
+                completeAction={action('complete_chore')}
+                stamp={stamp}
+              />
             </>
           )}
           {(view === 'manage' || Boolean(result.data?.blocked)) && (
@@ -316,16 +229,7 @@ export async function OrganizationPage({
               </div>
             </ActionForm>
           </CreatePanel>
-          {!absences.data?.length && (
-            <EmptyState
-              title={t.emptyAbsences}
-              action={
-                <Link className="button secondary" href={`${base}?tab=absences&create=absence`}>
-                  {t.absent}
-                </Link>
-              }
-            />
-          )}
+          {!absences.data?.length && <EmptyState title={t.emptyAbsences} />}
           {(absences.data ?? []).map((a) => (
             <article className="panel" key={a.id}>
               <div className="section-heading options-heading">
@@ -395,16 +299,7 @@ export async function OrganizationPage({
               </label>
             </ActionForm>
           </CreatePanel>
-          {!lists.data?.length && (
-            <EmptyState
-              title={t.emptyShopping}
-              action={
-                <Link className="button secondary" href={`${base}?tab=shopping&create=list`}>
-                  {t.newList}
-                </Link>
-              }
-            />
-          )}
+          {!lists.data?.length && <EmptyState title={t.emptyShopping} />}
           {(lists.data ?? []).map((list) => {
             const products = (items.data ?? []).filter((i) => i.shopping_list_id === list.id);
             return (

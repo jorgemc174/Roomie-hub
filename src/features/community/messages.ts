@@ -9,7 +9,8 @@ const es = {
   position: 'Posición',
   positives: 'Positivos',
   negatives: 'Negativos',
-  rankingPositivesHelp: 'Positivos disponibles; entre paréntesis, el histórico recibido.',
+  rankingPositivesHelp:
+    'Positivos disponibles; histórico recibido entre paréntesis si es distinto.',
   rankingPunishments: 'Castigos',
   you: 'Tú',
   complete: 'Completar',
@@ -107,7 +108,7 @@ const en: Record<keyof typeof es, string> = {
   position: 'Position',
   positives: 'Positives',
   negatives: 'Negatives',
-  rankingPositivesHelp: 'Available positives; historical total received in parentheses.',
+  rankingPositivesHelp: 'Available positives; historical total in parentheses when different.',
   rankingPunishments: 'Penalties',
   you: 'You',
   complete: 'Complete',

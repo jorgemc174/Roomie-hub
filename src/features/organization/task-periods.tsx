@@ -15,6 +15,37 @@ export function groupTaskPeriods<T extends { period_start: string; period_end: s
   return [...groups.values()];
 }
 
+// A period ends exclusively in the home's local calendar. This is a presentation
+// backlog, independent of deadline-based penalties or the selected query date.
+export function splitTaskPeriods<
+  T extends {
+    period_start: string;
+    period_end: string;
+    completed_at: string | null;
+    cancelled_at: string | null;
+  },
+>(rows: T[], today: string) {
+  const backlog = rows.filter(
+    (row) => row.period_end <= today && !row.completed_at && !row.cancelled_at,
+  );
+  const backlogRows = new Set(backlog);
+  const priority = (start: string, end: string) =>
+    start <= today && end > today ? 0 : start > today ? 1 : 2;
+  const visible = groupTaskPeriods(rows.filter((row) => !backlogRows.has(row))).sort(
+    (a, b) =>
+      priority(a.start, a.end) - priority(b.start, b.end) ||
+      a.start.localeCompare(b.start) ||
+      a.end.localeCompare(b.end),
+  );
+  return {
+    visible,
+    backlog: groupTaskPeriods(backlog).sort(
+      (a, b) => b.start.localeCompare(a.start) || b.end.localeCompare(a.end),
+    ),
+    backlogCount: backlog.length,
+  };
+}
+
 export function TaskPeriodDates({
   start,
   end,

@@ -57,37 +57,49 @@ textarea {
   border-bottom: 1px solid var(--line);
 }
 .task-period .task-row {
-  padding: var(--space-4) 0;
+  padding: var(--space-2) 0;
   border: 0;
   border-bottom: 1px solid var(--line);
   border-radius: 0;
   background: transparent;
+  scroll-margin-top: var(--space-4);
 }
 .task-period .task-content {
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-1) var(--space-3);
-}
-.task-content > .section-heading,
-.task-content > details,
-.task-content > .notice {
-  grid-column: 1 / -1;
-}
-.task-content > p {
-  grid-column: 1;
-  font-size: 0.875rem;
-}
-.task-content > .form {
-  grid-column: 2;
-  grid-row: 2 / span 2;
-  align-self: start;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
 }
 .task-identity {
   min-width: 0;
   display: grid;
+  justify-items: start;
   gap: 2px;
 }
-.task-occurrence-date {
+.task-identity h3 {
+  font-size: 1rem;
+}
+.task-identity .task-assignee {
+  color: var(--muted);
   font-size: 0.8125rem;
+}
+.task-identity .task-warning {
+  color: var(--danger);
+  font-size: 0.8125rem;
+}
+.task-identity .task-occurrence-date {
+  display: none;
+  font-size: 0.8125rem;
+}
+.task-row:target .task-occurrence-date {
+  display: block;
+}
+.task-content > .form {
+  grid-column: 2;
+}
+.task-content > .ui-options-menu {
+  grid-column: 3;
+  border: 0;
+  padding: 0;
 }
 .task-content > .form .button {
   width: auto;
@@ -95,10 +107,14 @@ textarea {
   padding: var(--space-2) var(--space-3);
   font-size: 0.875rem;
 }
-.task-content > details > summary {
-  font-size: 0.8125rem;
-  font-weight: 400;
-  color: var(--muted);
+.home-invitation {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+.home-invitation svg {
+  flex-shrink: 0;
 }
 .task-range-note {
   max-width: 68ch;
@@ -738,16 +754,16 @@ span.ui-spinner {
   font-variant-numeric: tabular-nums;
 }
 .community-ranking .ranking-position {
-  width: 7%;
+  width: 1.5rem;
 }
 .community-ranking .ranking-person {
-  width: 34%;
+  width: auto;
 }
 .community-ranking .ranking-points {
-  width: 20%;
+  width: 4.5rem;
 }
 .community-ranking .ranking-pending {
-  width: 19%;
+  width: 4.25rem;
 }
 .community-ranking th,
 .community-ranking td {
@@ -760,6 +776,9 @@ span.ui-spinner {
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 600;
+  /* Headers are single words: never split them mid-word. */
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 .community-ranking th:nth-child(2) {
   text-align: start;
@@ -779,9 +798,8 @@ span.ui-spinner {
   color: var(--ink);
 }
 .ranking-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .ranking-member .avatar,
 .ranking-avatar {

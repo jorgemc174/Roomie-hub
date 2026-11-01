@@ -16,6 +16,7 @@ import {
   calendarItem,
 } from './queries';
 import { calendarMessages } from './messages';
+import { organizationMessages } from '@/features/organization/messages';
 import { CalendarForm } from './form';
 import { localInput, formatInstant } from './logic';
 import type { Reservation } from './models';
@@ -105,7 +106,7 @@ export async function ReservationsPage({
   return (
     <div className="organization">
       <PageHeader
-        title={t.reservations}
+        title={organizationMessages(locale).title}
         description={`${t.timezone}: ${home.timezone}`}
         action={
           <OrganizationOptions homeId={homeId} locale={locale} tab="reservations">

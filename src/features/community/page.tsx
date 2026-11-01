@@ -355,9 +355,8 @@ export async function CommunityPage({
         <>
           {current && (
             <section className="panel">
-              <h2>
-                {current.user_name} · {t.memberState}
-              </h2>
+              <h2>{current.user_name}</h2>
+              <p className="muted">{t.memberState}</p>
               {state(current)}
               <details>
                 <summary>{t.pointDetails}</summary>

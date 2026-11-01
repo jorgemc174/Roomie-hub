@@ -1,4 +1,3 @@
-import { QuickActions } from '@/components/ui/quick-actions';
 import { CommunitySummary } from '@/features/community/summary';
 import { ExpenseSummary } from '@/features/expenses/summary';
 import Link from 'next/link';
@@ -21,7 +20,7 @@ export default async function HomePage({ params }: { params: Promise<{ homeId: s
         title={t.dashboard}
         description={members.length === 1 ? t.workspaceBody : undefined}
         action={
-          <Link className="text-link" href={`/homes/${homeId}/settings#invitation`}>
+          <Link className="text-link home-invitation" href={`/homes/${homeId}/settings#invitation`}>
             <UserPlus size={18} aria-hidden="true" />
             {t.invitePeople}
           </Link>
@@ -33,7 +32,6 @@ export default async function HomePage({ params }: { params: Promise<{ homeId: s
         <UpcomingEvent homeId={homeId} />
         <CommunitySummary homeId={homeId} />
       </div>
-      <QuickActions homeId={homeId} locale={locale} label={t.dashboard} />
       <div className="dashboard-people">
         <section className="panel">
           <div className="section-heading">

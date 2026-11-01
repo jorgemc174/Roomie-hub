@@ -19,9 +19,14 @@ export async function ExpenseSummary({ homeId }: { homeId: string }) {
           ? t.zero
           : `${BigInt(balance) > 0n ? t.owed : t.owe} ${formatMoney(BigInt(balance) < 0n ? -BigInt(balance) : balance, home.currency, locale)}`}
       </p>
-      <Link className="text-link" href={`/homes/${homeId}/expenses?tab=balances`}>
-        {t.balances}
-      </Link>
+      <div className="row wrap">
+        <Link className="text-link" href={`/homes/${homeId}/expenses?tab=balances`}>
+          {t.balances}
+        </Link>
+        <Link className="text-link" href={`/homes/${homeId}/expenses?create=expense`}>
+          {t.newExpense}
+        </Link>
+      </div>
     </section>
   );
 }
