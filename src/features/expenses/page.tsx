@@ -255,7 +255,11 @@ export async function ExpensesPage({
       />
       <p className="expense-balance row wrap">
         <span className="sr-only">{t.balance}: </span>
-        <strong>
+        <strong
+          className={
+            BigInt(me) > 0n ? 'tone-positive' : BigInt(me) < 0n ? 'tone-negative' : 'tone-money'
+          }
+        >
           {BigInt(me) === 0n
             ? t.zero
             : `${BigInt(me) > 0n ? t.owed : t.owe} ${formatMoney(BigInt(me) < 0n ? -BigInt(me) : me, home.currency, locale)}`}
@@ -290,7 +294,9 @@ export async function ExpensesPage({
                 <div className="section-heading options-heading">
                   <div>
                     <h2>{e.title}</h2>
-                    <strong>{formatMoney(e.amount, e.currency, locale)}</strong>
+                    <strong className="tone-money">
+                      {formatMoney(e.amount, e.currency, locale)}
+                    </strong>
                   </div>
                   <OptionsMenu label={`${e.title}: ${t.options}`}>
                     <details>
@@ -425,7 +431,17 @@ export async function ExpensesPage({
               <p key={b.user_id}>
                 {b.name}
                 {b.active ? '' : ` · ${t.former}`}{' '}
-                <strong>{formatMoney(b.balance, home.currency, locale)}</strong>
+                <strong
+                  className={
+                    BigInt(b.balance) > 0n
+                      ? 'tone-positive'
+                      : BigInt(b.balance) < 0n
+                        ? 'tone-negative'
+                        : 'tone-zero'
+                  }
+                >
+                  {formatMoney(b.balance, home.currency, locale)}
+                </strong>
               </p>
             ))}
           </section>
@@ -492,8 +508,9 @@ export async function ExpensesPage({
           {recurring.map((r) => (
             <details className="panel" key={r.id} id={`recurring-${r.id}`}>
               <summary>
-                {r.template.title} · {r.active ? t.active : t.inactive} · {t.next}:{' '}
-                {date(r.next_date)}
+                {r.template.title} ·{' '}
+                <span className="badge recurring">{r.active ? t.active : t.inactive}</span> ·{' '}
+                {t.next}: {date(r.next_date)}
               </summary>
               <ExpenseForm
                 {...props}

@@ -31,7 +31,8 @@ textarea {
   min-height: 44px;
 }
 .org-tabs a[aria-current='page'] {
-  background: var(--lavender);
+  background: var(--mint);
+  color: var(--mint-ink);
   font-weight: 600;
 }
 .organization summary {
@@ -67,7 +68,7 @@ textarea {
   gap: 12px;
 }
 .task-row.overdue {
-  border-left: 4px solid var(--danger);
+  border-color: var(--rose-ink);
 }
 .task-row.completed {
   background: var(--mint);
@@ -133,6 +134,7 @@ textarea {
   gap: 14px;
 }
 .summary-counts strong {
+  color: var(--mint-ink);
   display: block;
   font-size: 2rem;
 }
@@ -159,39 +161,55 @@ textarea {
   }
 }
 :root {
-  --bg: #f4f6f3;
+  /* Menta y pastel: verde menta como color principal; cada pastel tiene un
+     significado (celeste calendario, melocotón gastos, lavanda convivencia,
+     rosa negativos/castigos). *-ink es el tono legible de cada pastel. */
+  --bg: #f5f7f4;
   --surface: #ffffff;
-  --ink: #202d29;
-  --muted: #596b63;
-  --line: #dce4de;
-  --lavender: #eeedf4;
-  --mint: #e4f0e8;
-  --blue: #e9eff4;
-  --peach: #f8eae5;
-  --accent: #286348;
+  --ink: #1e2a26;
+  --muted: #5a6862;
+  --line: #e1e6e1;
+  --mint: #e2f3e9;
+  --mint-ink: #1d6a48;
+  --blue: #e4effa;
+  --blue-ink: #2a6496;
+  --peach: #fdeee4;
+  --peach-ink: #9a4f24;
+  --lavender: #eeebfb;
+  --lavender-ink: #5a4bb0;
+  --rose: #fbe9ee;
+  --rose-ink: #a23d5c;
+  --accent: #257a55;
   --on-accent: #ffffff;
-  --danger: #a43142;
-  --focus: #286348;
-  --raised: #f9fbf9;
-  --shadow: 0 4px 18px #203d2d08;
+  --danger: #b3263e;
+  --focus: #257a55;
+  --raised: #f9faf8;
+  --shadow: 0 4px 18px #1e3a2c0d;
   color-scheme: light;
 }
 :root[data-theme='dark'] {
-  --bg: #111716;
-  --surface: #1a2320;
-  --ink: #edf3ef;
-  --muted: #a5b6ad;
-  --line: #36463e;
-  --lavender: #2c2c3b;
-  --mint: #223d30;
-  --blue: #23333e;
-  --peach: #3c2927;
-  --accent: #8dd7ae;
-  --on-accent: #10291c;
-  --danger: #ffa7b1;
-  --focus: #8dd7ae;
-  --raised: #202d27;
-  --shadow: 0 6px 24px #00000024;
+  /* Menta y pastel sobre grafito neutro. */
+  --bg: #0d0f12;
+  --surface: #1c1f25;
+  --ink: #ebeef1;
+  --muted: #a3abb5;
+  --line: #393f49;
+  --mint: #1d3a2e;
+  --mint-ink: #9fe6c2;
+  --blue: #1b2f45;
+  --blue-ink: #a6cdf3;
+  --peach: #3d2a22;
+  --peach-ink: #f6c2a2;
+  --lavender: #2b2845;
+  --lavender-ink: #c8c0f6;
+  --rose: #3d2430;
+  --rose-ink: #f3abc0;
+  --accent: #8fe0b5;
+  --on-accent: #0d2a1c;
+  --danger: #f5a3ad;
+  --focus: #8fe0b5;
+  --raised: #282c34;
+  --shadow: 0 6px 24px #00000052;
   color-scheme: dark;
 }
 * {
@@ -408,6 +426,9 @@ fieldset {
   justify-content: space-between;
   gap: 20px;
 }
+.topbar .workspace-brand {
+  color: var(--mint-ink);
+}
 .topbar nav {
   display: flex;
   align-items: center;
@@ -453,12 +474,12 @@ fieldset {
   font-size: 0.9rem;
 }
 .notice.error {
-  background: var(--peach);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
   color: var(--danger);
 }
 .notice.success {
   background: var(--mint);
-  color: var(--ink);
+  color: var(--mint-ink);
 }
 .auth-shell {
   min-height: 100svh;
@@ -659,11 +680,14 @@ fieldset {
 }
 .side-nav a.active {
   background: var(--mint);
-  color: var(--ink);
+  color: var(--mint-ink);
   font-weight: 600;
 }
 .side-nav a:hover {
-  background: var(--bg);
+  background: var(--raised);
+}
+.side-nav a.active:hover {
+  background: color-mix(in srgb, var(--mint) 85%, var(--mint-ink));
 }
 .sidebar-bottom {
   margin-top: auto;
@@ -1102,9 +1126,10 @@ fieldset {
   cursor: default;
 }
 .calendar-day.selected {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--blue-ink);
   outline-offset: -2px;
-  background: var(--lavender);
+  color: var(--blue-ink);
+  background: var(--blue);
 }
 .calendar-count {
   font-size: 0.65rem;
@@ -1130,16 +1155,24 @@ fieldset {
   padding: 3px 7px;
   border-radius: 6px;
 }
-.kind-tasks {
-  background: var(--lavender);
-}
-.kind-reservations {
-  background: var(--blue);
-}
-.kind-activities {
+.kind-tasks,
+.badge.kind-tasks {
+  color: var(--mint-ink);
   background: var(--mint);
 }
-.kind-expenses {
+.kind-reservations,
+.badge.kind-reservations {
+  color: var(--blue-ink);
+  background: var(--blue);
+}
+.kind-activities,
+.badge.kind-activities {
+  color: var(--blue-ink);
+  background: var(--blue);
+}
+.kind-expenses,
+.badge.kind-expenses {
+  color: var(--peach-ink);
   background: var(--peach);
 }
 @media (max-width: 400px) {
@@ -1454,14 +1487,13 @@ fieldset {
   box-shadow: none;
 }
 .balance-panel {
-  background: var(--mint);
+  background: var(--surface);
   border-color: transparent;
 }
 .balance-panel > strong,
 .balance-panel > p {
   font-size: 1.4rem;
   font-weight: 600;
-  color: var(--ink);
 }
 .dashboard-summaries {
   display: grid;
@@ -1651,7 +1683,7 @@ button:where(:not(.button)) {
     height: 22px;
   }
   .side-nav a.active {
-    color: var(--accent);
+    color: var(--mint-ink);
     background: var(--mint);
   }
   .nav-label {
@@ -1713,7 +1745,7 @@ button:where(:not(.button)) {
   }
   .summary-counts strong {
     font-size: 1.7rem;
-    color: var(--ink);
+    color: var(--mint-ink);
   }
   .dashboard-summaries {
     gap: 12px;
@@ -1837,7 +1869,9 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 .topbar {
-  background: var(--surface);
+  /* Detalle verde de marca en ambos temas: barra superior con tinte menta. */
+  background: var(--mint);
+  border-bottom-color: color-mix(in srgb, var(--accent) 28%, var(--line));
 }
 .section-tabs a:hover {
   color: var(--accent);
@@ -1846,46 +1880,53 @@ textarea:focus-visible {
   background: var(--raised);
   border: 1px solid var(--line);
 }
-.task-row.overdue .badge {
-  color: var(--danger);
-  background: var(--peach);
+.badge.overdue,
+.badge.punishment {
+  color: var(--rose-ink);
+  background: var(--rose);
   border-color: transparent;
 }
-.task-row.completed .badge {
+.badge.recurring {
+  background: var(--peach);
+  color: var(--peach-ink);
+  border-color: transparent;
+}
+.badge.cancelled,
+.badge.pending {
+  background: var(--raised);
+  color: var(--muted);
+}
+.badge.completed {
   background: var(--mint);
-  color: var(--accent);
+  color: var(--mint-ink);
+  border-color: transparent;
 }
 :root[data-theme='dark'] .sidebar,
 :root[data-theme='dark'] .side-nav {
-  background: #151e1a;
+  background: var(--surface);
 }
 :root[data-theme='dark'] input,
 :root[data-theme='dark'] select,
 :root[data-theme='dark'] textarea {
-  background: #141d18;
+  background: var(--bg);
 }
-:root[data-theme='dark'] .welcome-panel,
-:root[data-theme='dark'] .balance-panel {
+:root[data-theme='dark'] .welcome-panel {
   background: var(--raised);
   border: 1px solid var(--line);
-}
-:root[data-theme='dark'] .balance-panel > strong,
-:root[data-theme='dark'] .balance-panel > p {
-  color: var(--accent);
 }
 :root[data-theme='dark'] .button.secondary {
   background: var(--raised);
 }
 :root[data-theme='dark'] .chat-message.own {
   background: var(--mint);
-  border-color: #355a43;
+  border-color: var(--mint-ink);
 }
 :root[data-theme='dark'] .chat-shell button.primary {
   background: var(--accent);
   color: var(--on-accent);
 }
 :root[data-theme='dark'] .auth-story {
-  background: #182b21;
+  background: var(--mint);
 }
 @media (max-width: 700px) {
   :root[data-theme='dark'] .auth-story {

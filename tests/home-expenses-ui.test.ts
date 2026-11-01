@@ -7,6 +7,7 @@ import { createElement, type ReactNode } from 'react';
 import * as jsxRuntime from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 import Link from 'next/link';
+import { CalendarDays, ListChecks, Wallet } from 'lucide-react';
 import { PageHeader } from '../src/components/ui/page-header';
 import { CreatePanel } from '../src/components/ui/create-panel';
 import { EmptyState } from '../src/components/ui/empty-state';
@@ -111,6 +112,7 @@ async function organizationSummary(locale: Locale) {
   const { OrganizationSummary } = await component<{
     OrganizationSummary: (props: { homeId: string }) => Promise<ReactNode>;
   }>('src/features/organization/summary.tsx', {
+    'lucide-react': { ListChecks },
     'next/link': { default: Link },
     '@/lib/data': {
       requireUser: async () => ({
@@ -138,6 +140,7 @@ test('Home prioritizes operational summaries, keeps one tasks/shopping destinati
     const { ExpenseSummary } = await component<{
       ExpenseSummary: (props: { homeId: string }) => Promise<ReactNode>;
     }>('src/features/expenses/summary.tsx', {
+      'lucide-react': { Wallet },
       'next/link': { default: Link },
       '@/lib/data': {
         getHome: async () => ({ currency: 'EUR' }),
@@ -223,6 +226,7 @@ test('next event compares reservations/activities, uses the home timezone, and h
       const { UpcomingEvent } = await component<{
         UpcomingEvent: (props: { homeId: string }) => Promise<ReactNode>;
       }>('src/components/ui/upcoming-event.tsx', {
+        'lucide-react': { CalendarDays },
         'next/link': { default: Link },
         '@/lib/data': {
           getHome: async () => ({ timezone: 'Pacific/Auckland' }),

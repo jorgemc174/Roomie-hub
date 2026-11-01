@@ -78,13 +78,18 @@ export function CommunityRanking({
                   {balance.user_id === currentUserId && <span className="sr-only"> · {t.you}</span>}
                 </Link>
               </th>
-              <td title={t.rankingPositivesHelp}>
+              <td
+                className={balance.positive_available > 0 ? 'tone-positive' : 'tone-zero'}
+                title={t.rankingPositivesHelp}
+              >
                 {number(balance.positive_available)}
                 {balance.positive_history !== balance.positive_available && (
                   <span className="ranking-history"> ({number(balance.positive_history)})</span>
                 )}
               </td>
-              <td>{number(balance.negative_effective)}</td>
+              <td className={balance.negative_effective > 0 ? 'tone-negative' : 'tone-zero'}>
+                {number(balance.negative_effective)}
+              </td>
               <td>{balance.pending_punishments > 0 ? number(balance.pending_punishments) : '—'}</td>
             </tr>
           ))}

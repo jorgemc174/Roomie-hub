@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { CalendarDays } from 'lucide-react';
 import { getHome, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { homeDate } from '@/lib/timezones';
@@ -40,8 +41,13 @@ export async function UpcomingEvent({ homeId }: { homeId: string }) {
   )[0];
   const day = event ? homeDate(home.timezone, event.starts_at) : '';
   return (
-    <section className="panel">
-      <h2>{t.nextEvent}</h2>
+    <section className="panel summary-blue">
+      <h2 className="summary-heading">
+        <span className="summary-icon" aria-hidden="true">
+          <CalendarDays size={20} />
+        </span>
+        {t.nextEvent}
+      </h2>
       {failed ? (
         <p role="alert">{calendarMessages(locale).error}</p>
       ) : event ? (

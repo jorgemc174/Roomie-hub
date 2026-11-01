@@ -73,7 +73,7 @@ test('public routes, translations and theme persist without overflow', async ({
   await page.getByRole('button', { name: 'Guardar cambios' }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('meta[name=theme-color]')).toHaveAttribute('content', '#111716');
+  await expect(page.locator('meta[name=theme-color]')).toHaveAttribute('content', '#0d0f12');
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Good to have you here.' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -95,7 +95,7 @@ test('public routes, translations and theme persist without overflow', async ({
   await page.getByLabel('Appearance').selectOption('light');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect(page.locator('meta[name=theme-color]')).toHaveAttribute('content', '#f4f6f3');
+  await expect(page.locator('meta[name=theme-color]')).toHaveAttribute('content', '#f5f7f4');
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
   await page.goto('/login');
   await page.screenshot({

@@ -2,18 +2,18 @@
 name: RoomieHub
 description: Herramienta cotidiana de convivencia, clara y tranquila, con verde como orientación.
 colors:
-  primary: '#286348'
-  primary-dark: '#8dd7ae'
-  background: '#f4f6f3'
-  background-dark: '#111716'
+  primary: '#257a55'
+  primary-dark: '#8fe0b5'
+  background: '#f5f7f4'
+  background-dark: '#0d0f12'
   surface: '#ffffff'
-  surface-dark: '#1a2320'
-  ink: '#202d29'
-  ink-dark: '#edf3ef'
-  muted: '#596b63'
-  muted-dark: '#a5b6ad'
-  line: '#dce4de'
-  line-dark: '#36463e'
+  surface-dark: '#1c1f25'
+  ink: '#1e2a26'
+  ink-dark: '#ebeef1'
+  muted: '#5a6862'
+  muted-dark: '#a3abb5'
+  line: '#e1e6e1'
+  line-dark: '#393f49'
 typography:
   body:
     fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
@@ -46,7 +46,7 @@ Sistema refinado y verificado sobre la implementación existente. Modo Operate d
 
 ## Colors
 
-Las variables semánticas están en `src/app/globals.css`; escala y componentes compartidos en `src/styles/system.css`. El fondo oscuro es carbón con un matiz verde, no negro absoluto ni azul. Distinguir fondo, superficie y control. El acento orienta la navegación y la acción principal; rojo solo para errores y acciones destructivas. Los tintes de eventos del calendario codifican su origen, no decoran todos los bloques.
+Las variables semánticas están en `src/app/globals.css`; escala y componentes compartidos en `src/styles/system.css`. El fondo oscuro es grafito neutro (decisión del usuario, 2026-11-01), no negro absoluto ni azul; el verde menta y los tintes pastel aportan el color. Paleta «Menta y pastel» (2026-11-01): verde menta es el color principal (acción, navegación, Tareas/Organización); celeste = Calendario/eventos; melocotón = Gastos/dinero; lavanda = Convivencia/puntos; rosa = negativos/castigos (distinto del rojo de error). Cada pastel tiene `--X` (tinte de fondo) y `--X-ink` (texto/icono legible, AA ≥4,5:1 sobre su tinte y sobre superficie en ambos temas). Los colores codifican significado, nunca decoran. Distinguir fondo, superficie y control. El acento orienta la navegación y la acción principal; rojo solo para errores y acciones destructivas. Los tintes de eventos del calendario codifican su origen, no decoran todos los bloques.
 
 ## Typography
 

@@ -23,9 +23,11 @@ export function PendingOccurrence({
     <details className="panel" id={`occurrence-${occurrence.id}`}>
       <summary>
         <strong>{occurrence.template.title}</strong> · {date} ·{' '}
-        {occurrence.recurrence_kind === 'variable'
-          ? t.variable
-          : formatMoney(occurrence.template.amount, currency, locale)}{' '}
+        <span className="badge recurring">
+          {occurrence.recurrence_kind === 'variable'
+            ? t.variable
+            : formatMoney(occurrence.template.amount, currency, locale)}
+        </span>{' '}
         <span className="text-link">{t.confirm}</span>
       </summary>
       <p>{t.pending}</p>

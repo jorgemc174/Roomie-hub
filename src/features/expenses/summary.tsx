@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Wallet } from 'lucide-react';
 import { getHome, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { expenseMessages } from './messages';
@@ -13,8 +14,21 @@ export async function ExpenseSummary({ homeId }: { homeId: string }) {
   const balance = data.find((b) => b.user_id === user.id)?.balance ?? '0';
   return (
     <section className="panel balance-panel">
-      <h2>{t.balance}</h2>
-      <p>
+      <h2 className="summary-heading">
+        <span className="summary-icon" aria-hidden="true">
+          <Wallet size={20} />
+        </span>
+        {t.balance}
+      </h2>
+      <p
+        className={
+          BigInt(balance) > 0n
+            ? 'tone-positive'
+            : BigInt(balance) < 0n
+              ? 'tone-negative'
+              : 'tone-money'
+        }
+      >
         {BigInt(balance) === 0n
           ? t.zero
           : `${BigInt(balance) > 0n ? t.owed : t.owe} ${formatMoney(BigInt(balance) < 0n ? -BigInt(balance) : balance, home.currency, locale)}`}

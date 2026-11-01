@@ -237,8 +237,8 @@ test('ranking table lists every active member once, ordered by negatives, positi
     assert.ok(rows[0].includes(t.you));
     assert.ok(rows[0].includes('src="/avatar.webp" alt=""'));
     assert.ok(rows[0].includes('>3<span class="ranking-history"> (12)</span>'));
-    assert.ok(rows[0].includes('<td>1</td><td>—</td>'));
-    assert.ok(rows[3].includes('<td>2</td><td>2</td>'));
+    assert.ok(rows[0].includes('<td class="tone-negative">1</td><td>—</td>'));
+    assert.ok(rows[3].includes('<td class="tone-negative">2</td><td>2</td>'));
   }
 });
 

@@ -17,7 +17,7 @@ export async function generateViewport(): Promise<Viewport> {
   return {
     width: 'device-width',
     initialScale: 1,
-    themeColor: theme === 'dark' ? '#111716' : '#f4f6f3',
+    themeColor: theme === 'dark' ? '#0d0f12' : '#f5f7f4',
     colorScheme: theme === 'dark' ? 'dark' : 'light',
   };
 }

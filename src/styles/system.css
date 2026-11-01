@@ -14,15 +14,15 @@
   --text-section-title: 1.125rem;
   --panel-padding: 24px;
   --control-border: #7d8d84;
-  --press: #d4e7dc;
+  --press: color-mix(in srgb, var(--mint) 85%, var(--mint-ink));
   --motion-press: 120ms;
   --motion-state: 180ms;
   --motion-enter: 240ms;
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 :root[data-theme='dark'] {
-  --control-border: #698377;
-  --press: #304e3d;
+  --control-border: #737c88;
+  --press: color-mix(in srgb, var(--mint) 85%, var(--mint-ink));
 }
 html {
   scroll-padding-block: 100px 128px;
@@ -83,7 +83,7 @@ textarea {
   font-size: 0.8125rem;
 }
 .task-identity .task-warning {
-  color: var(--danger);
+  color: var(--muted);
   font-size: 0.8125rem;
 }
 .task-identity .task-occurrence-date {
@@ -557,7 +557,7 @@ span.ui-spinner {
   margin: 0;
 }
 .notification-card.unread {
-  border-inline-start: 3px solid var(--accent);
+  border-inline-start: 1px solid var(--accent);
 }
 .notification-card .button {
   justify-self: start;
@@ -728,6 +728,56 @@ span.ui-spinner {
   }
 }
 
+/* Domain colours pair each summary icon with its meaningful key figures. */
+.org-summary {
+  --summary-tint: var(--mint);
+  --summary-ink: var(--mint-ink);
+}
+.balance-panel {
+  --summary-tint: var(--peach);
+  --summary-ink: var(--peach-ink);
+}
+.summary-blue {
+  --summary-tint: var(--blue);
+  --summary-ink: var(--blue-ink);
+}
+.summary-lavender {
+  --summary-tint: var(--lavender);
+  --summary-ink: var(--lavender-ink);
+}
+.summary-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.summary-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 50%;
+  background: var(--summary-tint);
+  color: var(--summary-ink);
+}
+.summary-blue strong,
+.summary-blue time,
+.summary-lavender strong {
+  color: var(--summary-ink);
+}
+.tone-positive {
+  color: var(--mint-ink);
+}
+.tone-negative {
+  color: var(--rose-ink);
+}
+.tone-money {
+  color: var(--peach-ink);
+}
+.tone-zero {
+  color: var(--muted);
+}
+
 /* Keep money, counters and comparisons visually stable as values change. */
 .balance-panel,
 .expense-balance,
@@ -787,7 +837,7 @@ span.ui-spinner {
   font-weight: 500;
 }
 .community-ranking .is-current {
-  background: var(--mint);
+  background: var(--lavender);
 }
 .ranking-member {
   display: flex;

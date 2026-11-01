@@ -269,7 +269,7 @@ export async function ReservationsPage({
           </p>
           <p>{b.responsible_name}</p>
           {b.cancelled_at ? (
-            <p className="badge">{t.cancelled}</p>
+            <p className="badge cancelled">{t.cancelled}</p>
           ) : (
             <>
               {Date.parse(b.ends_at) > Date.parse(now) && (

@@ -152,7 +152,11 @@ export async function CommunityPage({
           <article className="panel" key={p.id} id={`punishment-${p.id}`}>
             <div className="section-heading options-heading">
               <h3>
-                {p.user_name} · {p.severity === 'heavy' ? t.heavy : t.light} · {number(p.threshold)}
+                {p.user_name} ·{' '}
+                <span className="badge punishment">
+                  {p.severity === 'heavy' ? t.heavy : t.light}
+                </span>{' '}
+                · {number(p.threshold)}
               </h3>
               {!done && (
                 <OptionsMenu label={`${p.user_name}: ${t.options}`}>
@@ -179,7 +183,9 @@ export async function CommunityPage({
                 </OptionsMenu>
               )}
             </div>
-            <p className="badge">{done ? t.completed : t.pending}</p>
+            <p className={`badge ${done ? 'completed' : 'pending'}`}>
+              {done ? t.completed : t.pending}
+            </p>
             {p.description && <p className="community-description">{p.description}</p>}
             <p>{formatInstant(p.triggered_at, home.timezone, locale)}</p>
             {p.completed_at && (

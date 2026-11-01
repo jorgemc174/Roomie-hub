@@ -161,7 +161,7 @@ export function CalendarView({
             <li key={event.id} className={`calendar-event kind-${event.sourceType}`}>
               <Link href={event.href}>
                 <div>
-                  <span className="badge">{t[event.sourceType]}</span>{' '}
+                  <span className={`badge kind-${event.sourceType}`}>{t[event.sourceType]}</span>{' '}
                   <span>{t[event.status]}</span>
                 </div>
                 <h3>{event.title}</h3>

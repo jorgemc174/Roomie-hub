@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ListChecks } from 'lucide-react';
 import { requireUser, getHome } from '@/lib/data';
 import { homeDate } from '@/lib/timezones';
 import { i18n } from '@/lib/i18n/server';
@@ -31,7 +32,12 @@ export async function OrganizationSummary({ homeId }: { homeId: string }) {
   ]);
   return (
     <section className="panel org-summary">
-      <h2>{t.summary}</h2>
+      <h2 className="summary-heading">
+        <span className="summary-icon" aria-hidden="true">
+          <ListChecks size={20} />
+        </span>
+        {t.summary}
+      </h2>
       {tasks.error || items.error ? (
         <p>
           {['42P01', 'PGRST205'].includes(tasks.error?.code ?? items.error?.code ?? '')

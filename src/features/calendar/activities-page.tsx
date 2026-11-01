@@ -155,7 +155,7 @@ export async function ActivitiesPage({
               <p>{t.notAttending}</p>
             )}{' '}
             {a.cancelled_at ? (
-              <p className="badge">{t.cancelled}</p>
+              <p className="badge cancelled">{t.cancelled}</p>
             ) : (
               <>
                 {Date.parse(a.ends_at ?? a.starts_at) > Date.parse(now) && (
