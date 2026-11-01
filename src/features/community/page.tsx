@@ -1,4 +1,6 @@
 import { CreatePanel } from '@/components/ui/create-panel';
+import { OptionsMenu } from '@/components/ui/options-menu';
+import { PageHeader } from '@/components/ui/page-header';
 import { SectionDisclosure } from '@/components/section-disclosure';
 import { EmptyState } from '@/components/ui/empty-state';
 import Link from 'next/link';
@@ -8,7 +10,8 @@ import { readCommunityRows } from './queries';
 import { formatInstant } from '@/features/calendar/logic';
 import { communityMessages } from './messages';
 import { CommunityForm, RatingFields } from './form';
-import { CommunityNav } from './nav';
+import { CommunityNav, CommunityOptions, communityTab } from './nav';
+import { CommunityRanking } from './ranking';
 import { rankMembers, type AuthorLabel, type RatingReason, type CommunityBalance } from './models';
 
 export async function CommunityPage({
@@ -23,11 +26,7 @@ export async function CommunityPage({
     { locale, t: ui } = await i18n(),
     t = communityMessages(locale),
     base = `/homes/${homeId}/community`;
-  const tab =
-    typeof search.tab === 'string' &&
-    ['points', 'punishments', 'ranking', 'reasons'].includes(search.tab)
-      ? search.tab
-      : 'points';
+  const tab = communityTab(search.tab);
   // This module explicitly reconciles at most 500 elapsed days per request. Other views do not.
   const report = await db.rpc('reconcile_community', { target: homeId });
   if (report.error)
@@ -125,6 +124,24 @@ export async function CommunityPage({
       </label>
     </>
   );
+  const rankingAvatars =
+    tab === 'ranking'
+      ? Object.fromEntries(
+          await Promise.all(
+            rankMembers(balances).map(async (balance) => {
+              const member = members.find((m) => m.user_id === balance.user_id);
+              return [
+                balance.user_id,
+                await signedImage('avatars', member?.profiles?.avatar_path ?? null),
+              ];
+            }),
+          ),
+        )
+      : {};
+  const filterSummary = [
+    person ? balances.find((b) => b.user_id === person)?.user_name : t.all,
+    ...(tab === 'points' && history ? [t.history] : []),
+  ].join(' · ');
   const selectedPunishments = punishments.filter((p) => !person || p.user_id === person);
   const punishmentList = (done: boolean) => (
     <section className="stack">
@@ -133,12 +150,37 @@ export async function CommunityPage({
         .filter((p) => Boolean(p.completed_at) === done)
         .map((p) => (
           <article className="panel" key={p.id} id={`punishment-${p.id}`}>
-            <h3>
-              {p.user_name} · {p.severity === 'heavy' ? t.heavy : t.light}
-            </h3>
-            <p>
-              {t.threshold}: {number(p.threshold)}
-            </p>
+            <div className="section-heading options-heading">
+              <h3>
+                {p.user_name} · {p.severity === 'heavy' ? t.heavy : t.light} · {number(p.threshold)}
+              </h3>
+              {!done && (
+                <OptionsMenu label={`${p.user_name}: ${t.options}`}>
+                  <details>
+                    <summary>{t.edit}</summary>
+                    <CommunityForm
+                      homeId={homeId}
+                      operation="punishment"
+                      id={p.id}
+                      version={p.version}
+                      locale={locale}
+                      label={t.save}
+                    >
+                      <label>
+                        {t.description}
+                        <textarea
+                          name="description"
+                          maxLength={2000}
+                          defaultValue={p.description}
+                        />
+                      </label>
+                    </CommunityForm>
+                  </details>
+                </OptionsMenu>
+              )}
+            </div>
+            <p className="badge">{done ? t.completed : t.pending}</p>
+            {p.description && <p className="community-description">{p.description}</p>}
             <p>{formatInstant(p.triggered_at, home.timezone, locale)}</p>
             {p.completed_at && (
               <p>
@@ -146,37 +188,32 @@ export async function CommunityPage({
                 {formatInstant(p.completed_at, home.timezone, locale)}
               </p>
             )}
-            <CommunityForm
-              homeId={homeId}
-              operation="punishment"
-              id={p.id}
-              version={p.version}
-              locale={locale}
-              label={t.save}
-            >
-              <label>
-                {t.description}
-                <textarea name="description" maxLength={2000} defaultValue={p.description} />
-              </label>
-              {!p.completed_at && (
-                <>
-                  <label className="checkbox">
-                    <input name="finish" type="checkbox" />
-                    {t.finish}
-                  </label>
-                  <small>{t.define}</small>
-                </>
-              )}
-            </CommunityForm>
+            {!done &&
+              (p.description.trim() ? (
+                <CommunityForm
+                  homeId={homeId}
+                  operation="punishment"
+                  id={p.id}
+                  version={p.version}
+                  locale={locale}
+                  label={t.complete}
+                >
+                  <input type="hidden" name="description" value={p.description} />
+                  <input type="hidden" name="finish" value="on" />
+                </CommunityForm>
+              ) : (
+                <small>{t.define}</small>
+              ))}
           </article>
         ))}
     </section>
   );
   return (
     <div className="organization">
-      <header className="page-head">
-        <h1>{tab === 'reasons' ? t.configureReasons : t.title}</h1>
-      </header>
+      <PageHeader
+        title={tab === 'reasons' ? t.configureReasons : t.title}
+        action={<CommunityOptions homeId={homeId} locale={locale} tab={tab} />}
+      />
       <CommunityNav homeId={homeId} locale={locale} tab={tab} />
       {tab === 'points' && (
         <CreatePanel
@@ -274,44 +311,16 @@ export async function CommunityPage({
         </>
       )}
       {tab === 'ranking' && (
-        <section className="stack">
-          <h2>{t.ranking}</h2>
-          {await Promise.all(
-            rankMembers(balances).map(async (b) => {
-              const m = members.find((x) => x.user_id === b.user_id),
-                avatar = await signedImage('avatars', m?.profiles?.avatar_path ?? null);
-              return (
-                <article className="panel" key={b.user_id}>
-                  <Link href={`${base}?person=${b.user_id}`} className="member-row">
-                    {avatar && <img className="avatar" src={avatar} alt="" />}
-                    <h3>{b.user_name}</h3>
-                  </Link>
-                  <dl className="community-stats">
-                    <div>
-                      <dt>{t.effective}</dt>
-                      <dd>{number(b.negative_effective)}</dd>
-                    </div>
-                    <div>
-                      <dt>{t.available}</dt>
-                      <dd>{number(b.positive_available)}</dd>
-                    </div>
-                    <div>
-                      <dt>{t.pending}</dt>
-                      <dd>{number(b.pending_punishments)}</dd>
-                    </div>
-                  </dl>
-                </article>
-              );
-            }),
-          )}
-        </section>
+        <CommunityRanking
+          homeId={homeId}
+          locale={locale}
+          balances={balances}
+          currentUserId={user.id}
+          avatars={rankingAvatars}
+        />
       )}
       {(tab === 'points' || tab === 'punishments') && (
-        <SectionDisclosure
-          title={t.filters}
-          kind="filters"
-          defaultOpen={Boolean(person || history)}
-        >
+        <SectionDisclosure title={`${t.filters} · ${filterSummary}`} kind="filters">
           <form method="get" className="form">
             <input type="hidden" name="tab" value={tab} />
             <label>
@@ -396,8 +405,8 @@ export async function CommunityPage({
                 {compensated && <p className="badge">{t.compensated}</p>}
                 {r.deleted_at ? (
                   <p className="badge">{t.deleted}</p>
-                ) : (
-                  <>
+                ) : r.source === 'manual' || r.attachment_path ? (
+                  <OptionsMenu label={`${r.target_name}: ${t.options}`}>
                     {r.attachment_path && (
                       <Link href={`${base}/photo/${r.id}`} target="_blank" rel="noopener">
                         {t.viewPhoto}
@@ -470,22 +479,22 @@ export async function CommunityPage({
                         </details>
                       </>
                     )}
-                  </>
-                )}
+                  </OptionsMenu>
+                ) : null}
               </article>
             );
           })}
           <nav className="filter-links" aria-label={t.history}>
             {page > 0 && (
               <Link
-                href={`${base}?person=${person}&history=${history ? 'on' : ''}&page=${page - 1}`}
+                href={`${base}?tab=points&person=${person}&history=${history ? 'on' : ''}&page=${page - 1}`}
               >
                 {t.previous}
               </Link>
             )}
             {ratings.data.length === 50 && (
               <Link
-                href={`${base}?person=${person}&history=${history ? 'on' : ''}&page=${page + 1}`}
+                href={`${base}?tab=points&person=${person}&history=${history ? 'on' : ''}&page=${page + 1}`}
               >
                 {t.next}
               </Link>

@@ -27,10 +27,18 @@ export async function chatCommand(
       const fileIds = form.getAll('file_ids').map(String);
       if (
         files.length > 3 ||
+        files.some((f) => f.size > (f.type.startsWith('image/') ? 5 : 10) * 1024 * 1024) ||
         fileIds.length !== files.length ||
+        new Set(fileIds).size !== fileIds.length ||
         fileIds.some((id) => !validUuid(id))
       )
         return { error: t.invalid };
+      // This separate RPC commits the quota even if reading/decoding later fails.
+      const authorized = await db.rpc('authorize_chat_uploads', {
+        target: homeId,
+        file_count: files.length,
+      });
+      if (authorized.error) throw authorized.error;
       const uploads = await Promise.all(
         files.map(async (f) =>
           sanitizeChatFile(new Uint8Array(await f.arrayBuffer()), f.type, f.name),
@@ -50,14 +58,12 @@ export async function chatCommand(
         if (prepared.error) throw prepared.error;
         const existing = await db.storage.from('chat-files').info(prepared.data);
         if (!existing.data) {
-          const uploaded = await db.storage
-            .from('chat-files')
-            .upload(prepared.data, file.bytes, {
-              contentType: file.mime,
-              cacheControl: '0',
-              headers: { 'cache-control': 'private, no-store, max-age=0' },
-              upsert: false,
-            });
+          const uploaded = await db.storage.from('chat-files').upload(prepared.data, file.bytes, {
+            contentType: file.mime,
+            cacheControl: '0',
+            headers: { 'cache-control': 'private, no-store, max-age=0' },
+            upsert: false,
+          });
           if (uploaded.error) throw uploaded.error;
         }
         ids.push(item);

@@ -122,6 +122,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      reservations_on_day: {
+        Args: { target: string; on_day: string };
+        Returns: Reservation[];
+      };
       send_chat_message: {
         Args: {
           target: string;
@@ -142,6 +146,10 @@ export type Database = {
       };
       set_chat_reaction: {
         Args: { target: string; item: string; reaction: string; enabled: boolean };
+        Returns: undefined;
+      };
+      authorize_chat_uploads: {
+        Args: { target: string; file_count: number };
         Returns: undefined;
       };
       prepare_chat_attachment: {
@@ -183,7 +191,12 @@ export type Database = {
       };
       revoke_push_subscription: { Args: { item?: string | null }; Returns: undefined };
       run_notification_jobs: { Args: Record<string, never>; Returns: Json };
-      claim_notification_deliveries: { Args: { channels: string[] }; Returns: Json };
+      pending_chat_attachment_cleanup: { Args: Record<string, never>; Returns: string[] };
+      finish_chat_attachment_cleanup: { Args: { paths: string[] }; Returns: undefined };
+      claim_notification_deliveries: {
+        Args: { channels: string[]; batch_size?: number };
+        Returns: Json;
+      };
       notification_delivery_valid: {
         Args: { item: string; lease_token: string };
         Returns: boolean;

@@ -81,7 +81,7 @@ export function normalizeCalendar(
       status: 'scheduled',
       people: [r.responsible_id],
       names: [r.responsible_name],
-      href: `${base}/organization/reservations?view=all#reservation-${r.id}`,
+      href: `${base}/organization/reservations?view=all&item=${r.id}#reservation-${r.id}`,
     });
   }
   for (const a of input.activities) {
@@ -99,7 +99,7 @@ export function normalizeCalendar(
       people: members.map((m) => m.user_id),
       names: members.map((m) => m.user_name),
       location: a.location,
-      href: `${base}/community/activities?view=all#activity-${a.id}`,
+      href: `${base}/community/activities?view=all&item=${a.id}#activity-${a.id}`,
     });
   }
   for (const r of input.recurring) {

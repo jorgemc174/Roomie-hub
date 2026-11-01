@@ -11,13 +11,40 @@ import {
   type Outcome,
 } from './delivery';
 export async function deliverNotifications() {
+  const deadline = Date.now() + 60000;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) throw new Error('worker_configuration');
   // This privileged client is isolated from all user-facing reads and mutations.
   const db = createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: (input, init) =>
+        fetch(input, {
+          ...init,
+          signal: init?.signal
+            ? AbortSignal.any([init.signal, AbortSignal.timeout(10000)])
+            : AbortSignal.timeout(10000),
+        }),
+    },
   });
+  // Storage owns the actual bytes. Acknowledge only after its deletion API
+  // succeeds, so a failed removal or acknowledgement is safe to retry.
+  const pendingFiles = await db.rpc('pending_chat_attachment_cleanup');
+  if (pendingFiles.error) throw new Error('attachment_cleanup_lookup_failed');
+  let attachmentsRemoved = 0,
+    attachmentCleanupErrors = 0;
+  const paths = pendingFiles.data ?? [];
+  if (paths.length) {
+    const removed = await db.storage.from('chat-files').remove(paths);
+    if (removed.error) attachmentCleanupErrors++;
+    else {
+      const finished = await db.rpc('finish_chat_attachment_cleanup', { paths });
+      if (finished.error) attachmentCleanupErrors++;
+      else attachmentsRemoved = paths.length;
+    }
+  }
+  const cleanup = { attachmentsRemoved, attachmentCleanupErrors };
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     privateKey = process.env.VAPID_PRIVATE_KEY,
     subject = process.env.VAPID_SUBJECT;
@@ -30,16 +57,20 @@ export async function deliverNotifications() {
     channels.push('push');
   }
   if (emailKey && emailFrom && origin) channels.push('email');
-  if (!channels.length) return { claimed: 0, sent: 0, disabled: true };
-  const claimed = await db.rpc('claim_notification_deliveries', { channels });
-  if (claimed.error) throw new Error('claim_failed');
-  const deliveries = claimed.data as unknown as Delivery[];
-  let sent = 0,
+  if (!channels.length) return { claimed: 0, sent: 0, disabled: true, ...cleanup };
+  let claimedCount = 0,
+    sent = 0,
     failed = 0;
-  // Bounded concurrency avoids one slow provider occupying the whole scheduler interval.
-  for (let start = 0; start < deliveries.length; start += 5)
+  // Stop new claims after 60 s. Five leases at a time leave room for the final
+  // lookup/validation/provider/acknowledgement (10 s each) within maxDuration=120.
+  while (Date.now() < deadline) {
+    const claimed = await db.rpc('claim_notification_deliveries', { channels, batch_size: 5 });
+    if (claimed.error) throw new Error('claim_failed');
+    const deliveries = claimed.data as unknown as Delivery[];
+    if (!deliveries.length) break;
+    claimedCount += deliveries.length;
     await Promise.all(
-      deliveries.slice(start, start + 5).map(async (d) => {
+      deliveries.map(async (d) => {
         let outcome: Outcome = { outcome: 'cancelled' };
         try {
           let email: string | undefined;
@@ -92,5 +123,6 @@ export async function deliverNotifications() {
         else if (outcome.outcome === 'sent') sent++;
       }),
     );
-  return { claimed: deliveries.length, sent, acknowledgementErrors: failed, disabled: false };
+  }
+  return { claimed: claimedCount, sent, acknowledgementErrors: failed, disabled: false, ...cleanup };
 }

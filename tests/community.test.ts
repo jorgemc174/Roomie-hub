@@ -308,6 +308,24 @@ test('Community SQL: ratings, anonymity, reversible allocations, punishments and
           id = await rate(h, r.pos, b, randomUUID(), 0, true);
         const path = await scalar<string>('select public.prepare_rating_photo($1,$2) v', [h, id]);
         assert.equal(path.includes(a), false);
+        // A client cannot upload a JPEG/PNG and rely on the WebP filename alone.
+        for (const mime of ['image/jpeg', 'image/png', null])
+          await assert.rejects(
+            db.query(
+              "insert into storage.objects(bucket_id,name,metadata) values('rating-photos',$1,jsonb_build_object('mimetype',$2::text))",
+              [path, mime],
+            ),
+            /row-level security/,
+          );
+        await as(out);
+        await assert.rejects(
+          db.query(
+            "insert into storage.objects(bucket_id,name,metadata) values('rating-photos',$1,jsonb_build_object('mimetype','image/webp'))",
+            [path],
+          ),
+          /row-level security/,
+        );
+        await as(a);
         await db.query(
           "insert into storage.objects(bucket_id,name,owner,owner_id,metadata,user_metadata) values('rating-photos',$1,$2::uuid,$2::text,jsonb_build_object('mimetype','image/webp','name','Alice photo','author',$2),jsonb_build_object('author',$2))",
           [path, a],

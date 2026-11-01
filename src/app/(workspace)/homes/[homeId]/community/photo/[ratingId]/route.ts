@@ -1,5 +1,6 @@
 import { getHome, requireUser } from '@/lib/data';
 import { notFound } from 'next/navigation';
+import { sanitizeRatingPhoto } from '@/features/community/photo';
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ homeId: string; ratingId: string }> },
@@ -19,7 +20,16 @@ export async function GET(
     .from('rating-photos')
     .download(data.attachment_path, { cacheNonce: crypto.randomUUID() }, { cache: 'no-store' });
   if (photo.error || !photo.data) notFound();
-  return new Response(await photo.data.arrayBuffer(), {
+  let clean: Uint8Array<ArrayBuffer>;
+  try {
+    // Storage clients share user credentials: never trust uploaded bytes, even WebP.
+    clean = new Uint8Array(
+      await sanitizeRatingPhoto(new Uint8Array(await photo.data.arrayBuffer()), photo.data.type),
+    );
+  } catch {
+    notFound();
+  }
+  return new Response(clean, {
     headers: {
       'Content-Type': 'image/webp',
       'Content-Disposition': 'inline; filename="photo.webp"',

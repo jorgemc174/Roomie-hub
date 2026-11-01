@@ -9,7 +9,9 @@ const es = {
   absences: 'Ausencias',
   mine: 'Mis tareas',
   all: 'Todas las tareas',
-  intro: 'Lo que nos toca, sin complicaciones.',
+  options: 'Opciones',
+  filters: 'Filtros',
+  view: 'Vista',
   manage: 'Configurar tareas',
   backToTasks: 'Volver a las tareas',
   backlogHelp:
@@ -110,7 +112,7 @@ const es = {
   utcDates: 'Los periodos y ausencias usan fechas UTC. Las horas límite usan la zona elegida.',
   current: 'Actuales y próximas',
   past: 'Historial',
-  apply: 'Ver periodo',
+  apply: 'Aplicar',
   live: 'Cambios sincronizados',
   reconnecting: 'Reconectando. Los cambios pueden tardar en aparecer.',
 };
@@ -124,7 +126,9 @@ const en: Record<keyof typeof es, string> = {
   absences: 'Absences',
   mine: 'My tasks',
   all: 'All tasks',
-  intro: 'Our shared to-dos, kept simple.',
+  options: 'Options',
+  filters: 'Filters',
+  view: 'View',
   manage: 'Configure tasks',
   backToTasks: 'Back to tasks',
   backlogHelp:
@@ -224,7 +228,7 @@ const en: Record<keyof typeof es, string> = {
   utcDates: 'Periods and absences use UTC dates. Deadlines use the selected time zone.',
   current: 'Current and upcoming',
   past: 'History',
-  apply: 'View period',
+  apply: 'Apply',
   live: 'Changes synchronized',
   reconnecting: 'Reconnecting. Changes may take a moment to appear.',
 };

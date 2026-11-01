@@ -326,6 +326,16 @@ a:focus-visible {
   margin-bottom: 0;
   padding-bottom: var(--space-2);
 }
+.organization > .ui-page-header,
+.expenses > .ui-page-header {
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+.organization > .ui-page-header > .actions,
+.expenses > .ui-page-header > .actions {
+  width: auto;
+  flex: 0 0 auto;
+}
 .ui-page-header .eyebrow {
   margin: 0 0 var(--space-2);
 }
@@ -646,7 +656,7 @@ span.ui-spinner {
 
 .ui-quick-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
   gap: var(--space-3);
   margin-bottom: var(--space-6);
 }
@@ -704,10 +714,103 @@ span.ui-spinner {
 
 /* Keep money, counters and comparisons visually stable as values change. */
 .balance-panel,
+.expense-balance,
 .summary-counts strong,
 .community-stats dd,
 .calendar-count {
   font-variant-numeric: tabular-nums;
+}
+.summary-task-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-column: span 2;
+  gap: var(--space-3);
+}
+
+.community-ranking-rule {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.community-ranking {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.community-ranking .ranking-position {
+  width: 7%;
+}
+.community-ranking .ranking-person {
+  width: 34%;
+}
+.community-ranking .ranking-points {
+  width: 20%;
+}
+.community-ranking .ranking-pending {
+  width: 19%;
+}
+.community-ranking th,
+.community-ranking td {
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--line);
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+.community-ranking thead th {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.community-ranking th:nth-child(2) {
+  text-align: start;
+}
+.community-ranking tbody th {
+  font-weight: 500;
+}
+.community-ranking .is-current {
+  background: var(--mint);
+}
+.ranking-member {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 44px;
+  color: var(--ink);
+}
+.ranking-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ranking-member .avatar,
+.ranking-avatar {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+}
+.ranking-avatar {
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--muted);
+}
+.ranking-history {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+.community-description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .community-ranking {
+    font-size: 0.875rem;
+  }
+  .ranking-history {
+    display: none;
+  }
 }
 
 /* Feedback for real router transitions; touch gestures only switch existing tabs. */
@@ -754,8 +857,78 @@ span.ui-spinner {
 .task-toolbar {
   flex-wrap: wrap;
 }
-.task-view-controls .view-filter {
-  min-width: min(100%, 12rem);
+.task-view-controls {
+  min-width: 0;
+  flex: 1;
+}
+.task-view-controls > .section-disclosure {
+  width: 100%;
+  margin: 0;
+}
+.organization .options-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.options-heading > h2,
+.options-heading > h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ui-options-menu {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 44px;
+}
+.ui-options-menu > summary {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1.5rem;
+  line-height: 1;
+  list-style: none;
+  cursor: pointer;
+}
+.ui-options-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.ui-options-menu[open] {
+  z-index: 5;
+}
+.ui-options-menu[open] > summary {
+  background: var(--mint);
+}
+.ui-options-body {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + var(--space-2));
+  width: min(22rem, calc(100vw - var(--space-8) - var(--space-8)));
+  max-height: 65dvh;
+  overflow-y: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  overflow-wrap: anywhere;
+}
+.ui-options-body > a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink);
+}
+.ui-options-body > a[aria-current] {
+  color: var(--accent);
+  font-weight: 600;
+}
+.ui-options-body .section-disclosure {
+  margin: 0;
 }
 .message-actions-body {
   margin-block: var(--space-2);

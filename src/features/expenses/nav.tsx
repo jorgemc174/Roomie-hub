@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { History } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { OptionsMenu } from '@/components/ui/options-menu';
 import { SectionTabs } from '@/components/section-tabs';
 import type { Locale } from '@/lib/i18n/dictionaries';
 import { expenseMessages } from './messages';
@@ -25,14 +26,31 @@ export function ExpensesNav({
           ['recurring', t.recurring],
         ].map(([key, label]) => ({ href: `${base}?tab=${key}`, label, current: tab === key }))}
       />
+    </div>
+  );
+}
+
+export function ExpensesOptions({
+  homeId,
+  locale,
+  tab,
+  children,
+}: {
+  homeId: string;
+  locale: Locale;
+  tab: string;
+  children?: ReactNode;
+}) {
+  const t = expenseMessages(locale);
+  return (
+    <OptionsMenu label={`${t.title}: ${t.options}`}>
       <Link
-        className="section-settings text-link"
-        href={`${base}?tab=history`}
+        href={`/homes/${homeId}/expenses?tab=history`}
         aria-current={tab === 'history' ? 'page' : undefined}
       >
-        <History size={16} aria-hidden="true" />
         {t.changeHistory}
       </Link>
-    </div>
+      {children}
+    </OptionsMenu>
   );
 }

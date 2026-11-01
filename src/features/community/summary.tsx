@@ -22,7 +22,7 @@ export async function CommunitySummary({ homeId }: { homeId: string }) {
           {t.punishments} · {t.pending}: {n(b.pending_punishments)}
         </p>
       )}
-      <Link href={`/homes/${homeId}/community`}>{t.points}</Link>
+      <Link href={`/homes/${homeId}/community?tab=points`}>{t.points}</Link>
     </section>
   );
 }

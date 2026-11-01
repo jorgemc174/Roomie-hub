@@ -135,8 +135,10 @@ export async function financeAction(
       let attachment: { file: File; extension: string } | undefined;
       if (file instanceof File && file.size) {
         if (file.size > 10485760) return { error: t.receiptInvalid };
-        const bytes = new Uint8Array(await file.slice(0, 16).arrayBuffer());
-        const ext = receiptExtension(file.type, file.size, bytes);
+        const bytes = new Uint8Array(
+          await (file.type === 'application/pdf' ? file : file.slice(0, 16)).arrayBuffer(),
+        );
+        const ext = await receiptExtension(file.type, file.size, bytes);
         if (!ext) return { error: t.receiptInvalid };
         attachment = { file, extension: ext };
       }

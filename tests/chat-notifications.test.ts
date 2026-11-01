@@ -17,6 +17,28 @@ test('Phase 6: chat, canonical notifications, privacy and jobs', async (t) => {
   ) => db.query('select send_chat_message($1,$2,$3,$4)', [h, id, body, reply]);
   const count = (table: string) => scalar<number>(`select count(*)::int v from ${table}`);
   try {
+    await t.test(
+      'B2: upload preflight authorizes membership and reserves decode quota',
+      async () => {
+        const preflight = (n: number) => db.query('select authorize_chat_uploads($1,$2)', [h, n]);
+        await as(outside);
+        await assert.rejects(preflight(1), /unauthorized/);
+        await as(alice);
+        for (const n of [-1, 4, null])
+          await assert.rejects(
+            db.query('select authorize_chat_uploads($1,$2)', [h, n]),
+            /invalid_attachment/,
+          );
+        await preflight(0);
+        for (const n of [3, 3, 3, 1]) await preflight(n);
+        await assert.rejects(preflight(1), /rate_limited/);
+        await as(bob);
+        await preflight(1);
+        await db.exec('reset role; set role anon');
+        await assert.rejects(preflight(1), /permission denied/);
+        await as(alice);
+      },
+    );
     await t.test('send idempotency, cross-home isolation, protected authorship', async () => {
       await send();
       await send();
@@ -652,6 +674,129 @@ test('Phase 6: chat, canonical notifications, privacy and jobs', async (t) => {
         );
       },
     );
+  } finally {
+    await db.close();
+  }
+});
+
+test('D2: assignment transitions A→B→A each notify once', async () => {
+  const { db, home, scalar, users } = await organizationDatabase();
+  try {
+    const h = await home(2);
+    await db.exec('reset role');
+    const chore = await scalar<string>(
+      "insert into chores(home_id,name,difficulty,recurrence,anchor_date,assignment_mode) values($1,'Transition',1,'daily',current_date,'automatic') returning id v",
+      [h],
+    );
+    const task = await scalar<string>(
+      "insert into chore_instances(home_id,chore_id,period_start,period_end,task_name,difficulty,assignee_id,assignee_name) values($1,$2,current_date,current_date+1,'Transition',1,$3,'Alice') returning id v",
+      [h, chore, users[0]],
+    );
+    for (const [index, person] of [users[0], users[1], users[0]].entries()) {
+      await db.query('update chore_instances set assignee_id=$2 where id=$1', [task, person]);
+      const event = await scalar<string>(
+        "insert into chore_assignment_events(home_id,instance_id,assignee_id,assignee_name,reason) values($1,$2,$3,'Person',$4) returning id v",
+        [h, task, person, index === 0 ? 'generated' : 'reassigned'],
+      );
+      // Replaying the exact event must retain the same deduplication identity.
+      if (index === 2) {
+        assert.equal(
+          await scalar<number>('select count(*)::int v from notifications where source_id=$1', [
+            task,
+          ]),
+          3,
+        );
+        await db.query(
+          "select messaging_private.emit_notice($1,$2,'tasks','task_assigned','chore_instances',$3,$4)",
+          [h, person, task, event],
+        );
+        await db.query(
+          "select messaging_private.emit_notice($1,$2,'tasks','task_assigned','chore_instances',$3,$4)",
+          [h, person, task, event],
+        );
+      }
+    }
+    assert.equal(
+      await scalar<number>(
+        "select count(*)::int v from notifications where source_id=$1 and event_type='task_assigned'",
+        [task],
+      ),
+      3,
+    );
+    assert.equal(
+      await scalar<number>(
+        'select count(*)::int v from notifications where source_id=$1 and user_id=$2',
+        [task, users[0]],
+      ),
+      2,
+    );
+    await db.query('update chore_instances set assignee_id=assignee_id where id=$1', [task]);
+    assert.equal(
+      await scalar<number>('select count(*)::int v from notifications where source_id=$1', [task]),
+      3,
+    );
+    // An invalid prefix must not hide the valid deliveries behind it.
+    await db.query(
+      "insert into notification_preferences(user_id,category,in_app,email) values($1,'tasks',true,true)",
+      [users[0]],
+    );
+    await db.query(
+      "select messaging_private.emit_notice($1,$2,'tasks','task_assigned','chore_instances',$3,'queue-'||n) from generate_series(1,42) n",
+      [h, users[0], task],
+    );
+    await db.query(
+      'update notifications set invalidated_at=now() where id in (select notification_id from messaging_private.notification_deliveries order by next_attempt_at,id limit 35)',
+    );
+    await db.exec('set role service_role');
+    const batch = await scalar<Delivery[]>(
+      "select claim_notification_deliveries(array['email'],5) v",
+    );
+    assert.equal(batch.length, 5);
+    const next = await scalar<Delivery[]>(
+      "select claim_notification_deliveries(array['email'],5) v",
+    );
+    assert.equal(next.length, 2);
+    assert.equal(new Set([...batch, ...next].map((d) => d.id)).size, 7);
+    assert.equal(
+      (await scalar<Delivery[]>("select claim_notification_deliveries(array['email'],5) v")).length,
+      0,
+    );
+    await db.exec('reset role; set role authenticated');
+    await assert.rejects(
+      db.query("select claim_notification_deliveries(array['email'],5)"),
+      /permission denied/,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test('D2: reminders cover more than 100 homes in one scheduler pass without duplicates', async () => {
+  const { db, scalar, users } = await organizationDatabase();
+  try {
+    await db.query("insert into homes(name) select 'Reminder home' from generate_series(1,205)");
+    await db.query('insert into home_members(home_id,user_id) select id,$1 from homes', [users[0]]);
+    await db.query(
+      "insert into activities(id,home_id,title,starts_at,created_by,created_by_name,create_request) select gen_random_uuid(),id,'Reminder',now()+interval '59 minutes',$1,'Alice','{}'::jsonb from homes",
+      [users[0]],
+    );
+    await db.query(
+      "insert into activity_members(home_id,activity_id,user_id,user_name) select home_id,id,$1,'Alice' from activities",
+      [users[0]],
+    );
+    const run = await scalar<{ errors: number }>('select run_notification_jobs() v');
+    assert.equal(run.errors, 0);
+    assert.equal(
+      await scalar<number>("select count(*)::int v from notifications where event_type='reminder'"),
+      205,
+    );
+    await db.query('select run_notification_jobs()');
+    assert.equal(
+      await scalar<number>("select count(*)::int v from notifications where event_type='reminder'"),
+      205,
+    );
+    await db.exec('set role authenticated');
+    await assert.rejects(db.query('select run_notification_jobs()'), /permission denied/);
   } finally {
     await db.close();
   }

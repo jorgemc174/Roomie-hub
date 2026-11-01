@@ -4,61 +4,25 @@ import { AccountLink } from '@/components/account-navigation';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Feedback } from '@/components/ui/feedback';
 import { Bell, LoaderCircle } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { browserClient } from '@/lib/supabase/browser';
 import { useLocale } from '@/lib/i18n/provider';
 import { safeNext } from '@/lib/validation';
 import { readNotices } from './actions';
 import { notificationMessages } from './messages';
 import type { Notice } from './models';
+import { useNoticesRealtime } from './realtime';
 export function NotificationBell() {
   const t = notificationMessages(useLocale()),
     [count, setCount] = useState(0);
-  useEffect(() => {
-    const db = browserClient();
-    let disposed = false;
-    let channel: ReturnType<typeof db.channel> | undefined;
-    const refresh = async () => {
-      const { count, error } = await db
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .is('read_at', null);
-      if (!disposed && !error) setCount(count ?? 0);
-    };
-    const connect = async () => {
-      const {
-        data: { session },
-      } = await db.auth.getSession();
-      if (!session || disposed) return;
-      await db.realtime.setAuth(session.access_token);
-      if (disposed) return;
-      channel = db
-        .channel(`notices:${session.user.id}:${crypto.randomUUID()}`, {
-          config: { postgres_changes_options: { wait: true, timeout: 15000 } },
-        })
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${session.user.id}`,
-          },
-          () => void refresh(),
-        )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') void refresh();
-        });
-      await refresh();
-    };
-    void connect().catch(() => {});
-    window.addEventListener('focus', refresh);
-    return () => {
-      disposed = true;
-      window.removeEventListener('focus', refresh);
-      if (channel) void db.removeChannel(channel);
-    };
+  const refresh = useCallback(async () => {
+    const { count, error } = await browserClient()
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .is('read_at', null);
+    if (!error) setCount(count ?? 0);
   }, []);
+  useNoticesRealtime(refresh);
   return (
     <AccountLink
       className="topbar-action notification-bell"
@@ -105,6 +69,8 @@ export function Inbox({ initial }: { initial: Notice[] }) {
     },
     [t.error],
   );
+  const refresh = useCallback(() => load(cursor), [load, cursor]);
+  useNoticesRealtime(refresh);
   async function mark(id?: string) {
     setPending(true);
     setError('');

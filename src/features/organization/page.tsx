@@ -1,6 +1,8 @@
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
-import { OrganizationNav, OrganizationLoadError } from './nav';
+import { OrganizationNav, OrganizationOptions, OrganizationLoadError } from './nav';
+import { OptionsMenu } from '@/components/ui/options-menu';
+import { PageHeader } from '@/components/ui/page-header';
 import { groupTaskPeriods, TaskPeriodHeading, TaskPeriodDates } from './task-periods';
 import { TaskNavigation } from './task-navigation';
 import { SectionDisclosure } from '@/components/section-disclosure';
@@ -55,7 +57,10 @@ export async function OrganizationPage({
   if (result.error)
     return loadError(['PGRST202', '42P01'].includes(result.error.code) ? t.migration : t.loadError);
   const [{ chores, rotations, instances, absences, lists, items, events }, members] =
-    await Promise.all([readOrganizationRows(db, homeId, tab, from, through), getMembers(homeId)]);
+    await Promise.all([
+      readOrganizationRows(db, homeId, tab, from, through, { view, userId: user.id }),
+      getMembers(homeId),
+    ]);
   if ([chores, rotations, instances, absences, lists, items, events].some((r) => r.error))
     return loadError(t.loadError);
   const action = (op: string) => organizationAction.bind(null, homeId, op);
@@ -73,27 +78,23 @@ export async function OrganizationPage({
       timeZone: home.timezone ?? 'UTC',
     }).format(new Date(v)) + ` (${home.timezone ?? 'UTC'})`;
   const hidden = (name: string, value: string) => <input type="hidden" name={name} value={value} />;
-  const taskRows = (instances.data ?? []).filter(
-    (i) =>
-      (view === 'cancelled' ? !!i.cancelled_at : !i.cancelled_at) &&
-      (view !== 'mine' || i.assignee_id === user.id),
-  );
+  const taskRows = instances.data ?? [];
   return (
     <div className="organization">
-      <header className="page-head">
-        <div>
-          <h1>
-            {tab === 'shopping'
-              ? t.shopping
-              : tab === 'absences'
-                ? t.absences
-                : view === 'manage'
-                  ? t.manage
-                  : t.tasks}
-          </h1>
-          <p>{t.intro}</p>
-        </div>
-      </header>
+      <PageHeader
+        title={
+          tab === 'shopping'
+            ? t.shopping
+            : tab === 'absences'
+              ? t.absences
+              : view === 'manage'
+                ? t.manage
+                : t.tasks
+        }
+        action={
+          <OrganizationOptions homeId={homeId} locale={locale} tab={tab} view={view} from={from} />
+        }
+      />
       <OrganizationNav homeId={homeId} locale={locale} tab={tab} />
       {tab === 'tasks' && (
         <>
@@ -107,6 +108,7 @@ export async function OrganizationPage({
             locale={locale}
             view={view}
             from={from}
+            today={today}
             returnView={typeof search.returnView === 'string' ? search.returnView : undefined}
           >
             <CreatePanel
@@ -158,14 +160,6 @@ export async function OrganizationPage({
             </>
           ) : (
             <>
-              <form className="period-picker" action={base}>
-                <input type="hidden" name="view" value={view} />
-                <label>
-                  {t.from}
-                  <input name="from" type="date" defaultValue={from} required />
-                </label>
-                <button className="button secondary">{t.apply}</button>
-              </form>
               {taskRows.length === 0 && (
                 <EmptyState
                   title={
@@ -334,41 +328,54 @@ export async function OrganizationPage({
           )}
           {(absences.data ?? []).map((a) => (
             <article className="panel" key={a.id}>
-              <h2>{a.user_name}</h2>
+              <div className="section-heading options-heading">
+                <h2>{a.user_name}</h2>
+                <OptionsMenu label={`${t.options}: ${a.user_name}`}>
+                  <details>
+                    <summary>{t.edit}</summary>
+                    <ActionForm
+                      action={action('save_absence')}
+                      label={t.save}
+                      pendingLabel={t.saving}
+                    >
+                      {hidden('id', a.id)}
+                      {hidden('person', a.user_id)}
+                      <div className="form-row">
+                        <label>
+                          {t.start}
+                          <input
+                            type="date"
+                            name="start_date"
+                            defaultValue={a.start_date}
+                            required
+                          />
+                        </label>
+                        <label>
+                          {t.end}
+                          <input type="date" name="end_date" defaultValue={a.end_date} required />
+                        </label>
+                      </div>
+                    </ActionForm>
+                  </details>
+                  <details>
+                    <summary>{t.delete}</summary>
+                    <ActionForm
+                      action={action('delete_absence')}
+                      label={t.confirmDelete}
+                      pendingLabel={t.saving}
+                      danger
+                    >
+                      {hidden('id', a.id)}
+                      {hidden('person', a.user_id)}
+                      {hidden('start_date', a.start_date)}
+                      {hidden('end_date', a.end_date)}
+                    </ActionForm>
+                  </details>
+                </OptionsMenu>
+              </div>
               <p>
                 {date(a.start_date)} – {date(a.end_date)}
               </p>
-              <details>
-                <summary>{t.edit}</summary>
-                <ActionForm action={action('save_absence')} label={t.save} pendingLabel={t.saving}>
-                  {hidden('id', a.id)}
-                  {hidden('person', a.user_id)}
-                  <div className="form-row">
-                    <label>
-                      {t.start}
-                      <input type="date" name="start_date" defaultValue={a.start_date} required />
-                    </label>
-                    <label>
-                      {t.end}
-                      <input type="date" name="end_date" defaultValue={a.end_date} required />
-                    </label>
-                  </div>
-                </ActionForm>
-              </details>
-              <details>
-                <summary>{t.delete}</summary>
-                <ActionForm
-                  action={action('delete_absence')}
-                  label={t.confirmDelete}
-                  pendingLabel={t.saving}
-                  danger
-                >
-                  {hidden('id', a.id)}
-                  {hidden('person', a.user_id)}
-                  {hidden('start_date', a.start_date)}
-                  {hidden('end_date', a.end_date)}
-                </ActionForm>
-              </details>
             </article>
           ))}
         </>
@@ -402,11 +409,40 @@ export async function OrganizationPage({
             const products = (items.data ?? []).filter((i) => i.shopping_list_id === list.id);
             return (
               <section className="panel shopping-list" key={list.id}>
-                <div className="section-heading">
+                <div className="section-heading options-heading">
                   <h2>{list.name}</h2>
-                  <span className="badge">
-                    {products.filter((i) => i.purchased).length}/{products.length}
-                  </span>
+                  <div className="inline-actions">
+                    <span className="badge">
+                      {products.filter((i) => i.purchased).length}/{products.length}
+                    </span>
+                    <OptionsMenu label={`${t.options}: ${list.name}`}>
+                      <details>
+                        <summary>{t.rename}</summary>
+                        <ActionForm
+                          action={action('rename_list')}
+                          label={t.save}
+                          pendingLabel={t.saving}
+                        >
+                          {hidden('list_id', list.id)}
+                          <label>
+                            {t.name}
+                            <input name="name" required maxLength={100} defaultValue={list.name} />
+                          </label>
+                        </ActionForm>
+                      </details>
+                      <details>
+                        <summary>{t.listDelete}</summary>
+                        <ActionForm
+                          action={action('delete_list')}
+                          label={t.confirmDelete}
+                          pendingLabel={t.saving}
+                          danger
+                        >
+                          {hidden('list_id', list.id)}
+                        </ActionForm>
+                      </details>
+                    </OptionsMenu>
+                  </div>
                 </div>
                 {list.completed_at && (
                   <p className="notice success">
@@ -441,18 +477,20 @@ export async function OrganizationPage({
                         {hidden('item_id', item.id)}
                         {hidden('checked', String(!item.purchased))}
                       </ActionForm>
-                      <details>
-                        <summary>{t.delete}</summary>
-                        <ActionForm
-                          action={action('delete_item')}
-                          label={t.confirmDelete}
-                          pendingLabel={t.saving}
-                          danger
-                        >
-                          {hidden('list_id', list.id)}
-                          {hidden('item_id', item.id)}
-                        </ActionForm>
-                      </details>
+                      <OptionsMenu label={`${t.options}: ${item.name}`}>
+                        <details>
+                          <summary>{t.delete}</summary>
+                          <ActionForm
+                            action={action('delete_item')}
+                            label={t.confirmDelete}
+                            pendingLabel={t.saving}
+                            danger
+                          >
+                            {hidden('list_id', list.id)}
+                            {hidden('item_id', item.id)}
+                          </ActionForm>
+                        </details>
+                      </OptionsMenu>
                     </li>
                   ))}
                 </ul>
@@ -472,27 +510,6 @@ export async function OrganizationPage({
                     {hidden('list_id', list.id)}
                   </ActionForm>
                 )}
-                <details>
-                  <summary>{t.rename}</summary>
-                  <ActionForm action={action('rename_list')} label={t.save} pendingLabel={t.saving}>
-                    {hidden('list_id', list.id)}
-                    <label>
-                      {t.name}
-                      <input name="name" required maxLength={100} defaultValue={list.name} />
-                    </label>
-                  </ActionForm>
-                </details>
-                <details>
-                  <summary>{t.listDelete}</summary>
-                  <ActionForm
-                    action={action('delete_list')}
-                    label={t.confirmDelete}
-                    pendingLabel={t.saving}
-                    danger
-                  >
-                    {hidden('list_id', list.id)}
-                  </ActionForm>
-                </details>
               </section>
             );
           })}

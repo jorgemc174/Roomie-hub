@@ -1,16 +1,23 @@
 import { CreatePanel } from '@/components/ui/create-panel';
 import { SectionDisclosure } from '@/components/section-disclosure';
 import { EmptyState } from '@/components/ui/empty-state';
-import { OrganizationNav } from '@/features/organization/nav';
+import { OrganizationNav, OrganizationOptions } from '@/features/organization/nav';
+import { PageHeader } from '@/components/ui/page-header';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { homeDate } from '@/lib/timezones';
 import { validDate, addDays } from '@/features/organization/logic';
-import { calendarRows } from './queries';
+import {
+  calendarRows,
+  readReservationPage,
+  calendarPageIndex,
+  calendarPageHref,
+  calendarItem,
+} from './queries';
 import { calendarMessages } from './messages';
 import { CalendarForm } from './form';
-import { localInput, formatInstant, eventOnDay } from './logic';
+import { localInput, formatInstant } from './logic';
 import type { Reservation } from './models';
 export async function ReservationsPage({
   homeId,
@@ -33,43 +40,17 @@ export async function ReservationsPage({
         {r.error.code === '42P01' || r.error.code === 'PGRST205' ? t.migration : t.error}
       </p>
     );
-  const [resources, reservations, members] = await Promise.all([
-    calendarRows(db.from('resources').select('*').eq('home_id', homeId).order('name').order('id')),
-    calendarRows(
-      db.from('reservations').select('*').eq('home_id', homeId).order('starts_at').order('id'),
-    ),
-    getMembers(homeId),
-  ]);
   const view = typeof search.view === 'string' ? search.view : 'upcoming',
     day = typeof search.day === 'string' && validDate(search.day) ? search.day : today,
-    resource = typeof search.resource === 'string' ? search.resource : '';
-  const onDay = (b: Reservation) =>
-    eventOnDay(
-      {
-        id: b.id,
-        sourceId: b.id,
-        sourceType: 'reservations',
-        title: b.title,
-        startsAt: b.starts_at,
-        endsAt: b.ends_at,
-        allDay: false,
-        status: 'scheduled',
-        people: [],
-        names: [],
-        href: '',
-      },
-      day,
-      home.timezone,
-    );
-  const shown = reservations.filter(
-    (b) =>
-      (!resource || b.resource_id === resource) &&
-      (view === 'all' ||
-        (view === 'history'
-          ? !!b.cancelled_at || Date.parse(b.ends_at) <= Date.parse(now)
-          : !b.cancelled_at &&
-            (view === 'day' ? onDay(b) : Date.parse(b.ends_at) > Date.parse(now)))),
-  );
+    resource = typeof search.resource === 'string' ? search.resource : '',
+    item = calendarItem(search.item),
+    page = item ? 0 : calendarPageIndex(search.page),
+    base = `/homes/${homeId}/organization/reservations`;
+  const [resources, { rows: shown, hasMore }, members] = await Promise.all([
+    calendarRows(db.from('resources').select('*').eq('home_id', homeId).order('name').order('id')),
+    readReservationPage(db, homeId, { view, day, resource, now, page, item }),
+    getMembers(homeId),
+  ]);
   const fields = (b?: Reservation) => (
     <>
       <label>
@@ -123,19 +104,121 @@ export async function ReservationsPage({
   );
   return (
     <div className="organization">
-      <header className="page-head">
-        <div>
-          <h1>{t.reservations}</h1>
-          <p>
-            {t.timezone}: <strong>{home.timezone}</strong>
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title={t.reservations}
+        description={`${t.timezone}: ${home.timezone}`}
+        action={
+          <OrganizationOptions homeId={homeId} locale={locale} tab="reservations">
+            <SectionDisclosure
+              title={t.manageResources}
+              defaultOpen={!resources.some((x) => x.active)}
+              id="reservation-settings"
+            >
+              <p>{t.timeHelp}</p>
+              <p>{t.resourceHelp}</p>
+              <CalendarForm
+                homeId={homeId}
+                operation="initialize"
+                id={crypto.randomUUID()}
+                locale={locale}
+                label={t.initialize}
+              />
+              <details>
+                <summary>{t.newResource}</summary>
+                <CalendarForm
+                  homeId={homeId}
+                  operation="resource"
+                  id={crypto.randomUUID()}
+                  locale={locale}
+                  label={t.save}
+                >
+                  <label>
+                    {t.name}
+                    <input name="name" required maxLength={100} />
+                  </label>
+                  <label>
+                    {t.description}
+                    <textarea name="description" maxLength={2000} />
+                  </label>
+                  <label className="checkbox">
+                    <input name="active" type="checkbox" defaultChecked />
+                    {t.active}
+                  </label>
+                </CalendarForm>
+              </details>
+              {resources.map((x) => (
+                <details key={x.id}>
+                  <summary>
+                    {x.name} · {x.active ? t.active : t.inactive}
+                  </summary>
+                  <CalendarForm
+                    homeId={homeId}
+                    operation="resource"
+                    id={x.id}
+                    version={x.version}
+                    locale={locale}
+                    label={t.save}
+                  >
+                    <label>
+                      {t.name}
+                      <input name="name" required maxLength={100} defaultValue={x.name} />
+                    </label>
+                    <label>
+                      {t.description}
+                      <textarea name="description" maxLength={2000} defaultValue={x.description} />
+                    </label>
+                    <label className="checkbox">
+                      <input name="active" type="checkbox" defaultChecked={x.active} />
+                      {t.active}
+                    </label>
+                  </CalendarForm>
+                </details>
+              ))}
+            </SectionDisclosure>
+            <SectionDisclosure
+              title={t.availability}
+              kind="filters"
+              defaultOpen={view !== 'upcoming' || Boolean(resource)}
+            >
+              <form className="form" method="get">
+                <div className="form-row">
+                  <label>
+                    {t.filter}
+                    <select name="view" defaultValue={view}>
+                      <option value="upcoming">{t.upcoming}</option>
+                      <option value="day">{t.day}</option>
+                      <option value="history">{t.history}</option>
+                      <option value="all">
+                        {t.history} + {t.upcoming}
+                      </option>
+                    </select>
+                  </label>
+                  <label>
+                    {t.day}
+                    <input name="day" type="date" defaultValue={day} />
+                  </label>
+                  <label>
+                    {t.resource}
+                    <select name="resource" defaultValue={resource}>
+                      <option value="">{t.allResources}</option>
+                      {resources.map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <button className="button">{t.filter}</button>
+              </form>
+            </SectionDisclosure>
+          </OrganizationOptions>
+        }
+      />
       <OrganizationNav homeId={homeId} locale={locale} tab="reservations" />
       <Link className="text-link" href={`/homes/${homeId}/calendar`}>
         {t.calendar} →
       </Link>
-      <p>{t.reservationHelp}</p>
       {resources.some((x) => x.active) ? (
         <CreatePanel
           title={t.newReservation}
@@ -143,6 +226,7 @@ export async function ReservationsPage({
           id="create-reservation"
           defaultOpen={search.create === 'reservation'}
         >
+          <p>{t.reservationHelp}</p>
           <CalendarForm
             homeId={homeId}
             operation="reservation"
@@ -157,109 +241,20 @@ export async function ReservationsPage({
       ) : (
         <p className="notice">{t.noResources}</p>
       )}
-      <SectionDisclosure
-        title={t.manageResources}
-        defaultOpen={!resources.some((x) => x.active)}
-        id="reservation-settings"
-      >
-        <p>{t.timeHelp}</p>
-        <p>{t.resourceHelp}</p>
-        <CalendarForm
-          homeId={homeId}
-          operation="initialize"
-          id={crypto.randomUUID()}
-          locale={locale}
-          label={t.initialize}
-        />
-        <details>
-          <summary>{t.newResource}</summary>
-          <CalendarForm
-            homeId={homeId}
-            operation="resource"
-            id={crypto.randomUUID()}
-            locale={locale}
-            label={t.save}
-          >
-            <label>
-              {t.name}
-              <input name="name" required maxLength={100} />
-            </label>
-            <label>
-              {t.description}
-              <textarea name="description" maxLength={2000} />
-            </label>
-            <label className="checkbox">
-              <input name="active" type="checkbox" defaultChecked />
-              {t.active}
-            </label>
-          </CalendarForm>
-        </details>
-        {resources.map((x) => (
-          <details key={x.id}>
-            <summary>
-              {x.name} · {x.active ? t.active : t.inactive}
-            </summary>
-            <CalendarForm
-              homeId={homeId}
-              operation="resource"
-              id={x.id}
-              version={x.version}
-              locale={locale}
-              label={t.save}
-            >
-              <label>
-                {t.name}
-                <input name="name" required maxLength={100} defaultValue={x.name} />
-              </label>
-              <label>
-                {t.description}
-                <textarea name="description" maxLength={2000} defaultValue={x.description} />
-              </label>
-              <label className="checkbox">
-                <input name="active" type="checkbox" defaultChecked={x.active} />
-                {t.active}
-              </label>
-            </CalendarForm>
-          </details>
-        ))}
-      </SectionDisclosure>
-      <SectionDisclosure
-        title={t.availability}
-        kind="filters"
-        defaultOpen={view !== 'upcoming' || Boolean(resource)}
-      >
-        <form className="form" method="get">
-          <div className="form-row">
-            <label>
-              {t.filter}
-              <select name="view" defaultValue={view}>
-                <option value="upcoming">{t.upcoming}</option>
-                <option value="day">{t.day}</option>
-                <option value="history">{t.history}</option>
-                <option value="all">
-                  {t.history} + {t.upcoming}
-                </option>
-              </select>
-            </label>
-            <label>
-              {t.day}
-              <input name="day" type="date" defaultValue={day} />
-            </label>
-            <label>
-              {t.resource}
-              <select name="resource" defaultValue={resource}>
-                <option value="">{t.allResources}</option>
-                {resources.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <button className="button">{t.filter}</button>
-        </form>
-      </SectionDisclosure>
+      {(view !== 'upcoming' || Boolean(resource)) && (
+        <p>
+          {t.availability}:{' '}
+          {view === 'history'
+            ? t.history
+            : view === 'all'
+              ? `${t.history} + ${t.upcoming}`
+              : view === 'day'
+                ? `${t.day} ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`))}`
+                : t.upcoming}
+          {' · '}
+          {resources.find((x) => x.id === resource)?.name ?? t.allResources}
+        </p>
+      )}
       {!shown.length && <EmptyState title={t.noReservations} />}
       {shown.map((b) => (
         <article className="panel" key={b.id} id={`reservation-${b.id}`}>
@@ -312,6 +307,20 @@ export async function ReservationsPage({
           )}
         </article>
       ))}
+      {(page > 0 || hasMore) && (
+        <nav className="row wrap" aria-label={t.pages}>
+          {page > 0 && (
+            <Link className="button secondary" href={calendarPageHref(base, search, page - 1)}>
+              {t.previousPage}
+            </Link>
+          )}
+          {hasMore && (
+            <Link className="button secondary" href={calendarPageHref(base, search, page + 1)}>
+              {t.nextPage}
+            </Link>
+          )}
+        </nav>
+      )}
     </div>
   );
 }

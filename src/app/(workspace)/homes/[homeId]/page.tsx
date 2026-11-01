@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { getMembers, requireUser, signedImage } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { OrganizationSummary } from '@/features/organization/summary';
+import { UpcomingEvent } from '@/components/ui/upcoming-event';
 export default async function HomePage({ params }: { params: Promise<{ homeId: string }> }) {
   const { homeId } = await params;
   const [members, { user }, { t, locale }] = await Promise.all([
@@ -20,18 +21,19 @@ export default async function HomePage({ params }: { params: Promise<{ homeId: s
         title={t.dashboard}
         description={members.length === 1 ? t.workspaceBody : undefined}
         action={
-          <Link className="button secondary" href={`/homes/${homeId}/settings#invitation`}>
+          <Link className="text-link" href={`/homes/${homeId}/settings#invitation`}>
             <UserPlus size={18} aria-hidden="true" />
             {t.invitePeople}
           </Link>
         }
       />
-      <QuickActions homeId={homeId} locale={locale} label={t.dashboard} />
       <div className="dashboard-summaries">
         <OrganizationSummary homeId={homeId} />
         <ExpenseSummary homeId={homeId} />
+        <UpcomingEvent homeId={homeId} />
         <CommunitySummary homeId={homeId} />
       </div>
+      <QuickActions homeId={homeId} locale={locale} label={t.dashboard} />
       <div className="dashboard-people">
         <section className="panel">
           <div className="section-heading">

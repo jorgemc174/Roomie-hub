@@ -1,4 +1,5 @@
 import { receiptExtension } from '../src/features/expenses/receipts';
+import { PDFDocument } from 'pdf-lib';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -547,11 +548,16 @@ test('PostgreSQL finances, history, recurrences, isolation and receipts', async 
   }
 });
 
-test('receipt signatures, type and size must agree', () => {
-  const pdf = new TextEncoder().encode('%PDF-1.7');
-  assert.equal(receiptExtension('application/pdf', 100, pdf), 'pdf');
-  assert.equal(receiptExtension('application/pdf', 10485761, pdf), null);
-  assert.equal(receiptExtension('application/x-msdownload', 100, pdf), null);
-  assert.equal(receiptExtension('image/png', 100, pdf), null);
-  assert.equal(receiptExtension('application/pdf', 100, new TextEncoder().encode('MZexe')), null);
+test('receipt signatures, type and size must agree', async () => {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+  const pdf = await doc.save();
+  assert.equal(await receiptExtension('application/pdf', pdf.length, pdf), 'pdf');
+  assert.equal(await receiptExtension('application/pdf', 10485761, pdf), null);
+  assert.equal(await receiptExtension('application/x-msdownload', pdf.length, pdf), null);
+  assert.equal(await receiptExtension('image/png', pdf.length, pdf), null);
+  assert.equal(
+    await receiptExtension('application/pdf', 100, new TextEncoder().encode('MZexe')),
+    null,
+  );
 });

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { Settings2, ArrowLeft } from 'lucide-react';
-import { ViewFilter } from '@/components/view-filter';
+import { ArrowLeft } from 'lucide-react';
+import { SectionDisclosure } from '@/components/section-disclosure';
 import type { Locale } from '@/lib/i18n/dictionaries';
 import { organizationMessages } from './messages';
 
@@ -10,6 +10,7 @@ export function TaskNavigation({
   locale,
   view,
   from,
+  today = from,
   returnView = 'mine',
   children,
 }: {
@@ -17,12 +18,22 @@ export function TaskNavigation({
   locale: Locale;
   view: string;
   from: string;
+  today?: string;
   returnView?: string;
   children: ReactNode;
 }) {
   const t = organizationMessages(locale),
     base = `/homes/${homeId}/organization`,
-    previous = returnView === 'all' || returnView === 'cancelled' ? returnView : 'mine';
+    previous = returnView === 'all' || returnView === 'cancelled' ? returnView : 'mine',
+    activeView = view === 'all' || view === 'cancelled' ? view : 'mine',
+    filterSummary = [
+      ...(activeView !== 'mine' ? [t[activeView]] : []),
+      ...(from !== today
+        ? [
+            `${t.from} ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${from}T00:00:00Z`))}`,
+          ]
+        : []),
+    ].join(' · ');
   return (
     <div className="section-heading task-toolbar">
       <div className="task-view-controls">
@@ -35,23 +46,30 @@ export function TaskNavigation({
             {t.backToTasks}
           </Link>
         ) : (
-          <>
-            <ViewFilter
-              label={t.tasks}
-              value={`${base}?view=${view}&from=${from}`}
-              options={(['mine', 'all', 'cancelled'] as const).map((key) => ({
-                href: `${base}?view=${key}&from=${from}`,
-                label: t[key],
-              }))}
-            />
-            <Link
-              className="text-link section-settings"
-              href={`${base}?view=manage&from=${from}&returnView=${view === 'all' || view === 'cancelled' ? view : 'mine'}`}
-            >
-              <Settings2 size={16} aria-hidden="true" />
-              {t.manage}
-            </Link>
-          </>
+          <SectionDisclosure
+            title={filterSummary ? `${t.filters} · ${filterSummary}` : t.filters}
+            kind="filters"
+          >
+            <form className="form" action={base} method="get">
+              <label>
+                {t.view}
+                <select name="view" defaultValue={activeView}>
+                  {(['mine', 'all', 'cancelled'] as const).map((key) => (
+                    <option key={key} value={key}>
+                      {t[key]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {t.from}
+                <input name="from" type="date" defaultValue={from} required />
+              </label>
+              <button className="button secondary" type="submit">
+                {t.apply}
+              </button>
+            </form>
+          </SectionDisclosure>
         )}
       </div>
       {children}

@@ -1,12 +1,19 @@
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
-import { CommunityNav } from '@/features/community/nav';
+import { PageHeader } from '@/components/ui/page-header';
+import { CommunityNav, CommunityOptions } from '@/features/community/nav';
 import Link from 'next/link';
 import { getHome, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { homeDate } from '@/lib/timezones';
 import { addDays } from '@/features/organization/logic';
-import { calendarRows } from './queries';
+import {
+  readActivityPage,
+  readActivityMembers,
+  calendarPageIndex,
+  calendarPageHref,
+  calendarItem,
+} from './queries';
 import { calendarMessages } from './messages';
 import { CalendarForm } from './form';
 import { localInput, formatInstant } from './logic';
@@ -24,7 +31,7 @@ export async function ActivitiesPage({
     t = calendarMessages(locale),
     tomorrow = addDays(homeDate(home.timezone), 1),
     base = `/homes/${homeId}/community/activities`,
-    now = new Date().getTime();
+    now = new Date().toISOString();
   const check = await db.from('activities').select('id').eq('home_id', homeId).limit(1);
   if (check.error)
     return (
@@ -32,27 +39,15 @@ export async function ActivitiesPage({
         {check.error.code === '42P01' || check.error.code === 'PGRST205' ? t.migration : t.error}
       </p>
     );
-  const [activities, members] = await Promise.all([
-    calendarRows(
-      db.from('activities').select('*').eq('home_id', homeId).order('starts_at').order('id'),
-    ),
-    calendarRows(
-      db
-        .from('activity_members')
-        .select('*')
-        .eq('home_id', homeId)
-        .order('activity_id')
-        .order('user_id'),
-    ),
-  ]);
   const view = typeof search.view === 'string' ? search.view : 'upcoming',
-    shown = activities.filter(
-      (a) =>
-        view === 'all' ||
-        (view === 'history'
-          ? !!a.cancelled_at || Date.parse(a.ends_at ?? a.starts_at) <= now
-          : !a.cancelled_at && Date.parse(a.ends_at ?? a.starts_at) > now),
-    );
+    item = calendarItem(search.item),
+    page = item ? 0 : calendarPageIndex(search.page);
+  const { rows: shown, hasMore } = await readActivityPage(db, homeId, { view, now, page, item });
+  const members = await readActivityMembers(
+    db,
+    homeId,
+    shown.map((a) => a.id),
+  );
   const fields = (a?: Activity) => (
     <>
       <label>
@@ -86,23 +81,34 @@ export async function ActivitiesPage({
           defaultValue={a?.ends_at ? localInput(a.ends_at, home.timezone) : ''}
         />
       </label>
+      <details className="ui-help">
+        <summary>
+          {t.timezone}: {home.timezone}
+        </summary>
+        <p>{t.timeHelp}</p>
+      </details>
     </>
   );
   return (
     <div className="organization">
-      <header className="page-head">
-        <div>
-          <h1>{t.activities}</h1>
-          <p>
-            {t.timezone}: <strong>{home.timezone}</strong>
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title={t.activities}
+        action={
+          <CommunityOptions homeId={homeId} locale={locale} tab="activities">
+            <Link href={base} aria-current={view === 'upcoming' ? 'page' : undefined}>
+              {t.upcoming}
+            </Link>
+            <Link
+              href={`${base}?view=history`}
+              aria-current={view === 'history' ? 'page' : undefined}
+            >
+              {t.history}
+            </Link>
+            <Link href={`/homes/${homeId}/calendar`}>{t.calendar}</Link>
+          </CommunityOptions>
+        }
+      />
       <CommunityNav homeId={homeId} locale={locale} tab="activities" />
-      <details className="ui-help">
-        <summary>{t.timezone}</summary>
-        <p>{t.timeHelp}</p>
-      </details>
       <CreatePanel
         title={t.newActivity}
         closeLabel={ui.closePanel}
@@ -121,17 +127,7 @@ export async function ActivitiesPage({
           {fields()}
         </CalendarForm>
       </CreatePanel>
-      <nav className="filter-links" aria-label={t.filter}>
-        <Link href={base} aria-current={view === 'upcoming' ? 'page' : undefined}>
-          {t.upcoming}
-        </Link>
-        <Link href={`${base}?view=history`} aria-current={view === 'history' ? 'page' : undefined}>
-          {t.history}
-        </Link>
-        <Link className="text-link" href={`/homes/${homeId}/calendar`}>
-          {t.calendar} →
-        </Link>
-      </nav>
+      <h2>{view === 'history' ? t.history : view === 'all' ? t.activities : t.upcoming}</h2>
       {!shown.length && <EmptyState title={t.noActivities} />}
       {shown.map((a) => {
         const participants = members.filter((m) => m.activity_id === a.id && m.attending),
@@ -162,7 +158,7 @@ export async function ActivitiesPage({
               <p className="badge">{t.cancelled}</p>
             ) : (
               <>
-                {Date.parse(a.ends_at ?? a.starts_at) > now && (
+                {Date.parse(a.ends_at ?? a.starts_at) > Date.parse(now) && (
                   <CalendarForm
                     homeId={homeId}
                     operation="attend"
@@ -209,6 +205,20 @@ export async function ActivitiesPage({
           </article>
         );
       })}
+      {(page > 0 || hasMore) && (
+        <nav className="row wrap" aria-label={t.pages}>
+          {page > 0 && (
+            <Link className="button secondary" href={calendarPageHref(base, search, page - 1)}>
+              {t.previousPage}
+            </Link>
+          )}
+          {hasMore && (
+            <Link className="button secondary" href={calendarPageHref(base, search, page + 1)}>
+              {t.nextPage}
+            </Link>
+          )}
+        </nav>
+      )}
     </div>
   );
 }

@@ -35,6 +35,14 @@ function transport(options: { fail?: string; large?: string } = {}) {
           filters.push(['is', ...args]);
           return query;
         },
+        not(...args: unknown[]) {
+          filters.push(['not', ...args]);
+          return query;
+        },
+        in(...args: unknown[]) {
+          filters.push(['in', ...args]);
+          return query;
+        },
         order(...args: unknown[]) {
           filters.push(['order', ...args]);
           return query;
@@ -109,6 +117,34 @@ test('visible organization data remains fully paginated and reports actual read 
   );
   const tasks = await readOrganizationRows(db, 'home-example', 'tasks', '2026-10-01', '2026-10-31');
   assert.equal(tasks.chores.error?.code, 'test');
+});
+
+test('assignment history batches only visible instance IDs and preserves read failures', async () => {
+  const { db, reads } = transport({ large: 'chore_instances' });
+  await readOrganizationRows(db, 'home-example', 'tasks', '2026-10-01', '2026-10-31');
+  const history = reads.filter((r) => r.table === 'chore_assignment_events');
+  assert.equal(history.length, 6);
+  const batches = history.map((r) => r.filters.find((f) => f[0] === 'in')?.[2] as string[]);
+  assert.ok(batches.every((batch) => batch.length <= 100));
+  assert.equal(new Set(batches.flat()).size, 502);
+  const longHistory = transport({ large: 'chore_assignment_events' });
+  const full = await readOrganizationRows(
+    longHistory.db,
+    'home-example',
+    'tasks',
+    '2026-10-01',
+    '2026-10-31',
+  );
+  assert.equal(full.events.data?.length, 502);
+  const failure = transport({ fail: 'chore_assignment_events' });
+  const result = await readOrganizationRows(
+    failure.db,
+    'home-example',
+    'tasks',
+    '2026-10-01',
+    '2026-10-31',
+  );
+  assert.equal(result.events.error?.code, 'test');
 });
 
 test('community avoids unrelated histories and keeps home scoping', async () => {

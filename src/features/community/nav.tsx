@@ -1,8 +1,17 @@
 import Link from 'next/link';
-import { Settings2 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { SectionTabs } from '@/components/section-tabs';
+import { OptionsMenu } from '@/components/ui/options-menu';
 import type { Locale } from '@/lib/i18n/dictionaries';
 import { communityMessages } from './messages';
+
+export function communityTab(value: string | string[] | undefined) {
+  return typeof value === 'string' &&
+    ['points', 'punishments', 'ranking', 'reasons'].includes(value)
+    ? value
+    : 'ranking';
+}
+
 export function CommunityNav({
   homeId,
   locale,
@@ -17,7 +26,7 @@ export function CommunityNav({
     <div className="section-navigation">
       <SectionTabs
         label={t.title}
-        items={(['points', 'punishments', 'ranking', 'activities'] as const).map((key) => ({
+        items={(['ranking', 'points', 'punishments', 'activities'] as const).map((key) => ({
           href:
             key === 'activities'
               ? `/homes/${homeId}/community/activities`
@@ -26,14 +35,31 @@ export function CommunityNav({
           current: tab === key,
         }))}
       />
+    </div>
+  );
+}
+
+export function CommunityOptions({
+  homeId,
+  locale,
+  tab,
+  children,
+}: {
+  homeId: string;
+  locale: Locale;
+  tab: string;
+  children?: ReactNode;
+}) {
+  const t = communityMessages(locale);
+  return (
+    <OptionsMenu label={`${t.title}: ${t.options}`}>
       <Link
-        className="section-settings text-link"
         href={`/homes/${homeId}/community?tab=reasons`}
         aria-current={tab === 'reasons' ? 'page' : undefined}
       >
-        <Settings2 size={16} aria-hidden="true" />
         {t.configureReasons}
       </Link>
-    </div>
+      {children}
+    </OptionsMenu>
   );
 }

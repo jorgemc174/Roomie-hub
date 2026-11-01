@@ -39,7 +39,7 @@ textarea {
   padding: 8px 0;
   font-weight: 600;
 }
-.organization details[open] > summary {
+.organization details[open]:not(.ui-options-menu) > summary {
   margin-bottom: 16px;
 }
 .org-disclosure {
@@ -105,16 +105,15 @@ textarea {
   gap: 12px;
 }
 .products li {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  flex-wrap: wrap;
   gap: 12px;
   border-bottom: 1px solid var(--line);
   padding: 12px 0;
 }
 .products li > div {
-  flex: 1;
-  min-width: 140px;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 .products small {
@@ -148,6 +147,12 @@ textarea {
   }
   .products .form {
     width: 100%;
+  }
+  .products li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .products li > div {
+    grid-column: 1 / -1;
   }
   .organization .form-row {
     grid-template-columns: 1fr;

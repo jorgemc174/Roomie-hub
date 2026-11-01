@@ -1,6 +1,9 @@
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ExpensesNav } from './nav';
+import { ExpensesNav, ExpensesOptions } from './nav';
+import { OptionsMenu } from '@/components/ui/options-menu';
+import { PageHeader } from '@/components/ui/page-header';
+import { PendingOccurrence } from './pending-occurrence';
 import { SectionDisclosure } from '@/components/section-disclosure';
 import Link from 'next/link';
 import { getHome, getMembers, requireUser } from '@/lib/data';
@@ -236,19 +239,29 @@ export async function ExpensesPage({
     }
   }
   return (
-    <div className="stack">
-      <header className="page-head">
-        <h1>{t.title}</h1>
-        <span className="badge">{home.currency}</span>
-      </header>
-      <section className="panel balance-panel">
-        <h2>{t.balance}</h2>
+    <div className="stack expenses">
+      <PageHeader
+        title={t.title}
+        action={
+          <ExpensesOptions homeId={homeId} locale={locale} tab={tab}>
+            <ActionForm
+              action={financeAction.bind(null, homeId, 'generate')}
+              label={t.generate}
+              pendingLabel={t.saving}
+              secondary
+            />
+          </ExpensesOptions>
+        }
+      />
+      <p className="expense-balance row wrap">
+        <span className="sr-only">{t.balance}: </span>
         <strong>
           {BigInt(me) === 0n
             ? t.zero
             : `${BigInt(me) > 0n ? t.owed : t.owe} ${formatMoney(BigInt(me) < 0n ? -BigInt(me) : me, home.currency, locale)}`}
         </strong>
-      </section>
+        <span className="badge">{home.currency}</span>
+      </p>
       <ExpensesNav homeId={homeId} locale={locale} tab={tab} />
       {tab === 'expenses' && (
         <>
@@ -282,72 +295,80 @@ export async function ExpensesPage({
           {expenses
             .filter((e) => !e.deleted_at)
             .map((e) => (
-              <section className="panel" key={e.id}>
-                <div className="section-heading">
-                  <h2>{e.title}</h2>
-                  <strong>{formatMoney(e.amount, e.currency, locale)}</strong>
+              <section className="panel" key={e.id} id={`expense-${e.id}`}>
+                <div className="section-heading options-heading">
+                  <div>
+                    <h2>{e.title}</h2>
+                    <strong>{formatMoney(e.amount, e.currency, locale)}</strong>
+                  </div>
+                  <OptionsMenu label={`${e.title}: ${t.options}`}>
+                    <details>
+                      <summary>{t.edit}</summary>
+                      <ExpenseForm
+                        {...props}
+                        id={e.id}
+                        version={e.version}
+                        initial={bodyFor(e, splits)}
+                        members={[
+                          ...people,
+                          ...splits
+                            .filter(
+                              (s) =>
+                                s.expense_id === e.id && !people.some((p) => p.id === s.user_id),
+                            )
+                            .map((s) => ({ id: s.user_id, name: `${s.user_name} · ${t.former}` })),
+                          ...(!people.some((p) => p.id === e.payer) &&
+                          !splits.some((s) => s.expense_id === e.id && s.user_id === e.payer)
+                            ? [{ id: e.payer, name: `${e.payer_name} · ${t.former}` }]
+                            : []),
+                        ]}
+                      />
+                    </details>
+                    <details>
+                      <summary>{t.delete}</summary>
+                      <ActionForm
+                        action={financeAction.bind(null, homeId, 'delete')}
+                        label={t.delete}
+                        pendingLabel={t.saving}
+                        danger
+                      >
+                        <input type="hidden" name="id" value={e.id} />
+                        <input type="hidden" name="version" value={e.version} />
+                        <label className="checkbox">
+                          <input type="checkbox" name="confirm" required />
+                          {t.confirmDelete}
+                        </label>
+                      </ActionForm>
+                    </details>
+                  </OptionsMenu>
                 </div>
                 <p>
                   {date(e.expense_date)} · {e.payer_name} · {categoryNames[locale][e.category]}
                 </p>
-                <ul>
-                  {splits
-                    .filter((s) => s.expense_id === e.id)
-                    .map((s) => (
-                      <li key={s.user_id}>
-                        {s.user_name}: {formatMoney(s.amount, e.currency, locale)}
-                      </li>
+                <details>
+                  <summary>{t.details}</summary>
+                  <ul>
+                    {splits
+                      .filter((s) => s.expense_id === e.id)
+                      .map((s) => (
+                        <li key={s.user_id}>
+                          {s.user_name}: {formatMoney(s.amount, e.currency, locale)}
+                        </li>
+                      ))}
+                  </ul>
+                  {receipts
+                    .filter((r) => r.expense_id === e.id)
+                    .map((r) => (
+                      <p key={r.id}>
+                        <Link
+                          href={`${base}/receipt/${r.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {t.download}
+                        </Link>
+                      </p>
                     ))}
-                </ul>
-                {receipts
-                  .filter((r) => r.expense_id === e.id)
-                  .map((r) => (
-                    <p key={r.id}>
-                      <Link
-                        href={`${base}/receipt/${r.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {t.download}
-                      </Link>
-                    </p>
-                  ))}
-                <details>
-                  <summary>{t.edit}</summary>
-                  <ExpenseForm
-                    {...props}
-                    id={e.id}
-                    version={e.version}
-                    initial={bodyFor(e, splits)}
-                    members={[
-                      ...people,
-                      ...splits
-                        .filter(
-                          (s) => s.expense_id === e.id && !people.some((p) => p.id === s.user_id),
-                        )
-                        .map((s) => ({ id: s.user_id, name: `${s.user_name} · ${t.former}` })),
-                      ...(!people.some((p) => p.id === e.payer) &&
-                      !splits.some((s) => s.expense_id === e.id && s.user_id === e.payer)
-                        ? [{ id: e.payer, name: `${e.payer_name} · ${t.former}` }]
-                        : []),
-                    ]}
-                  />
-                </details>
-                <details>
-                  <summary>{t.delete}</summary>
-                  <ActionForm
-                    action={financeAction.bind(null, homeId, 'delete')}
-                    label={t.delete}
-                    pendingLabel={t.saving}
-                    danger
-                  >
-                    <input type="hidden" name="id" value={e.id} />
-                    <input type="hidden" name="version" value={e.version} />
-                    <label className="checkbox">
-                      <input type="checkbox" name="confirm" required />
-                      {t.confirmDelete}
-                    </label>
-                  </ActionForm>
                 </details>
               </section>
             ))}
@@ -355,27 +376,6 @@ export async function ExpensesPage({
       )}
       {tab === 'balances' && (
         <>
-          <section className="panel">
-            <h2>{t.balances}</h2>
-            {balances.map((b) => (
-              <p key={b.user_id}>
-                {b.name}
-                {b.active ? '' : ` · ${t.former}`}{' '}
-                <strong>{formatMoney(b.balance, home.currency, locale)}</strong>
-              </p>
-            ))}
-          </section>
-          <section className="panel">
-            <h2>{t.suggestions}</h2>
-            <p>{t.suggestionHelp}</p>
-            {suggestions.map((p, i) => (
-              <p key={i}>
-                {balances.find((b) => b.user_id === p.from)?.name} →{' '}
-                {balances.find((b) => b.user_id === p.to)?.name}:{' '}
-                <strong>{formatMoney(p.amount, home.currency, locale)}</strong>
-              </p>
-            ))}
-          </section>
           <CreatePanel
             title={t.recordPayment}
             closeLabel={ui.closePanel}
@@ -428,6 +428,27 @@ export async function ExpensesPage({
               </label>
             </ActionForm>
           </CreatePanel>
+          <section className="panel">
+            <h2>{t.balances}</h2>
+            {balances.map((b) => (
+              <p key={b.user_id}>
+                {b.name}
+                {b.active ? '' : ` · ${t.former}`}{' '}
+                <strong>{formatMoney(b.balance, home.currency, locale)}</strong>
+              </p>
+            ))}
+          </section>
+          <section className="panel">
+            <h2>{t.suggestions}</h2>
+            <p>{t.suggestionHelp}</p>
+            {suggestions.map((p, i) => (
+              <p key={i}>
+                {balances.find((b) => b.user_id === p.from)?.name} →{' '}
+                {balances.find((b) => b.user_id === p.to)?.name}:{' '}
+                <strong>{formatMoney(p.amount, home.currency, locale)}</strong>
+              </p>
+            ))}
+          </section>
           <SectionDisclosure
             title={t.payments}
             kind="history"
@@ -448,13 +469,6 @@ export async function ExpensesPage({
         <>
           <p>{t.recurrenceHelp}</p>
           {generated.data.more && <p className="notice">{t.more}</p>}
-          <SectionDisclosure title={t.generate} defaultOpen={generated.data.more}>
-            <ActionForm
-              action={financeAction.bind(null, homeId, 'generate')}
-              label={t.generate}
-              pendingLabel={t.saving}
-            />
-          </SectionDisclosure>
           <CreatePanel
             title={t.newRecurring}
             closeLabel={ui.closePanel}
@@ -466,11 +480,7 @@ export async function ExpensesPage({
           {occurrences
             .filter((i) => i.status === 'pending')
             .map((i) => (
-              <section className="panel" key={i.id} id={`occurrence-${i.id}`}>
-                <h2>
-                  {i.template.title} · {date(i.period_date)}
-                </h2>
-                <p>{t.pending}</p>
+              <PendingOccurrence key={i.id} occurrence={i} currency={home.currency} locale={locale}>
                 <ExpenseForm
                   {...props}
                   operation="confirm"
@@ -486,7 +496,7 @@ export async function ExpensesPage({
                     ),
                   }}
                 />
-              </section>
+              </PendingOccurrence>
             ))}
           {recurring.map((r) => (
             <details className="panel" key={r.id} id={`recurring-${r.id}`}>

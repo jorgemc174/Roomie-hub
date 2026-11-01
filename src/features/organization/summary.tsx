@@ -40,16 +40,18 @@ export async function OrganizationSummary({ homeId }: { homeId: string }) {
         </p>
       ) : (
         <div className="summary-counts">
-          <Link href={`/homes/${homeId}/organization`}>
-            <strong>{tasks.data?.length ?? 0}</strong>
-            {t.pendingTasks}
-          </Link>
-          <Link href={`/homes/${homeId}/organization`}>
-            <strong>
-              {tasks.data?.filter((i) => i.deadline_at && Date.parse(i.deadline_at) < now).length ??
-                0}
-            </strong>
-            {t.overdueTasks}
+          <Link className="summary-task-counts" href={`/homes/${homeId}/organization`}>
+            <span>
+              <strong>{tasks.data?.length ?? 0}</strong>
+              {t.pendingTasks}
+            </span>
+            <span>
+              <strong>
+                {tasks.data?.filter((i) => i.deadline_at && Date.parse(i.deadline_at) < now)
+                  .length ?? 0}
+              </strong>
+              {t.overdueTasks}
+            </span>
           </Link>
           <Link href={`/homes/${homeId}/organization?tab=shopping`}>
             <strong>{items.count ?? 0}</strong>
@@ -57,9 +59,11 @@ export async function OrganizationSummary({ homeId }: { homeId: string }) {
           </Link>
         </div>
       )}
-      <Link className="text-link" href={`/homes/${homeId}/organization`}>
-        {t.title} →
-      </Link>
+      {(tasks.error || items.error) && (
+        <Link className="text-link" href={`/homes/${homeId}/organization`}>
+          {t.title} →
+        </Link>
+      )}
     </section>
   );
 }
