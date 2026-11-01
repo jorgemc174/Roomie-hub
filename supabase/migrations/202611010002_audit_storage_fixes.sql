@@ -4,8 +4,8 @@ begin;
 -- download route also decodes/re-encodes, since MIME metadata is client input.
 update storage.buckets set allowed_mime_types = array['image/webp']
 where id = 'rating-photos';
-drop policy rating_photo_insert on storage.objects;
-create policy rating_photo_insert on storage.objects for insert to authenticated
+-- ALTER instead of DROP/CREATE: same result without a destructive statement.
+alter policy rating_photo_insert on storage.objects to authenticated
 with check (
   bucket_id = 'rating-photos'
   and public.rating_photo_access(name, true)

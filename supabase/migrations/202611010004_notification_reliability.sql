@@ -2,7 +2,8 @@
 begin;
 -- Assignment history is inserted after the instance update by the domain RPCs.
 -- Using its immutable UUID also distinguishes A→B→A within one transaction.
-drop trigger task_notice on public.chore_instances;
+-- Disable (not drop) the old per-instance trigger: same effect, non-destructive.
+alter table public.chore_instances disable trigger task_notice;
 create function messaging_private.assignment_notice() returns trigger
 language plpgsql security definer set search_path='' as $$
 begin
