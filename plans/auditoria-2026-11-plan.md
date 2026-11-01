@@ -25,3 +25,8 @@ Reparto: Claude coordina/revisa; Codex implementa. Migraciones siempre aditivas 
 
 ## Criterio de cierre por fase
 typecheck + lint + test (+ test:db si toca SQL) + build en verde; revisión de diff por Claude.
+
+## Cierre (2026-11-01)
+- [x] Migraciones 202611010001-005 aplicadas y verificadas en Supabase (002/004 sin DROP).
+- [x] Integrado en master (fast-forward) y subido.
+- [ ] Pendiente: revisión visual con datos reales (requiere sesión del usuario).
