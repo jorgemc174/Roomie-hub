@@ -1,5 +1,5 @@
 'use server';
-import { receiptExtension } from './receipts';
+import { receiptFile } from './receipts';
 import { revalidatePath } from 'next/cache';
 import { redirect, unstable_rethrow } from 'next/navigation';
 import { getHome, requireUser } from '@/lib/data';
@@ -132,15 +132,17 @@ export async function financeAction(
         body.shopping_list_id = list;
       }
       const file = form.get('receipt');
-      let attachment: { file: File; extension: string } | undefined;
+      let attachment: { body: Blob; type: string; size: number; extension: string } | undefined;
       if (file instanceof File && file.size) {
         if (file.size > 10485760) return { error: t.receiptInvalid };
         const bytes = new Uint8Array(
           await (file.type === 'application/pdf' ? file : file.slice(0, 16)).arrayBuffer(),
         );
-        const ext = await receiptExtension(file.type, file.size, bytes);
-        if (!ext) return { error: t.receiptInvalid };
-        attachment = { file, extension: ext };
+        const checked = await receiptFile(file.type, file.size, bytes);
+        if (!checked) return { error: t.receiptInvalid };
+        // PDFs: upload the sanitized re-serialization, not the original bytes.
+        const body = checked.bytes ? new Blob([checked.bytes], { type: file.type }) : file;
+        attachment = { body, type: file.type, size: body.size, extension: checked.extension };
       }
       if (operation === 'recurring') {
         const freq = field(form, 'frequency'),
@@ -178,15 +180,15 @@ export async function financeAction(
         const path = `${homeId}/${id}/${crypto.randomUUID()}.${attachment.extension}`;
         const upload = await db.storage
           .from('expense-receipts')
-          .upload(path, attachment.file, { contentType: attachment.file.type, upsert: false });
+          .upload(path, attachment.body, { contentType: attachment.type, upsert: false });
         const attached = upload.error
           ? upload
           : await db.rpc('attach_expense_receipt', {
               target: homeId,
               item: id,
               object_path: path,
-              media_type: attachment.file.type,
-              byte_size: attachment.file.size,
+              media_type: attachment.type,
+              byte_size: attachment.size,
             });
         if (attached.error) {
           if (!upload.error) await db.storage.from('expense-receipts').remove([path]);

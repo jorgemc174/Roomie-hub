@@ -5,7 +5,11 @@ export async function sanitizePdf(bytes: Uint8Array) {
   const text = Buffer.from(bytes).toString('latin1');
   if (!/^%PDF-\d\.\d[\r\n]/u.test(text) || !/[\r\n]%%EOF[\t\n\f\r ]*$/u.test(text))
     throw new Error('invalid_attachment');
-  const doc = await PDFDocument.load(bytes, { ignoreEncryption: false, updateMetadata: false });
+  const doc = await PDFDocument.load(bytes, {
+    ignoreEncryption: false,
+    updateMetadata: false,
+    throwOnInvalidObject: true,
+  });
   const forbidden = new Set([
     'JS',
     'JavaScript',

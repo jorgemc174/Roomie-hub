@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as cryptoModule from 'node:crypto';
 import sharp from 'sharp';
 import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
-import { receiptExtension } from '../src/features/expenses/receipts';
+import { receiptExtension, receiptFile } from '../src/features/expenses/receipts';
 import { sanitizeRatingPhoto } from '../src/features/community/photo';
 import { sanitizeChatFile } from '../src/features/chat/files';
 import { validUuid } from '../src/features/chat/logic';
@@ -196,4 +196,21 @@ test('B2: chat checks membership, quota, count and byte limits before reading/de
       }
     });
   }
+});
+
+test('receipts store the sanitized PDF re-serialization, never the uploaded bytes', async () => {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+  doc.setAuthor('Uploader name');
+  doc.setProducer('Original tool');
+  const pdf = await doc.save({ useObjectStreams: false });
+  const checked = await receiptFile('application/pdf', pdf.length, pdf);
+  assert.equal(checked?.extension, 'pdf');
+  assert.ok(checked?.bytes, 'PDF receipts must carry the bytes to store');
+  assert.notDeepEqual(Buffer.from(checked.bytes), Buffer.from(pdf));
+  const stored = await PDFDocument.load(checked.bytes, { updateMetadata: false });
+  assert.equal(stored.getAuthor(), '');
+  assert.equal(stored.getProducer(), 'RoomieHub');
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0]);
+  assert.deepEqual(await receiptFile('image/png', png.length, png), { extension: 'png' });
 });
