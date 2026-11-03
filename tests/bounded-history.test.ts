@@ -345,7 +345,7 @@ test('bounded history matches previous visible results, with old records, pagina
     );
 
     await t.test(
-      'activities paginate before reading attending members; no-end, ended and cancelled semantics persist',
+      'activities paginate before reading every response; no-end, ended and cancelled semantics persist',
       async () => {
         for (const view of ['upcoming', 'history', 'all']) {
           const expected = activities.filter(
@@ -366,7 +366,7 @@ test('bounded history matches previous visible results, with old records, pagina
             assert.deepEqual(
               participants.map((m) => `${m.activity_id}/${m.user_id}`).sort(),
               members
-                .filter((m) => m.attending && pageRows.some((a) => a.id === m.activity_id))
+                .filter((m) => pageRows.some((a) => a.id === m.activity_id))
                 .map((m) => `${m.activity_id}/${m.user_id}`)
                 .sort(),
             );

@@ -36,6 +36,8 @@ export type Activity = {
   title: string;
   description: string;
   location: string;
+  location_kind: 'home' | 'outside' | null;
+  participant_request: import('@/features/expenses/models').Json | null;
   starts_at: string;
   ends_at: string | null;
   created_by: string;
@@ -52,6 +54,7 @@ export type ActivityMember = {
   user_id: string;
   user_name: string;
   attending: boolean;
+  response: 'going' | 'maybe' | 'not_going';
   joined_at: string;
   updated_at: string;
 };
