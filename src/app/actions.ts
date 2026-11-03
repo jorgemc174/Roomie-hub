@@ -8,6 +8,7 @@ import { config as supabaseConfig } from '@/lib/supabase/config';
 import { requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { safeNext, validImage, validName } from '@/lib/validation';
+import { matchingPasswords, validAvatarFile } from '@/lib/profile-validation';
 import { validCurrency } from '@/lib/currencies';
 import { validTimezone } from '@/lib/timezones';
 import { authErrorMessage } from '@/lib/auth-errors';
@@ -35,6 +36,14 @@ export async function authAction(
 ): Promise<ActionState> {
   const { t } = await i18n();
   try {
+    if (
+      kind === 'register' &&
+      !matchingPasswords(
+        String(form.get('password') ?? ''),
+        String(form.get('password_confirmation') ?? ''),
+      )
+    )
+      return { error: t.passwordMismatch };
     const db = await supabase();
     const email = field(form, 'email');
     const password = String(form.get('password') ?? '');
@@ -140,7 +149,7 @@ async function upload(
 ): Promise<string | null> {
   const file = form.get('image');
   if (!(file instanceof File) || file.size === 0) return null;
-  if (file.size > 5242880) throw new Error('image');
+  if (bucket === 'avatars' ? !validAvatarFile(file) : file.size > 5242880) throw new Error('image');
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (!validImage(bytes, file.type)) throw new Error('image');
   const ext = file.type === 'image/png' ? 'png' : file.type === 'image/jpeg' ? 'jpg' : 'webp';
@@ -293,7 +302,8 @@ export async function profileAction(previous: ActionState, form: FormData): Prom
   } catch (error) {
     unstable_rethrow(error);
     return {
-      error: error instanceof Error && error.message === 'image' ? t.imageError : t.requestError,
+      error:
+        error instanceof Error && error.message === 'image' ? t.avatarImageError : t.requestError,
     };
   }
 }
