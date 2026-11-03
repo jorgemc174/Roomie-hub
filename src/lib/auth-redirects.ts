@@ -24,3 +24,14 @@ export function authFailurePath(next: string | null, error: 'link' | 'auth' | 'g
   const query = new URLSearchParams({ error, next: safeNext(next) });
   return `/login?${query}`;
 }
+
+export function googleCallbackFailurePath(
+  next: string | null,
+  error: string | null,
+  hasCode: boolean,
+) {
+  if (error === 'access_denied') {
+    return `/login?${new URLSearchParams({ notice: 'googleCancelled', next: safeNext(next) })}`;
+  }
+  return authFailurePath(next, hasCode || error !== null ? 'google' : 'link');
+}

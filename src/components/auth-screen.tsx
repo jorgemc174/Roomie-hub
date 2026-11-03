@@ -16,12 +16,14 @@ export async function AuthScreen({
   next = '',
   error = '',
   registered,
+  notice,
   passwordChanged,
 }: {
   kind: 'login' | 'register' | 'recover' | 'reset';
   next?: string;
   error?: string;
   registered?: string;
+  notice?: string;
   passwordChanged?: string;
 }) {
   if (!configured()) redirect('/setup');
@@ -64,6 +66,11 @@ export async function AuthScreen({
       <main id="main" className="auth-main">
         <div className="auth-card">
           <h1>{title}</h1>
+          {notice === 'googleCancelled' && (
+            <p className="notice" role="status">
+              {t.googleCancelled}
+            </p>
+          )}
           {kind === 'recover' && <p>{t.recoverBody}</p>}
           {error && (error !== 'google' || !googleEnabled) && (
             <p className="notice error" role="alert">

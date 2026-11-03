@@ -5,6 +5,7 @@ export default async function Login({
   searchParams: Promise<{
     next?: string;
     error?: string;
+    notice?: string;
     registered?: string;
     passwordChanged?: string;
   }>;

@@ -24,6 +24,7 @@ export const es = {
   noAccount: '¿Primera vez aquí?',
   hasAccount: '¿Ya tienes cuenta?',
   google: 'Continuar con Google',
+  googleCancelled: 'Autenticación cancelada',
   googleError: 'No se pudo iniciar sesión con Google. Inténtalo de nuevo más tarde',
   passwordHint: 'Entre 6 y 128 caracteres.',
   authEmailInvalid:
@@ -203,6 +204,7 @@ export const en: Dictionary = {
   noAccount: 'New around here?',
   hasAccount: 'Already have an account?',
   google: 'Continue with Google',
+  googleCancelled: 'Authentication cancelled',
   googleError: 'Could not sign in with Google. Try again later',
   passwordHint: 'Between 6 and 128 characters.',
   authEmailInvalid:

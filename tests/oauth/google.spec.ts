@@ -6,8 +6,7 @@ const app = 'http://127.0.0.1:3200';
 const provider = 'http://127.0.0.1:54331';
 const code = 'a'.repeat(32);
 const destination = `/homes/join?code=${code}`;
-const message =
-  'No se ha podido iniciar sesión con Google. Vuelve a intentarlo o accede con tu correo.';
+const message = 'No se pudo iniciar sesión con Google. Inténtalo de nuevo más tarde';
 const alert = (page: Page) => page.getByRole('main').getByRole('alert');
 
 test.beforeAll(async ({ request }) => {
@@ -194,7 +193,12 @@ test('cancelled consent and failed exchange retain only safe retry information',
 }) => {
   await begin(page);
   await page.getByRole('link', { name: 'Cancel fixture' }).click();
-  await expect(alert(page)).toHaveText(message);
+  await expect(page.getByRole('main').getByRole('status')).toHaveText('Autenticación cancelada');
+  await expect(alert(page)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Continuar con Google' })).toBeEnabled();
+  expect(
+    (await page.context().cookies(app)).some((cookie) => /auth-token(?:\.\d+)?$/.test(cookie.name)),
+  ).toBe(false);
   expect(new URL(page.url()).searchParams.get('next')).toBe(destination);
   expect(page.url()).not.toContain('private-provider-details');
   expect(await page.content()).not.toContain('private-provider-details');
@@ -282,7 +286,12 @@ test('infrastructure secrets are absent from production HTML, action responses a
   await request.post(provider + '/__test/reset', { data: {} });
   await begin(page);
   await page.getByRole('link', { name: 'Cancel fixture' }).click();
-  await expect(alert(page)).toHaveText(message);
+  await expect(page.getByRole('main').getByRole('status')).toHaveText('Autenticación cancelada');
+  await expect(alert(page)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Continuar con Google' })).toBeEnabled();
+  expect(
+    (await page.context().cookies(app)).some((cookie) => /auth-token(?:\.\d+)?$/.test(cookie.name)),
+  ).toBe(false);
   expect(await page.content()).not.toContain(sentinel!);
   await begin(page);
   await page.getByRole('link', { name: 'Allow fixture' }).click();
