@@ -139,6 +139,7 @@ export async function calendarAction(
     if (err.message === 'past_start')
       return { error: operation === 'activity' ? t.activityPast : t.past };
     if (err.message === 'resource_unavailable') return { error: t.unavailable };
+    if (err.message === 'rate_limited') return { error: t.rateLimited };
     if (err.message?.startsWith('closed_')) return { error: t.closed };
     if (err.message === 'stale_version' || err.message === 'idempotency_conflict')
       return { error: t.stale };
