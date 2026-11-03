@@ -335,6 +335,8 @@ test('Phase 2 PostgreSQL: assignments, shopping, history, privileges and RLS', a
             label,
             checked,
           ]);
+        for (const label of [null, '', '   ', '\t\n', 'x'.repeat(101)])
+          await assert.rejects(command('create_list', null, null, label), /invalid_name/);
         const l = await command('create_list', null, null, 'Groceries');
         await as(bob);
         const a = await command('add_item', l, null, 'Milk');
@@ -368,6 +370,26 @@ test('Phase 2 PostgreSQL: assignments, shopping, history, privileges and RLS', a
           ),
           stamp,
         );
+        for (const [op, item, label] of [
+          ['add_item', null, 'Late'],
+          ['rename_list', null, 'Changed'],
+          ['toggle_item', b, null],
+          ['delete_item', b, null],
+        ] as const)
+          await assert.rejects(command(op, l, item, label, false), /list_completed/);
+        await as(outsider);
+        await assert.rejects(command('reopen_list', l), /unauthorized/);
+        await assert.rejects(command('delete_list', l), /unauthorized/);
+        await as(cara);
+        await command('reopen_list', l);
+        assert.equal(
+          await scalar<number>(
+            'select count(*)::int v from public.shopping_items where shopping_list_id=$1 and purchased',
+            [l],
+          ),
+          2,
+        ); // Reopening preserves the existing purchased products and their history.
+        await command('reopen_list', l); // Explicit reopening is idempotent.
         await command('toggle_item', l, b, null, false);
         assert.equal(
           await scalar<string | null>(
@@ -382,7 +404,16 @@ test('Phase 2 PostgreSQL: assignments, shopping, history, privileges and RLS', a
           'Weekend',
         );
         await command('delete_item', l, b);
-        await command('delete_list', l);
+        await command('complete_list', l);
+        await command('delete_list', l); // Completed lists can still be deleted explicitly.
+        assert.equal(
+          await scalar<number>(
+            'select count(*)::int v from public.shopping_lists where id=$1 and deleted_at is not null',
+            [l],
+          ),
+          1,
+        );
+        await assert.rejects(command('reopen_list', l), /not_found/);
         await assert.rejects(command('add_item', l, null, 'Late item'));
         assert.equal(
           await scalar<number>(

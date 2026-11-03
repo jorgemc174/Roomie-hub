@@ -1,3 +1,4 @@
+import { ShoppingAnchor, DeleteShoppingList } from './shopping-controls';
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { OrganizationNav, OrganizationOptions, OrganizationLoadError } from './nav';
@@ -295,15 +296,21 @@ export async function OrganizationPage({
             <ActionForm action={action('create_list')} label={t.newList} pendingLabel={t.saving}>
               <label>
                 {t.name}
-                <input name="name" required maxLength={100} />
+                <input name="name" maxLength={100} />
               </label>
             </ActionForm>
           </CreatePanel>
+          <ShoppingAnchor createdId={typeof search.created === 'string' ? search.created : ''} />
           {!lists.data?.length && <EmptyState title={t.emptyShopping} />}
           {(lists.data ?? []).map((list) => {
             const products = (items.data ?? []).filter((i) => i.shopping_list_id === list.id);
             return (
-              <section className="panel shopping-list" key={list.id}>
+              <section
+                className="panel shopping-list"
+                key={list.id}
+                id={`shopping-${list.id}`}
+                tabIndex={-1}
+              >
                 <div className="section-heading options-heading">
                   <h2>{list.name}</h2>
                   <div className="inline-actions">
@@ -311,37 +318,36 @@ export async function OrganizationPage({
                       {products.filter((i) => i.purchased).length}/{products.length}
                     </span>
                     <OptionsMenu label={`${t.options}: ${list.name}`}>
-                      <details>
-                        <summary>{t.rename}</summary>
-                        <ActionForm
-                          action={action('rename_list')}
-                          label={t.save}
-                          pendingLabel={t.saving}
-                        >
-                          {hidden('list_id', list.id)}
-                          <label>
-                            {t.name}
-                            <input name="name" required maxLength={100} defaultValue={list.name} />
-                          </label>
-                        </ActionForm>
-                      </details>
-                      <details>
-                        <summary>{t.listDelete}</summary>
-                        <ActionForm
-                          action={action('delete_list')}
-                          label={t.confirmDelete}
-                          pendingLabel={t.saving}
-                          danger
-                        >
-                          {hidden('list_id', list.id)}
-                        </ActionForm>
-                      </details>
+                      {!list.completed_at && (
+                        <details>
+                          <summary>{t.rename}</summary>
+                          <ActionForm
+                            action={action('rename_list')}
+                            label={t.save}
+                            pendingLabel={t.saving}
+                          >
+                            {hidden('list_id', list.id)}
+                            <label>
+                              {t.name}
+                              <input
+                                name="name"
+                                required
+                                maxLength={100}
+                                defaultValue={list.name}
+                              />
+                            </label>
+                          </ActionForm>
+                        </details>
+                      )}
+                      <DeleteShoppingList listId={list.id} action={action('delete_list')} t={t} />
                     </OptionsMenu>
                   </div>
                 </div>
                 {list.completed_at && (
                   <p className="notice success">
                     {t.purchased} · {stamp(list.completed_at)}
+                    <br />
+                    {t.listLocked}
                   </p>
                 )}
                 {list.completed_at && (
@@ -363,40 +369,55 @@ export async function OrganizationPage({
                           </small>
                         )}
                       </div>
-                      <ActionForm
-                        action={action('toggle_item')}
-                        label={item.purchased ? t.unpurchase : t.buy}
-                        pendingLabel={t.saving}
-                      >
-                        {hidden('list_id', list.id)}
-                        {hidden('item_id', item.id)}
-                        {hidden('checked', String(!item.purchased))}
-                      </ActionForm>
-                      <OptionsMenu label={`${t.options}: ${item.name}`}>
-                        <details>
-                          <summary>{t.delete}</summary>
-                          <ActionForm
-                            action={action('delete_item')}
-                            label={t.confirmDelete}
-                            pendingLabel={t.saving}
-                            danger
-                          >
-                            {hidden('list_id', list.id)}
-                            {hidden('item_id', item.id)}
-                          </ActionForm>
-                        </details>
-                      </OptionsMenu>
+                      {!list.completed_at && (
+                        <ActionForm
+                          action={action('toggle_item')}
+                          label={item.purchased ? t.unpurchase : t.buy}
+                          pendingLabel={t.saving}
+                        >
+                          {hidden('list_id', list.id)}
+                          {hidden('item_id', item.id)}
+                          {hidden('checked', String(!item.purchased))}
+                        </ActionForm>
+                      )}
+                      {!list.completed_at && (
+                        <OptionsMenu label={`${t.options}: ${item.name}`}>
+                          <details>
+                            <summary>{t.delete}</summary>
+                            <ActionForm
+                              action={action('delete_item')}
+                              label={t.confirmDelete}
+                              pendingLabel={t.saving}
+                              danger
+                            >
+                              {hidden('list_id', list.id)}
+                              {hidden('item_id', item.id)}
+                            </ActionForm>
+                          </details>
+                        </OptionsMenu>
+                      )}
                     </li>
                   ))}
                 </ul>
-                <ActionForm action={action('add_item')} label={t.newItem} pendingLabel={t.saving}>
-                  {hidden('list_id', list.id)}
-                  <label>
-                    {t.name}
-                    <input name="name" required maxLength={100} />
-                  </label>
-                </ActionForm>
-                {products.some((i) => !i.purchased) && (
+                {!list.completed_at && (
+                  <ActionForm action={action('add_item')} label={t.newItem} pendingLabel={t.saving}>
+                    {hidden('list_id', list.id)}
+                    <label>
+                      {t.name}
+                      <input name="name" required maxLength={100} />
+                    </label>
+                  </ActionForm>
+                )}
+                {list.completed_at && (
+                  <ActionForm
+                    action={action('reopen_list')}
+                    label={t.reopenList}
+                    pendingLabel={t.saving}
+                  >
+                    {hidden('list_id', list.id)}
+                  </ActionForm>
+                )}
+                {!list.completed_at && products.some((i) => !i.purchased) && (
                   <ActionForm
                     action={action('complete_list')}
                     label={t.completeList}

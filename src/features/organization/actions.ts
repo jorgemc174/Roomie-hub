@@ -1,6 +1,6 @@
 'use server';
 import { revalidatePath } from 'next/cache';
-import { unstable_rethrow } from 'next/navigation';
+import { redirect, unstable_rethrow } from 'next/navigation';
 import { requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import type { ActionState } from '@/app/actions';
@@ -24,6 +24,7 @@ export async function organizationAction(
     if (id && !uuid(id)) return { error: t.invalid };
     let result: { error: { message: string; code?: string } | null };
     let success = t.saved;
+    let createdList: string | undefined;
     if (operation === 'save_chore') {
       const weight = Number(field(form, 'difficulty')),
         kind = field(form, 'recurrence'),
@@ -112,6 +113,7 @@ export async function organizationAction(
         'toggle_item',
         'delete_item',
         'complete_list',
+        'reopen_list',
       ].includes(operation)
     ) {
       const list = field(form, 'list_id'),
@@ -123,8 +125,8 @@ export async function organizationAction(
         (['create_list', 'rename_list', 'add_item'].includes(operation) &&
           (!name || name.length > 100))
       )
-        return { error: t.invalid };
-      result = await db.rpc('shopping_command', {
+        return { error: t.shoppingInvalid };
+      const shoppingResult = await db.rpc('shopping_command', {
         target: homeId,
         operation,
         list_id: list || null,
@@ -132,6 +134,9 @@ export async function organizationAction(
         label: name || null,
         checked: field(form, 'checked') !== 'false',
       });
+      result = shoppingResult;
+      if (operation === 'create_list' && typeof shoppingResult.data === 'string')
+        createdList = shoppingResult.data;
     } else return { error: t.invalid };
     if (result.error) {
       const { message, code } = result.error;
@@ -139,17 +144,25 @@ export async function organizationAction(
         error:
           message === 'unauthorized'
             ? t.unauthorized
-            : message === 'not_found'
-              ? t.missing
-              : message.startsWith('invalid_') ||
-                  ['23514', '23502', '23505', '22P02', '22007', '22008'].includes(code ?? '')
-                ? t.invalid
-                : ['PGRST202', '42P01'].includes(code ?? '')
-                  ? t.migration
-                  : t.error,
+            : message === 'list_completed'
+              ? t.listLocked
+              : message === 'invalid_name'
+                ? t.shoppingInvalid
+                : message === 'not_found'
+                  ? t.missing
+                  : message.startsWith('invalid_') ||
+                      ['23514', '23502', '23505', '22P02', '22007', '22008'].includes(code ?? '')
+                    ? t.invalid
+                    : ['PGRST202', '42P01'].includes(code ?? '')
+                      ? t.migration
+                      : t.error,
       };
     }
     revalidatePath(`/homes/${homeId}`, 'layout');
+    if (createdList && uuid(createdList))
+      redirect(
+        `/homes/${homeId}/organization?tab=shopping&created=${createdList}#shopping-${createdList}`,
+      );
     return { success };
   } catch (error) {
     unstable_rethrow(error);
