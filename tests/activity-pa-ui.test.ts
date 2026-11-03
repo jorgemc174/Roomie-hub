@@ -7,6 +7,7 @@ import { createElement, type ReactNode } from 'react';
 import * as jsxRuntime from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { calendarMessages } from '../src/features/calendar/messages';
+import { ActivityLocationFields } from '../src/features/calendar/activity-location-fields';
 import * as logic from '../src/features/calendar/logic';
 import type { Locale } from '../src/lib/i18n/dictionaries';
 import type { ActivityMember } from '../src/features/calendar/models';
@@ -78,6 +79,7 @@ async function renderActivity(
     },
     './messages': { calendarMessages },
     './form': { CalendarForm: wrapper },
+    './activity-location-fields': { ActivityLocationFields },
     './logic': logic,
   };
   const { outputText } = ts.transpileModule(

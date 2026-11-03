@@ -16,6 +16,7 @@ import {
 } from './queries';
 import { calendarMessages } from './messages';
 import { CalendarForm } from './form';
+import { ActivityLocationFields } from './activity-location-fields';
 import { localInput, formatInstant } from './logic';
 import type { Activity } from './models';
 export async function ActivitiesPage({
@@ -59,16 +60,11 @@ export async function ActivitiesPage({
         {t.description}
         <textarea name="description" maxLength={4000} defaultValue={a?.description ?? ''} />
       </label>
-      <label>
-        {t.locationKind}
-        <select name="location_kind" required defaultValue={a?.location_kind ?? ''}>
-          <option value="" disabled>
-            {t.chooseLocation}
-          </option>
-          <option value="home">{t.atHome}</option>
-          <option value="outside">{t.outsideHome}</option>
-        </select>
-      </label>
+      <ActivityLocationFields
+        locale={locale}
+        initialKind={a?.location_kind ?? ''}
+        initialPlace={a?.location ?? ''}
+      />
       <fieldset>
         <legend>{t.selectParticipants}</legend>
         <p>{t.participantHelp}</p>
@@ -91,10 +87,6 @@ export async function ActivitiesPage({
             </label>
           ))}
       </fieldset>
-      <label>
-        {t.location}
-        <input name="location" maxLength={300} defaultValue={a?.location ?? ''} />
-      </label>
       <label>
         {t.start}
         <input

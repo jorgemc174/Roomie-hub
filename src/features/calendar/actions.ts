@@ -74,6 +74,7 @@ export async function calendarAction(
           participants.some((p) => !uuid(p))
         )
           return { error: t.invalid };
+        if (kind === 'outside' && !place) return { error: t.activityLocationRequired };
         if (!title || notes.length > 4000 || place.length > 300) return { error: t.invalid };
         result = await db.rpc('save_activity_plan', {
           kind,
@@ -134,7 +135,9 @@ export async function calendarAction(
     if (err.code === '23P01') return { error: t.conflict };
     if (err.message === 'stale_timezone') return { error: t.staleZone };
     if (err.message === 'nonexistent_local_time') return { error: t.gap };
-    if (err.message === 'past_start') return { error: t.past };
+    if (err.message === 'activity_location_required') return { error: t.activityLocationRequired };
+    if (err.message === 'past_start')
+      return { error: operation === 'activity' ? t.activityPast : t.past };
     if (err.message === 'resource_unavailable') return { error: t.unavailable };
     if (err.message?.startsWith('closed_')) return { error: t.closed };
     if (err.message === 'stale_version' || err.message === 'idempotency_conflict')

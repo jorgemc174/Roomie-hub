@@ -1,7 +1,13 @@
 import test from 'node:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { ActivityLocationFields } from '../src/features/calendar/activity-location-fields';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { organizationDatabase } from './helpers/database';
+import { serverModule } from './helpers/server-module';
+import * as calendarLogic from '../src/features/calendar/logic';
+import type { ActionState } from '../src/app/actions';
 import {
   localInput,
   validLocalInput,
@@ -613,5 +619,195 @@ test('PA 1268/1269: location, selected active participants and three idempotent 
     );
   } finally {
     await db.close();
+  }
+});
+
+test('PA 1268 C1: location and strict past-start validation through RPC and action', async (t) => {
+  const { db, home, as, users, scalar } = await organizationDatabase();
+  try {
+    const h = await home();
+    await db.query("select public.update_home_timezone($1,'UTC')", [h]);
+    for (const channel of ['rpc', 'action'] as const) {
+      for (const locale of ['es', 'en'] as const) {
+        await t.test(`${channel}/${locale}`, async () => {
+          const messages = calendarMessages(locale);
+          let rpcCalls = 0;
+          const { calendarAction } = await serverModule<{
+            calendarAction: (
+              h: string,
+              op: string,
+              state: ActionState,
+              form: FormData,
+            ) => Promise<ActionState>;
+          }>('src/features/calendar/actions.ts', {
+            'next/cache': { revalidatePath: () => {} },
+            'next/navigation': { unstable_rethrow: () => {} },
+            '@/lib/data': {
+              getHome: async () => ({ timezone: 'UTC' }),
+              requireUser: async () => ({
+                db: {
+                  rpc: async (name: string, args: Record<string, unknown>) => {
+                    rpcCalls++;
+                    assert.equal(name, 'save_activity_plan');
+                    try {
+                      await db.query(
+                        'select public.save_activity_plan($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid[])',
+                        [
+                          'target',
+                          'item',
+                          'expected_version',
+                          'label',
+                          'notes',
+                          'place',
+                          'start_local',
+                          'end_local',
+                          'expected_timezone',
+                          'kind',
+                          'participants',
+                        ].map((key) => args[key]),
+                      );
+                      return { error: null };
+                    } catch (error) {
+                      return { error };
+                    }
+                  },
+                },
+              }),
+            },
+            '@/lib/i18n/server': { i18n: async () => ({ locale }) },
+            './messages': { calendarMessages },
+            './logic': calendarLogic,
+          });
+          const save = async ({
+            id = randomUUID(),
+            version = 0,
+            kind = 'home',
+            place = '',
+            start = '2090-09-16T21:00:00',
+            title = 'Dinner',
+          } = {}) => {
+            if (channel === 'rpc') {
+              await db.query(
+                'select public.save_activity_plan($1,$2,$3,$4,$5,$6,$7,null,$8,$9,$10::uuid[])',
+                [h, id, version, title, '', place, start, 'UTC', kind, []],
+              );
+            } else {
+              const form = new FormData();
+              for (const [key, value] of Object.entries({
+                id,
+                version: String(version),
+                location_kind: kind,
+                location: place,
+                start,
+                title,
+                timezone: 'UTC',
+              }))
+                form.set(key, value);
+              const result = await calendarAction(h, 'activity', {}, form);
+              if (result.error) throw new Error(result.error);
+              assert.ok(result.success);
+            }
+          };
+          for (const seconds of [1, 299]) {
+            const start = await scalar<string>(
+              "select ((now()-make_interval(secs=>$1)) at time zone 'UTC')::text v",
+              [seconds],
+            );
+            await assert.rejects(
+              save({ start: start!.replace(' ', 'T').slice(0, 19) }),
+              channel === 'rpc'
+                ? /past_start/
+                : (error: Error) => {
+                    assert.notEqual(error.message, messages.invalid);
+                    assert.match(error.message, locale === 'es' ? /pasado/ : /past/);
+                    assert.doesNotMatch(error.message, /5|five/);
+                    return true;
+                  },
+            );
+          }
+          for (const place of ['', '   ', '\t\n']) {
+            const before = rpcCalls;
+            await assert.rejects(
+              save({ kind: 'outside', place }),
+              channel === 'rpc'
+                ? /activity_location_required/
+                : (error: Error) => {
+                    assert.notEqual(error.message, messages.invalid);
+                    assert.notEqual(error.message, messages.error);
+                    assert.match(error.message, locale === 'es' ? /lugar/ : /location/);
+                    return true;
+                  },
+            );
+            if (channel === 'action') assert.equal(rpcCalls, before);
+          }
+          await save(); // Inside can omit the location.
+          await save({ kind: 'outside', place: 'Cinema' });
+          for (const elapsed of [60, 7200]) {
+            const id = randomUUID();
+            await save({ id });
+            await save({ id }); // Replay with the original, unchanged payload.
+            await db.exec('reset role');
+            await db.query(
+              'update public.activities set starts_at=now()-make_interval(secs=>$2) where id=$1',
+              [id, elapsed],
+            );
+            await as(users[0]);
+            const start = await scalar<string>(
+              "select (starts_at at time zone 'UTC')::text v from public.activities where id=$1",
+              [id],
+            );
+            // Match form precision, while retaining the exact original instant in SQL.
+            await db.exec('reset role');
+            await db.query(
+              "update public.activities set starts_at=date_trunc('second',starts_at) where id=$1",
+              [id],
+            );
+            await as(users[0]);
+            const local = start!.replace(' ', 'T').slice(0, 19);
+            await save({ id, version: 1, start: local, title: 'Edited' });
+            assert.equal(
+              await scalar('select version v from public.activities where id=$1', [id]),
+              2,
+            );
+            await assert.rejects(save({ id, version: 2, start: '2000-01-01T12:00:00' }));
+            // A creation replay remains valid after its original start is in the past.
+            await db.exec('reset role');
+            await db.query(
+              "update public.activities set create_request=jsonb_set(create_request,'{start}',to_jsonb($2::timestamp)) where id=$1",
+              [id, local],
+            );
+            await as(users[0]);
+            await save({ id, start: local });
+            assert.equal(
+              await scalar('select version v from public.activities where id=$1', [id]),
+              2,
+            );
+          }
+        });
+      }
+    }
+  } finally {
+    await db.close();
+  }
+});
+
+test('PA 1268 C1: outside place is required and associated with the localized field message', () => {
+  for (const locale of ['es', 'en'] as const) {
+    for (const initialKind of ['home', 'outside']) {
+      const html = renderToStaticMarkup(
+        createElement(ActivityLocationFields, {
+          locale,
+          initialKind,
+          initialPlace: '',
+        }),
+      );
+      const input = html.match(/<input[^>]*name="location"[^>]*>/)![0];
+      assert.equal(input.includes('required=""'), initialKind === 'outside');
+      if (initialKind === 'outside') {
+        const describedBy = input.match(/aria-describedby="([^"]+)"/)![1];
+        assert.ok(html.includes(`id="${describedBy}"`));
+        assert.ok(html.includes(calendarMessages(locale).activityLocationRequired));
+      }
+    }
   }
 });
