@@ -1,6 +1,7 @@
 import type { Locale } from '@/lib/i18n/dictionaries';
 const es = {
   categoryFilter: 'Filtrar por categoría',
+  categoryFilterHelp: 'Al cambiar la categoría se actualiza el listado.',
   allCategories: 'Todas las categorías',
   applyFilter: 'Aplicar filtro',
   clearFilter: 'Quitar filtro',
@@ -106,6 +107,7 @@ const es = {
 };
 const en: Record<keyof typeof es, string> = {
   categoryFilter: 'Filter by category',
+  categoryFilterHelp: 'Changing the category updates the list.',
   allCategories: 'All categories',
   applyFilter: 'Apply filter',
   clearFilter: 'Clear filter',

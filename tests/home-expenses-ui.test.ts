@@ -1,3 +1,5 @@
+import { CategoryFilter } from '../src/features/expenses/category-filter';
+import { CategoryLabel, CategorySummary } from '../src/features/expenses/category-summary';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -407,6 +409,8 @@ async function expensesPage(
     },
     '@/lib/timezones': { homeDate },
     './messages': messages,
+    './category-filter': { CategoryFilter },
+    './category-summary': { CategoryLabel, CategorySummary },
     './money': money,
     './activity': { readExpenseActivity, readCategoryTotals },
     './expense-form': {
@@ -489,6 +493,10 @@ test('expense category filter and summary use URL state and exact amounts in bot
     const t = messages.expenseMessages(locale);
     const html = await expensesPage(locale, { category: 'groceries', page: '1' });
     assert.ok(html.includes('name="category"'));
+    assert.match(html, /<noscript><button[^>]*type="submit"/);
+    assert.ok(html.includes('expense-category-track'));
+    assert.ok(html.includes('width:100%'));
+    assert.ok(html.includes(money.categoryColors.groceries));
     assert.match(html, /<option value="groceries" selected="">/);
     assert.ok(html.includes(t.clearFilter));
     assert.ok(html.includes(t.listedTotal));

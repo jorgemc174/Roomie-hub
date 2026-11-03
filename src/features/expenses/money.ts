@@ -145,6 +145,21 @@ export const categories = [
   'other',
 ] as const;
 export type Category = (typeof categories)[number];
+// Theme-aware inks also keep category colors consistent across chart and list.
+export const categoryColors = {
+  groceries: 'var(--mint-ink)',
+  rent: 'var(--peach-ink)',
+  electricity: 'color-mix(in srgb, var(--peach-ink) 65%, var(--mint-ink))',
+  water: 'var(--blue-ink)',
+  internet: 'color-mix(in srgb, var(--blue-ink) 50%, var(--lavender-ink))',
+  cleaning: 'color-mix(in srgb, var(--mint-ink) 50%, var(--blue-ink))',
+  transport: 'color-mix(in srgb, var(--mint-ink) 50%, var(--lavender-ink))',
+  leisure: 'var(--lavender-ink)',
+  food: 'color-mix(in srgb, var(--peach-ink) 50%, var(--rose-ink))',
+  home: 'color-mix(in srgb, var(--peach-ink) 50%, var(--lavender-ink))',
+  subscriptions: 'var(--rose-ink)',
+  other: 'var(--muted)',
+} as const satisfies Record<Category, string>;
 export const categoryAliases: Partial<Record<Category, string[]>> = {
   groceries: ['mercadona', 'lidl', 'aldi', 'carrefour', 'supermercado', 'grocery'],
   electricity: ['iberdrola', 'endesa', 'electricidad', 'electricity'],

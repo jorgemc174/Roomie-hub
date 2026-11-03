@@ -1,3 +1,5 @@
+import { CategoryFilter } from './category-filter';
+import { CategoryLabel, CategorySummary } from './category-summary';
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ExpensesNav, ExpensesOptions } from './nav';
@@ -299,11 +301,15 @@ export async function ExpensesPage({
               />
             )}
           </CreatePanel>
-          <form key={category ?? 'all'} action={base} method="get" className="row wrap">
+          <CategoryFilter key={category ?? 'all'} action={base}>
             <input type="hidden" name="tab" value="expenses" />
             <label>
               {t.categoryFilter}
-              <select name="category" defaultValue={category ?? ''}>
+              <select
+                name="category"
+                defaultValue={category ?? ''}
+                aria-describedby="category-filter-help"
+              >
                 <option value="">{t.allCategories}</option>
                 {categories.map((c) => (
                   <option key={c} value={c}>
@@ -312,34 +318,27 @@ export async function ExpensesPage({
                 ))}
               </select>
             </label>
-            <button className="button secondary" type="submit">
-              {t.applyFilter}
-            </button>
+            <span id="category-filter-help" className="muted">
+              {t.categoryFilterHelp}
+            </span>
+            <noscript>
+              <button className="button secondary" type="submit">
+                {t.applyFilter}
+              </button>
+            </noscript>
             {category && (
               <Link className="text-link" href={base}>
                 {t.clearFilter}
               </Link>
             )}
-          </form>
+          </CategoryFilter>
           <p>
             {t.listedTotal}: <strong>{formatMoney(summary.total, home.currency, locale)}</strong>
           </p>
           <SectionDisclosure title={t.categorySummary} id="category-summary">
             <p>{t.categorySummaryHelp}</p>
             {!summary.categories.length && <p>{t.empty}</p>}
-            <ul>
-              {summary.categories.map((c) => (
-                <li key={c.category}>
-                  {categoryNames[locale][c.category]}:{' '}
-                  {formatMoney(c.amount, home.currency, locale)} ·{' '}
-                  {new Intl.NumberFormat(locale, {
-                    style: 'percent',
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }).format(Number(c.basisPoints) / 10000)}
-                </li>
-              ))}
-            </ul>
+            <CategorySummary summary={summary} currency={home.currency} locale={locale} />
           </SectionDisclosure>
           {!expenses.some((e) => !e.deleted_at) && <EmptyState title={t.empty} />}
           {expenses
@@ -395,7 +394,8 @@ export async function ExpensesPage({
                   </OptionsMenu>
                 </div>
                 <p>
-                  {date(e.expense_date)} · {e.payer_name} · {categoryNames[locale][e.category]}
+                  {date(e.expense_date)} · {e.payer_name} ·{' '}
+                  <CategoryLabel category={e.category} locale={locale} />
                 </p>
                 <details>
                   <summary>{t.details}</summary>
