@@ -65,9 +65,19 @@ export async function calendarAction(
         });
       } else {
         const notes = field(form, 'description'),
-          place = field(form, 'location');
+          place = field(form, 'location'),
+          kind = field(form, 'location_kind'),
+          participants = form.getAll('participants').map(String);
+        if (
+          !['home', 'outside'].includes(kind) ||
+          participants.length > 1000 ||
+          participants.some((p) => !uuid(p))
+        )
+          return { error: t.invalid };
         if (!title || notes.length > 4000 || place.length > 300) return { error: t.invalid };
-        result = await db.rpc('save_activity', {
+        result = await db.rpc('save_activity_plan', {
+          kind,
+          participants,
           target: homeId,
           item: id,
           expected_version: version,
@@ -93,13 +103,15 @@ export async function calendarAction(
               item: id,
               expected_version: version,
             });
-    } else if (operation === 'attend')
-      result = await db.rpc('set_activity_attendance', {
+    } else if (operation === 'attend') {
+      const answer = field(form, 'response');
+      if (!['going', 'maybe', 'not_going'].includes(answer)) return { error: t.invalid };
+      result = await db.rpc('respond_activity', {
         target: homeId,
         item: id,
-        joining: field(form, 'joining') === 'true',
+        answer,
       });
-    else return { error: t.invalid };
+    } else return { error: t.invalid };
     if (result.error) throw result.error;
     revalidatePath(`/homes/${homeId}`, 'layout');
     return { success: t.saved };

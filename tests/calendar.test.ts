@@ -163,17 +163,10 @@ test('PostgreSQL resources, reservations, activities, RLS and lifecycle', async 
     e: string | null = null,
     zone = 'UTC',
   ) =>
-    scalar<string>('select public.save_activity($1,$2,$3,$4,$5,$6,$7,$8,$9) v', [
-      h,
-      id,
-      v,
-      title,
-      'Description',
-      'En casa',
-      s,
-      e,
-      zone,
-    ]);
+    scalar<string>(
+      "select public.save_activity_plan($1,$2,$3,$4,$5,$6,$7,$8,$9,'home',array[]::uuid[]) v",
+      [h, id, v, title, 'Description', 'En casa', s, e, zone],
+    );
   const fixture = async () => {
     const h = await home(3);
     await db.query("select public.update_home_timezone($1,'UTC')", [h]);
@@ -453,6 +446,129 @@ test('PostgreSQL resources, reservations, activities, RLS and lifecycle', async 
         );
         await reserve(h, r, '2090-09-16T10:00', '2090-09-16T11:00');
       },
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test('PA 1268/1269: location, selected active participants and three idempotent responses', async () => {
+  const { db, as, users, home, scalar } = await organizationDatabase();
+  const [a, b, c, out] = users;
+  try {
+    const h = await home();
+    await db.query("select public.update_home_timezone($1,'UTC')", [h]);
+    const id = randomUUID();
+    const save = (version = 0, kind: string | null = 'home', selected = [b]) =>
+      db.query(
+        "select public.save_activity_plan($1,$2,$3,'Dinner','','Kitchen','2090-09-16 21:00',null,'UTC',$4,$5::uuid[])",
+        [h, id, version, kind, selected],
+      );
+    await assert.rejects(
+      db.query(
+        "select public.save_activity($1,$2,0,'Bypass','','','2090-09-16 21:00',null,'UTC')",
+        [h, id],
+      ),
+      /permission denied/,
+    );
+    await assert.rejects(save(0, null), /invalid_location_kind/);
+    await assert.rejects(save(0, 'elsewhere'), /invalid_location_kind/);
+    await assert.rejects(save(0, 'home', [out]), /invalid_member/);
+    await save();
+    await save(0, 'home', [b, b]);
+    assert.equal(
+      await scalar('select location_kind v from public.activities where id=$1', [id]),
+      'home',
+    );
+    assert.equal(
+      await scalar('select count(*)::int v from public.activity_members where activity_id=$1', [
+        id,
+      ]),
+      2,
+    );
+    await assert.rejects(save(0, 'outside'), /idempotency_conflict/);
+    await as(b);
+    for (const response of ['maybe', 'not_going', 'going']) {
+      await db.query('select public.respond_activity($1,$2,$3)', [h, id, response]);
+      const before = await scalar(
+        'select updated_at::text v from public.activity_members where activity_id=$1 and user_id=$2',
+        [id, b],
+      );
+      await db.query('select public.respond_activity($1,$2,$3)', [h, id, response]);
+      assert.equal(
+        await scalar(
+          'select updated_at::text v from public.activity_members where activity_id=$1 and user_id=$2',
+          [id, b],
+        ),
+        before,
+      );
+      assert.equal(
+        await scalar(
+          'select attending v from public.activity_members where activity_id=$1 and user_id=$2',
+          [id, b],
+        ),
+        response === 'going',
+      );
+    }
+    await db.query("select public.respond_activity($1,$2,'not_going')", [h, id]);
+    await save(1, 'outside', [b, c]);
+    assert.equal(
+      await scalar(
+        'select response v from public.activity_members where activity_id=$1 and user_id=$2',
+        [id, b],
+      ),
+      'not_going',
+    );
+    assert.equal(
+      await scalar('select count(*)::int v from public.activity_members where activity_id=$1', [
+        id,
+      ]),
+      3,
+    );
+    // Creation replay still matches its immutable request after a later edit.
+    await save();
+    assert.equal(
+      await scalar('select location_kind v from public.activities where id=$1', [id]),
+      'outside',
+    );
+    await assert.rejects(save(1), /stale_version/);
+    await assert.rejects(
+      db.query("select public.respond_activity($1,$2,'bad')", [h, id]),
+      /invalid_attendance/,
+    );
+    await as(c);
+    await db.query("select public.respond_activity($1,$2,'maybe')", [h, id]);
+    await db.query('select public.leave_home($1)', [h]);
+    await as(a);
+    await assert.rejects(save(2, 'outside', [c]), /invalid_member/);
+    assert.equal(
+      await scalar(
+        'select response v from public.activity_members where activity_id=$1 and user_id=$2',
+        [id, c],
+      ),
+      'not_going',
+    );
+    await as(out);
+    assert.equal(
+      await scalar('select count(*)::int v from public.activity_members where activity_id=$1', [
+        id,
+      ]),
+      0,
+    );
+    await assert.rejects(
+      db.query("select public.respond_activity($1,$2,'going')", [h, id]),
+      /unauthorized/,
+    );
+    await assert.rejects(save(2), /unauthorized/);
+    await as(a);
+    await assert.rejects(
+      db.query("update public.activity_members set response='going' where activity_id=$1", [id]),
+      /permission denied/,
+    );
+    await db.query('select public.cancel_activity($1,$2,2)', [h, id]);
+    await assert.rejects(
+      db.query("select public.respond_activity($1,$2,'going')", [h, id]),
+      /not_found/,
     );
   } finally {
     await db.close();

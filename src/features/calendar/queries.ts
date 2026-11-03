@@ -99,7 +99,6 @@ export async function readActivityMembers(db: CalendarDB, homeId: string, ids: s
       .select('*')
       .eq('home_id', homeId)
       .in('activity_id', ids)
-      .eq('attending', true)
       .order('activity_id')
       .order('user_id'),
   );

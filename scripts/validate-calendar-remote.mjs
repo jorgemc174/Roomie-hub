@@ -272,13 +272,15 @@ try {
       .filter({ has: pa.locator('[name=title]') })
       .first();
     await form.locator('[name=title]').fill('Cena italiana');
+    await form.locator('[name=location_kind]').selectOption('home');
     await form.locator('[name=location]').fill('En casa');
     await form.locator('[name=start]').fill(`${day}T21:00`);
     await form.getByRole('button', { name: 'Guardar', exact: true }).click();
     await expect(pb.getByRole('heading', { name: 'Cena italiana', exact: true })).toBeVisible({
       timeout: 25000,
     });
-    await pb.getByRole('button', { name: 'Apuntarme', exact: true }).click();
+    await pb.locator('[name=response]').selectOption('going');
+    await pb.getByRole('button', { name: 'Guardar respuesta', exact: true }).click();
     await expect(
       pa
         .locator('article')

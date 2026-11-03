@@ -3,7 +3,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { CommunityNav, CommunityOptions } from '@/features/community/nav';
 import Link from 'next/link';
-import { getHome, requireUser } from '@/lib/data';
+import { getHome, getMembers, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { homeDate } from '@/lib/timezones';
 import { addDays } from '@/features/organization/logic';
@@ -48,6 +48,7 @@ export async function ActivitiesPage({
     homeId,
     shown.map((a) => a.id),
   );
+  const activeMembers = await getMembers(homeId);
   const fields = (a?: Activity) => (
     <>
       <label>
@@ -58,6 +59,38 @@ export async function ActivitiesPage({
         {t.description}
         <textarea name="description" maxLength={4000} defaultValue={a?.description ?? ''} />
       </label>
+      <label>
+        {t.locationKind}
+        <select name="location_kind" required defaultValue={a?.location_kind ?? ''}>
+          <option value="" disabled>
+            {t.chooseLocation}
+          </option>
+          <option value="home">{t.atHome}</option>
+          <option value="outside">{t.outsideHome}</option>
+        </select>
+      </label>
+      <fieldset>
+        <legend>{t.selectParticipants}</legend>
+        <p>{t.participantHelp}</p>
+        {activeMembers
+          .filter((m) => m.user_id !== (a?.created_by ?? user.id))
+          .map((m) => (
+            <label className="checkbox" key={m.user_id}>
+              <input
+                type="checkbox"
+                name="participants"
+                value={m.user_id}
+                disabled={Boolean(
+                  a && members.some((p) => p.activity_id === a.id && p.user_id === m.user_id),
+                )}
+                defaultChecked={
+                  a ? members.some((p) => p.activity_id === a.id && p.user_id === m.user_id) : false
+                }
+              />
+              {m.profiles?.name}
+            </label>
+          ))}
+      </fieldset>
       <label>
         {t.location}
         <input name="location" maxLength={300} defaultValue={a?.location ?? ''} />
@@ -130,8 +163,8 @@ export async function ActivitiesPage({
       <h2>{view === 'history' ? t.history : view === 'all' ? t.activities : t.upcoming}</h2>
       {!shown.length && <EmptyState title={t.noActivities} />}
       {shown.map((a) => {
-        const participants = members.filter((m) => m.activity_id === a.id && m.attending),
-          joined = participants.some((m) => m.user_id === user.id);
+        const participants = members.filter((m) => m.activity_id === a.id),
+          response = participants.find((m) => m.user_id === user.id)?.response ?? '';
         return (
           <article className="panel" key={a.id} id={`activity-${a.id}`}>
             <h2>{a.title}</h2>
@@ -139,21 +172,37 @@ export async function ActivitiesPage({
               {formatInstant(a.starts_at, home.timezone, locale)}
               {a.ends_at ? ` → ${formatInstant(a.ends_at, home.timezone, locale)}` : ''}
             </p>
+            <p>
+              <span className="badge">
+                {a.location_kind === 'outside'
+                  ? t.outsideHome
+                  : a.location_kind === 'home'
+                    ? t.atHome
+                    : t.unspecifiedLocation}
+              </span>
+            </p>
             <p>{a.location}</p>
             <p style={{ whiteSpace: 'pre-wrap' }}>{a.description}</p>
             <small>
               {t.creator}: {a.created_by_name}
             </small>
             <h3>{t.participants}</h3>
-            {participants.length ? (
-              <ul>
-                {participants.map((m) => (
-                  <li key={m.user_id}>{m.user_name}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>{t.notAttending}</p>
-            )}{' '}
+            {(['going', 'maybe', 'not_going'] as const).map((answer) => (
+              <section key={answer}>
+                <h4>{t[answer]}</h4>
+                {participants.some((m) => m.response === answer) ? (
+                  <ul>
+                    {participants
+                      .filter((m) => m.response === answer)
+                      .map((m) => (
+                        <li key={m.user_id}>{m.user_name}</li>
+                      ))}
+                  </ul>
+                ) : (
+                  <p>{t.noResponses}</p>
+                )}
+              </section>
+            ))}
             {a.cancelled_at ? (
               <p className="badge cancelled">{t.cancelled}</p>
             ) : (
@@ -164,10 +213,20 @@ export async function ActivitiesPage({
                     operation="attend"
                     id={a.id}
                     locale={locale}
-                    label={joined ? t.leave : t.join}
-                    key={`${a.id}-${joined}`}
+                    label={t.saveResponse}
+                    key={`${a.id}-${response}`}
                   >
-                    <input type="hidden" name="joining" value={joined ? 'false' : 'true'} />
+                    <label>
+                      {t.yourResponse}
+                      <select name="response" required defaultValue={response}>
+                        <option value="" disabled>
+                          {t.chooseResponse}
+                        </option>
+                        <option value="going">{t.going}</option>
+                        <option value="maybe">{t.maybe}</option>
+                        <option value="not_going">{t.not_going}</option>
+                      </select>
+                    </label>
                   </CalendarForm>
                 )}
                 <details>

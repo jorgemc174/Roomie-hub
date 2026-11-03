@@ -295,8 +295,10 @@ export type Database = {
         Args: { target: string; item: string; expected_version: number };
         Returns: undefined;
       };
-      save_activity: {
+      save_activity_plan: {
         Args: {
+          kind: string;
+          participants: string[];
           target: string;
           item: string;
           expected_version: number;
@@ -308,6 +310,10 @@ export type Database = {
           expected_timezone: string;
         };
         Returns: string;
+      };
+      respond_activity: {
+        Args: { target: string; item: string; answer: string };
+        Returns: undefined;
       };
       cancel_activity: {
         Args: { target: string; item: string; expected_version: number };
