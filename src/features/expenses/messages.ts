@@ -1,5 +1,15 @@
 import type { Locale } from '@/lib/i18n/dictionaries';
 const es = {
+  categoryFilter: 'Filtrar por categoría',
+  allCategories: 'Todas las categorías',
+  applyFilter: 'Aplicar filtro',
+  clearFilter: 'Quitar filtro',
+  listedTotal: 'Total de gastos del listado',
+  categorySummary: 'Resumen por categoría',
+  categorySummaryHelp:
+    'Todos los gastos del listado, con el filtro aplicado. Ordenados por importe; porcentajes redondeados a dos decimales.',
+  registerSuggested: 'Registrar este pago',
+  paymentRecorded: 'Pago registrado',
   pages: 'Páginas de movimientos',
   previousPage: 'Página anterior',
   nextPage: 'Página siguiente',
@@ -95,6 +105,16 @@ const es = {
     'Los gastos eliminados no cuentan en los saldos. Sus revisiones y tickets se conservan.',
 };
 const en: Record<keyof typeof es, string> = {
+  categoryFilter: 'Filter by category',
+  allCategories: 'All categories',
+  applyFilter: 'Apply filter',
+  clearFilter: 'Clear filter',
+  listedTotal: 'Total expenses in this list',
+  categorySummary: 'Summary by category',
+  categorySummaryHelp:
+    'All expenses in this list, with the filter applied. Sorted by amount; percentages rounded to two decimal places.',
+  registerSuggested: 'Record this payment',
+  paymentRecorded: 'Payment recorded',
   pages: 'Ledger pages',
   previousPage: 'Previous page',
   nextPage: 'Next page',
