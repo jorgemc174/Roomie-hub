@@ -1070,3 +1070,43 @@ span.ui-spinner {
     transform: none;
   }
 }
+
+.expense-category {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.expense-category-dot {
+  width: 0.65em;
+  height: 0.65em;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.expense-category-chart {
+  display: grid;
+  gap: var(--space-4);
+  list-style: none;
+  padding: 0;
+}
+.expense-category-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.expense-category-value {
+  font-variant-numeric: tabular-nums;
+}
+.expense-category-track {
+  height: 12px;
+  border-radius: var(--radius-control);
+  background: var(--line);
+  overflow: hidden;
+}
+.expense-category-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}

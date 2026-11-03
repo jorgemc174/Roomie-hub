@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { summarizeCategories } from '../src/features/expenses/money';
+import { categories, categoryColors, summarizeCategories } from '../src/features/expenses/money';
 import { organizationDatabase } from './helpers/database';
 
 test('category totals stay exact beyond Number limits; percentages sum to 100 with stable ties', () => {
@@ -139,4 +139,15 @@ test('expense activity combines revisions and payments in globally paginated ord
   } finally {
     await db.close();
   }
+});
+
+test('all twelve categories have distinct fixed theme-aware colors and rounded shares sum to 100%', () => {
+  assert.equal(categories.length, 12);
+  assert.deepEqual(Object.keys(categoryColors), [...categories]);
+  assert.equal(new Set(Object.values(categoryColors)).size, 12);
+  const summary = summarizeCategories(categories.map((category) => ({ category, amount: '1' })));
+  assert.equal(
+    summary.categories.reduce((sum, row) => sum + row.basisPoints, 0n),
+    10000n,
+  );
 });
