@@ -8,3 +8,6 @@ playwright-report/
 .supabase/
 test-account-*.credentials.txt
 .taste-skill/
+
+# Variables de entorno con claves: solo en local y en Vercel
+.env.production
