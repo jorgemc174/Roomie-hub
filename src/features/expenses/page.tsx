@@ -184,6 +184,7 @@ export async function ExpensesPage({
         : [],
       getMembers(homeId),
     ]);
+  const pageTotal = expenses.reduce((sum, expense) => sum + BigInt(expense.amount), 0n);
   const summary = summarizeCategories(
     tab === 'expenses' ? await readCategoryTotals(db, homeId, category) : [],
   );
@@ -332,6 +333,9 @@ export async function ExpensesPage({
               </Link>
             )}
           </CategoryFilter>
+          <p>
+            {t.pageTotal}: <strong>{formatMoney(pageTotal, home.currency, locale)}</strong>
+          </p>
           <p>
             {t.listedTotal}: <strong>{formatMoney(summary.total, home.currency, locale)}</strong>
           </p>

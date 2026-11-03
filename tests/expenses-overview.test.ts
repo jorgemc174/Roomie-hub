@@ -151,3 +151,190 @@ test('all twelve categories have distinct fixed theme-aware colors and rounded s
     10000n,
   );
 });
+
+// Render the real Server Component with isolated read dependencies, including
+// database-style filtering BEFORE pagination. No remote data or business writes.
+test('PA1278: SSR separates the visible 50-row total from all 51 filtered expenses', async () => {
+  const [{ readFile }, vm, ts, React, jsx, server, money, messages, filter, summary, activity] =
+    await Promise.all([
+      import('node:fs/promises'),
+      import('node:vm'),
+      import('typescript'),
+      import('react'),
+      import('react/jsx-runtime'),
+      import('react-dom/server'),
+      import('../src/features/expenses/money'),
+      import('../src/features/expenses/messages'),
+      import('../src/features/expenses/category-filter'),
+      import('../src/features/expenses/category-summary'),
+      import('../src/features/expenses/activity'),
+    ]);
+  const rows = Array.from({ length: 52 }, (_, i) => ({
+    id: String(i),
+    title: `Expense ${i}`,
+    amount: i === 51 ? '9007199254740993' : '100',
+    category: i === 51 ? ('rent' as const) : ('leisure' as const),
+    currency: 'EUR',
+    expense_date: '2026-11-01',
+    payer: 'me',
+    payer_name: 'Pat',
+    split_mode: 'equal',
+    version: 1,
+    deleted_at: null,
+  }));
+  for (const locale of ['es', 'en'] as const) {
+    for (const [category, page, expectedPage, expectedFilter] of [
+      ['leisure', '0', 5000n, 5100n],
+      ['leisure', '1', 100n, 5100n],
+      ['rent', '0', 9007199254740993n, 9007199254740993n],
+      ['', '0', 5000n, 9007199254746093n],
+      ['food', '0', 0n, 0n],
+    ] as const) {
+      const db = {
+        from(table: string) {
+          let selected: string | undefined;
+          let start = 0,
+            end = Infinity;
+          const query = {
+            select: () => query,
+            is: () => query,
+            order: () => query,
+            in: () => query,
+            eq: (key: string, value: string) => {
+              if (key === 'category') selected = value;
+              return query;
+            },
+            range: (first: number, last: number) => {
+              start = first;
+              end = last;
+              return query;
+            },
+            then: (resolve: (value: unknown) => unknown) =>
+              Promise.resolve(
+                resolve({
+                  error: null,
+                  data:
+                    table === 'expenses'
+                      ? rows
+                          .filter((r) => !selected || r.category === selected)
+                          .slice(start, end + 1)
+                      : [],
+                }),
+              ),
+          };
+          return query;
+        },
+        rpc: async (name: string, args?: { selected_category?: string }) => ({
+          error: null,
+          data:
+            name === 'expense_category_totals'
+              ? money
+                  .summarizeCategories(
+                    rows.filter(
+                      (r) => !args?.selected_category || r.category === args.selected_category,
+                    ),
+                  )
+                  .categories.map((r) => ({ category: r.category, amount: String(r.amount) }))
+              : [],
+        }),
+      };
+      const passthrough = ({ children }: { children?: import('react').ReactNode }) =>
+        React.createElement('div', null, children);
+      const dependencies: Record<string, unknown> = {
+        'react/jsx-runtime': jsx,
+        './category-filter': filter,
+        './category-summary': summary,
+        './money': money,
+        './messages': messages,
+        './activity': activity,
+        'next/link': {
+          default: ({ children, href }: { children: import('react').ReactNode; href: string }) =>
+            React.createElement('a', { href }, children),
+        },
+        '@/lib/data': {
+          getHome: async () => ({ currency: 'EUR', timezone: 'UTC' }),
+          requireUser: async () => ({ db, user: { id: 'me' } }),
+          getMembers: async () => [],
+        },
+        '@/lib/i18n/server': { i18n: async () => ({ locale, t: {} }) },
+        '@/lib/timezones': { homeDate: () => '2026-11-04' },
+        '@/features/organization/read-rows': {
+          readRows: async (query: PromiseLike<unknown>) => await query,
+        },
+        './actions': { financeAction: async () => ({}) },
+      };
+      for (const [path, names] of Object.entries({
+        '@/components/ui/create-panel': ['CreatePanel'],
+        '@/components/ui/empty-state': ['EmptyState'],
+        './nav': ['ExpensesNav', 'ExpensesOptions'],
+        '@/components/ui/options-menu': ['OptionsMenu'],
+        '@/components/ui/page-header': ['PageHeader'],
+        './pending-occurrence': ['PendingOccurrence'],
+        '@/components/section-disclosure': ['SectionDisclosure'],
+        '@/components/action-form': ['ActionForm'],
+        './expense-form': ['ExpenseForm'],
+      }))
+        dependencies[path] = Object.fromEntries(names.map((name) => [name, passthrough]));
+      const exports = {} as {
+        ExpensesPage: (props: {
+          homeId: string;
+          search: Record<string, string>;
+        }) => Promise<import('react').ReactNode>;
+      };
+      vm.runInNewContext(
+        ts.transpileModule(await readFile('src/features/expenses/page.tsx', 'utf8'), {
+          compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES2022,
+            jsx: ts.JsxEmit.ReactJSX,
+            esModuleInterop: false,
+          },
+        }).outputText,
+        {
+          exports,
+          crypto,
+          require: (name: string) => {
+            assert.ok(name in dependencies, name);
+            return dependencies[name];
+          },
+        },
+      );
+      const html = server.renderToStaticMarkup(
+        await exports.ExpensesPage({ homeId: 'test', search: { category, page } }),
+      );
+      const visibleLabel = locale === 'es' ? 'Total de esta página' : 'Total on this page';
+      const globalLabel =
+        locale === 'es' ? 'Total de todos los gastos del filtro' : 'Total of all filtered expenses';
+      assert.ok(
+        html.includes(
+          `${visibleLabel}: <strong>${money.formatMoney(expectedPage, 'EUR', locale)}</strong>`,
+        ),
+      );
+      assert.ok(
+        html.includes(
+          `${globalLabel}: <strong>${money.formatMoney(expectedFilter, 'EUR', locale)}</strong>`,
+        ),
+      );
+      assert.equal(
+        (html.match(/id="expense-/g) ?? []).length,
+        category === 'food' ? 0 : category === 'rent' || page === '1' ? 1 : 50,
+      );
+      assert.ok(html.includes('<noscript><button'));
+      // The chart remains based on the complete filter, never on the page.
+      const globalSummary = money.summarizeCategories(
+        rows.filter((r) => !category || r.category === category),
+      );
+      assert.ok(
+        html.includes(
+          server.renderToStaticMarkup(
+            React.createElement(summary.CategorySummary, {
+              summary: globalSummary,
+              currency: 'EUR',
+              locale,
+            }),
+          ),
+        ),
+      );
+    }
+  }
+});

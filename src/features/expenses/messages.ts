@@ -5,7 +5,8 @@ const es = {
   allCategories: 'Todas las categorías',
   applyFilter: 'Aplicar filtro',
   clearFilter: 'Quitar filtro',
-  listedTotal: 'Total de gastos del listado',
+  pageTotal: 'Total de esta página',
+  listedTotal: 'Total de todos los gastos del filtro',
   categorySummary: 'Resumen por categoría',
   categorySummaryHelp:
     'Todos los gastos del listado, con el filtro aplicado. Ordenados por importe; porcentajes redondeados a dos decimales.',
@@ -111,7 +112,8 @@ const en: Record<keyof typeof es, string> = {
   allCategories: 'All categories',
   applyFilter: 'Apply filter',
   clearFilter: 'Clear filter',
-  listedTotal: 'Total expenses in this list',
+  pageTotal: 'Total on this page',
+  listedTotal: 'Total of all filtered expenses',
   categorySummary: 'Summary by category',
   categorySummaryHelp:
     'All expenses in this list, with the filter applied. Sorted by amount; percentages rounded to two decimal places.',

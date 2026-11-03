@@ -79,6 +79,73 @@ test('suggestions preserve each balance deterministically without inventing move
   assert.ok([...settled.values()].every((x) => x === 0n));
   assert.throws(() => suggestPayments([{ user_id: 'a', balance: '1' }]));
 });
+// Independent exhaustive settlement search: settle the first nonzero balance
+// against each opposite sign, allowing intermediate balances to change sign.
+function bruteMinimum(values: bigint[]): number {
+  const first = values.findIndex((value) => value !== 0n);
+  if (first < 0) return 0;
+  let best = Infinity;
+  for (let i = first + 1; i < values.length; i++) {
+    if (values[first] * values[i] >= 0n) continue;
+    const next = [...values];
+    next[i] += next[first];
+    next[first] = 0n;
+    best = Math.min(best, 1 + bruteMinimum(next));
+  }
+  return best;
+}
+function verifySuggestions(values: bigint[], minimum?: number) {
+  const balances = values.map((balance, i) => ({ user_id: String(i), balance: String(balance) }));
+  const before = structuredClone(balances);
+  const payments = suggestPayments(balances);
+  if (minimum !== undefined) assert.equal(payments.length, minimum, String(values));
+  assert.deepEqual(suggestPayments([...balances].reverse()), payments);
+  assert.deepEqual(balances, before);
+  const remaining = [...values];
+  for (const payment of payments) {
+    assert.ok(BigInt(payment.amount) > 0n);
+    assert.ok(values[Number(payment.from)] < 0n);
+    assert.ok(values[Number(payment.to)] > 0n);
+    remaining[Number(payment.from)] += BigInt(payment.amount);
+    remaining[Number(payment.to)] -= BigInt(payment.amount);
+  }
+  assert.ok(remaining.every((value) => value === 0n));
+  return payments;
+}
+test('PA1267: exact minimum is four for debtors 8/7/5 and creditors 10/8/2', () => {
+  verifySuggestions([-8n, -7n, -5n, 10n, 8n, 2n], 4);
+});
+test('minimum suggestions agree with independent brute force for seeded balances up to eight people', () => {
+  let seed = 1267;
+  const random = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0);
+  for (let size = 2; size <= 8; size++) {
+    for (let sample = 0; sample < 40; sample++) {
+      const values = Array.from({ length: size - 1 }, () => BigInt(random() % 19) - 9n);
+      values.push(-values.reduce((sum, value) => sum + value, 0n));
+      const minimum = bruteMinimum(values);
+      verifySuggestions(values, minimum);
+      verifySuggestions(
+        values.map((v) => v * 9007199254740993n),
+        minimum,
+      );
+    }
+  }
+  verifySuggestions([], 0);
+  verifySuggestions([0n, 0n], 0);
+  verifySuggestions([-8n, -7n, -5n, 10n, 8n, 2n, 0n, 0n, 0n], 4);
+});
+test('nine nonzero balances retain the existing greedy payment sequence', () => {
+  assert.deepEqual(verifySuggestions([-8n, -7n, -5n, 10n, 8n, 2n, -4n, 3n, 1n]), [
+    { from: '0', to: '3', amount: '8' },
+    { from: '1', to: '3', amount: '2' },
+    { from: '1', to: '4', amount: '5' },
+    { from: '2', to: '4', amount: '3' },
+    { from: '2', to: '7', amount: '2' },
+    { from: '6', to: '7', amount: '1' },
+    { from: '6', to: '5', amount: '2' },
+    { from: '6', to: '8', amount: '1' },
+  ]);
+});
 test('PostgreSQL finances, history, recurrences, isolation and receipts', async (t) => {
   const { db, home, users, as, scalar } = await organizationDatabase();
   const [a, b, c, out] = users;

@@ -105,6 +105,37 @@ export function splitMoney(total: bigint, mode: SplitMode, people: ShareInput[])
 export function suggestPayments(balances: { user_id: string; balance: string }[]) {
   if (balances.reduce((sum, b) => sum + BigInt(b.balance), 0n) !== 0n)
     throw new Error('unbalanced_ledger');
+  const people = balances
+    .filter((b) => BigInt(b.balance) !== 0n)
+    .sort((a, b) => a.user_id.localeCompare(b.user_id));
+  if (people.length > 8) return greedyPayments(balances);
+
+  // Any settlement graph splits into zero-sum connected components. A component
+  // of k people needs at least k-1 transfers; maximizing disjoint zero-sum groups
+  // therefore minimizes transfers. At most 256 masks / 3^8 submask steps.
+  const size = 1 << people.length;
+  const sums = Array<bigint>(size).fill(0n);
+  const groups = Array<number>(size).fill(0);
+  const chosen = Array<number>(size).fill(0);
+  for (let mask = 1; mask < size; mask++) {
+    const bit = mask & -mask;
+    sums[mask] = sums[mask ^ bit] + BigInt(people[Math.log2(bit)].balance);
+    if (sums[mask] !== 0n) continue;
+    // Include the first person to avoid enumerating equivalent group orders.
+    for (let sub = mask; sub; sub = (sub - 1) & mask) {
+      if (sub & bit && sums[sub] === 0n && groups[mask ^ sub] + 1 > groups[mask]) {
+        groups[mask] = groups[mask ^ sub] + 1;
+        chosen[mask] = sub;
+      }
+    }
+  }
+  const result: { from: string; to: string; amount: string }[] = [];
+  for (let mask = size - 1; mask; mask ^= chosen[mask]) {
+    result.push(...greedyPayments(people.filter((_, i) => chosen[mask] & (1 << i))));
+  }
+  return result;
+}
+function greedyPayments(balances: { user_id: string; balance: string }[]) {
   const sort = (a: { amount: bigint; id: string }, b: { amount: bigint; id: string }) =>
     a.amount > b.amount ? -1 : a.amount < b.amount ? 1 : a.id.localeCompare(b.id);
   const creditors = balances
