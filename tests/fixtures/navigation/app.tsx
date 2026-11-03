@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { CalendarView } from '../../../src/features/calendar/calendar-view';
 // Real UI components with a local router test boundary; no mocked Supabase data.
 import { useMemo, useState } from 'react';
@@ -11,7 +10,7 @@ import { SectionTabs } from '../../../src/components/section-tabs';
 import { Navigation } from '../../../src/components/navigation';
 import { SwipeNavigation } from '../../../src/components/swipe-navigation';
 import { CreatePanel } from '../../../src/components/ui/create-panel';
-import { es, en } from '../../../src/lib/i18n/dictionaries';
+import { es } from '../../../src/lib/i18n/dictionaries';
 for (const method of ['pushState', 'replaceState'] as const) {
   const original = window.history[method].bind(window.history);
   window.history[method] = (data: unknown, unused: string, url?: string | URL | null) => {
@@ -26,7 +25,6 @@ function App() {
         : '/homes/demo/organization',
     ),
     [saved, setSaved] = useState(0);
-  const t = new URLSearchParams(location.search).get('locale') === 'en' ? en : es;
   const primary = new URLSearchParams(location.search).has('primary');
   const router = useMemo(() => ({ push: (href: string) => setPath(href) }), []);
   const current = new URL(path, 'http://fixture.local').searchParams.get('tab') || 'tasks';
@@ -69,10 +67,7 @@ function App() {
     <RouterContext.Provider value={{ ...router, path }}>
       <div className="app-shell">
         <aside className="sidebar">
-          <Navigation homeId="demo" t={t} />
-          <div className="sidebar-bottom">
-            <Link href="/homes/demo/settings">{t.homeSettings}</Link>
-          </div>
+          <Navigation homeId="demo" t={es} />
         </aside>
         <main className="page organization" id="main">
           <h1>Navigation component tests</h1>

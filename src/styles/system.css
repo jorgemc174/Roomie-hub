@@ -164,28 +164,6 @@ textarea {
 .calendar-count {
   font-size: 0.75rem;
 }
-/* Settings remains secondary to the six sections in the bottom navigation. */
-@media (max-width: 1050px) {
-  .side-nav .nav-settings {
-    display: flex;
-  }
-  .side-nav .nav-settings::before {
-    content: '';
-    position: absolute;
-    inset: 6px auto 6px 0;
-    border-inline-start: 1px solid var(--line);
-  }
-  .side-nav a {
-    min-width: 44px;
-  }
-  .nav-label {
-    display: none;
-  }
-  .nav-label-mobile {
-    display: inline;
-    white-space: nowrap;
-  }
-}
 /* Tablet keeps the same destinations, while giving the task its full width. */
 @media (min-width: 701px) and (max-width: 1050px) {
   .app-shell {
@@ -1032,16 +1010,6 @@ span.ui-spinner {
   border: 0;
 }
 @media (max-width: 360px) {
-  .side-nav {
-    padding-inline: 2px;
-  }
-  .side-nav a {
-    padding-inline: 0;
-    font-size: 0.625rem;
-  }
-  .side-nav a:nth-child(3) {
-    flex: 1.2;
-  }
   .section-tabs {
     gap: 8px;
   }

@@ -2,15 +2,7 @@
 import Link from 'next/link';
 import { NavigationHint } from './navigation-hint';
 import { usePathname } from 'next/navigation';
-import {
-  House,
-  CalendarDays,
-  ListTodo,
-  Wallet,
-  Heart,
-  MessageCircle,
-  Settings,
-} from 'lucide-react';
+import { House, CalendarDays, ListTodo, Wallet, Heart, MessageCircle } from 'lucide-react';
 import type { Messages } from '@/lib/i18n/dictionaries';
 export const modules = [
   { key: 'calendar', icon: CalendarDays },
@@ -58,18 +50,6 @@ export function Navigation({ homeId, t }: { homeId: string; t: Messages }) {
           </Link>
         );
       })}
-      <Link
-        href={`/homes/${homeId}/settings`}
-        className={`nav-settings${pathname === `/homes/${homeId}/settings` ? ' active' : ''}`}
-        aria-label={t.homeSettings}
-        aria-current={pathname === `/homes/${homeId}/settings` ? 'page' : undefined}
-      >
-        <Settings size={21} aria-hidden="true" />
-        <span className="nav-label-mobile" aria-hidden="true">
-          {t.homeSettingsShort}
-        </span>
-        <NavigationHint />
-      </Link>
     </nav>
   );
 }
