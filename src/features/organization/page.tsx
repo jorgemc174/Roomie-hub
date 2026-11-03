@@ -1,4 +1,4 @@
-import { ShoppingAnchor, DeleteShoppingList } from './shopping-controls';
+import { ShoppingAnchor, DeleteShoppingList, ShoppingListNameForm } from './shopping-controls';
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { OrganizationNav, OrganizationOptions, OrganizationLoadError } from './nav';
@@ -293,12 +293,7 @@ export async function OrganizationPage({
             id="create-list"
             defaultOpen={search.create === 'list'}
           >
-            <ActionForm action={action('create_list')} label={t.newList} pendingLabel={t.saving}>
-              <label>
-                {t.name}
-                <input name="name" maxLength={100} />
-              </label>
-            </ActionForm>
+            <ShoppingListNameForm action={action('create_list')} t={t} />
           </CreatePanel>
           <ShoppingAnchor createdId={typeof search.created === 'string' ? search.created : ''} />
           {!lists.data?.length && <EmptyState title={t.emptyShopping} />}
@@ -319,25 +314,7 @@ export async function OrganizationPage({
                     </span>
                     <OptionsMenu label={`${t.options}: ${list.name}`}>
                       {!list.completed_at && (
-                        <details>
-                          <summary>{t.rename}</summary>
-                          <ActionForm
-                            action={action('rename_list')}
-                            label={t.save}
-                            pendingLabel={t.saving}
-                          >
-                            {hidden('list_id', list.id)}
-                            <label>
-                              {t.name}
-                              <input
-                                name="name"
-                                required
-                                maxLength={100}
-                                defaultValue={list.name}
-                              />
-                            </label>
-                          </ActionForm>
-                        </details>
+                        <ShoppingListNameForm action={action('rename_list')} t={t} list={list} />
                       )}
                       <DeleteShoppingList listId={list.id} action={action('delete_list')} t={t} />
                     </OptionsMenu>

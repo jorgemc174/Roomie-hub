@@ -256,7 +256,11 @@ test('empty tasks, shopping and absences keep exactly one creation entry and a s
       '@/components/ui/options-menu': { OptionsMenu },
       '@/components/ui/page-header': { PageHeader },
       './task-list': { TaskList },
-      './shopping-controls': { ShoppingAnchor: () => null, DeleteShoppingList: () => null },
+      './shopping-controls': {
+        ShoppingAnchor: () => null,
+        DeleteShoppingList: () => null,
+        ShoppingListNameForm: () => null,
+      },
       './task-navigation': { TaskNavigation },
       '@/components/section-disclosure': { SectionDisclosure },
       '@/features/expenses/messages': { expenseMessages: () => ({}) },
