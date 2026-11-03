@@ -187,22 +187,25 @@ export async function ActivitiesPage({
               {t.creator}: {a.created_by_name}
             </small>
             <h3>{t.participants}</h3>
-            {(['going', 'maybe', 'not_going'] as const).map((answer) => (
-              <section key={answer}>
-                <h4>{t[answer]}</h4>
-                {participants.some((m) => m.response === answer) ? (
-                  <ul>
-                    {participants
-                      .filter((m) => m.response === answer)
-                      .map((m) => (
+            {(['going', 'maybe', 'not_going'] as const).map((answer) => {
+              const respondents = participants.filter((m) => m.response === answer);
+              return (
+                <section key={answer}>
+                  <h4>
+                    {t[answer]} ({new Intl.NumberFormat(locale).format(respondents.length)})
+                  </h4>
+                  {respondents.length ? (
+                    <ul>
+                      {respondents.map((m) => (
                         <li key={m.user_id}>{m.user_name}</li>
                       ))}
-                  </ul>
-                ) : (
-                  <p>{t.noResponses}</p>
-                )}
-              </section>
-            ))}
+                    </ul>
+                  ) : (
+                    <p>{t.noResponses}</p>
+                  )}
+                </section>
+              );
+            })}
             {a.cancelled_at ? (
               <p className="badge cancelled">{t.cancelled}</p>
             ) : (
