@@ -45,6 +45,8 @@ begin
  update public.activities set location_kind=kind,participant_request=case when old.id is null then selection else participant_request end where id=item;
  insert into public.activity_members(home_id,activity_id,user_id,user_name,response)
  select target,item,p.id,p.name,'going' from public.profiles p where p.id=any(participants)
+   -- Editing an activity that has already ended must not add retroactive attendees.
+   and (old.id is null or exists(select 1 from public.activities a where a.id=item and coalesce(a.ends_at,a.starts_at)>now()))
  on conflict(activity_id,user_id) do nothing;
  return result;
 end $$;

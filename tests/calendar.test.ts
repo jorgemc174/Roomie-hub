@@ -452,6 +452,47 @@ test('PostgreSQL resources, reservations, activities, RLS and lifecycle', async 
   }
 });
 
+test('PA 1268: editing an ended activity does not add retroactive participants', async () => {
+  const { db, as, users, home, scalar } = await organizationDatabase();
+  const [a, b, c] = users;
+  try {
+    const h = await home();
+    await db.query("select public.update_home_timezone($1,'UTC')", [h]);
+    const id = randomUUID();
+    await db.query(
+      "select public.save_activity_plan($1,$2,0,'Dinner','','Kitchen','2090-09-16 21:00',null,'UTC','home',$3::uuid[])",
+      [h, id, [b]],
+    );
+    await db.exec('reset role');
+    await db.query(
+      "update public.activities set starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where id=$1",
+      [id],
+    );
+    const start = await scalar(
+      "select (starts_at at time zone 'UTC')::text v from public.activities where id=$1",
+      [id],
+    );
+    const end = await scalar(
+      "select (ends_at at time zone 'UTC')::text v from public.activities where id=$1",
+      [id],
+    );
+    await as(a);
+    await db.query(
+      "select public.save_activity_plan($1,$2,1,'Dinner','','Kitchen',$3,$4,'UTC','home',$5::uuid[])",
+      [h, id, start, end, [b, c]],
+    );
+    assert.equal(
+      await scalar(
+        'select count(*)::int v from public.activity_members where activity_id=$1 and user_id=$2',
+        [id, c],
+      ),
+      0,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
 test('PA 1268/1269: location, selected active participants and three idempotent responses', async () => {
   const { db, as, users, home, scalar } = await organizationDatabase();
   const [a, b, c, out] = users;
