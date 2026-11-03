@@ -61,7 +61,7 @@ try {
       });
     };
     await visit(home);
-    await expect(page.locator('.side-nav a')).toHaveCount(6);
+    await expect(page.locator('.side-nav a:visible')).toHaveCount(variant.width <= 1050 ? 7 : 6);
     await expect(page.getByRole('link', { name: 'Invitar compañeros', exact: true })).toBeVisible();
     if (variant.width === 768) {
       expect(

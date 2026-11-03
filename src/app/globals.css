@@ -689,6 +689,9 @@ fieldset {
 .side-nav a.active:hover {
   background: color-mix(in srgb, var(--mint) 85%, var(--mint-ink));
 }
+.side-nav .nav-settings {
+  display: none;
+}
 .sidebar-bottom {
   margin-top: auto;
   display: grid;

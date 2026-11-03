@@ -54,7 +54,7 @@ Mantener fuentes de sistema disponibles sin descargas ni cambios de métricas po
 
 ## Layout
 
-Mobile first. Móvil: navegación inferior existente con las seis secciones y etiquetas, áreas seguras, contenido que no quede tapado por la barra. Entre 701 y 1050 px el contenido ocupa el ancho disponible y las seis secciones pasan a una barra inferior rotulada; desde 1051 px se conserva la sidebar con nombre del piso y texto de destinos. Ancho de lectura restringido para formularios; listas y calendario utilizan el espacio útil. Las pestañas internas se desplazan dentro de su propio contenedor y conservan el enlace activo. No añadir un menú Más ni ocultar secciones sin una necesidad demostrada.
+Mobile first. Móvil: navegación inferior con las seis secciones y etiquetas, seguida del acceso a Ajustes del piso con engranaje y divisor; áreas seguras y contenido que no quede tapado por la barra. Entre 701 y 1050 px el contenido ocupa el ancho disponible y las seis secciones y el acceso separado a Ajustes del piso pasan a una barra inferior rotulada; desde 1051 px se conserva la sidebar con nombre del piso y texto de destinos. Ancho de lectura restringido para formularios; listas y calendario utilizan el espacio útil. Las pestañas internas se desplazan dentro de su propio contenedor y conservan el enlace activo. No añadir un menú Más ni ocultar secciones sin una necesidad demostrada.
 
 ## Elevation & Depth
 

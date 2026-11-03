@@ -53,6 +53,83 @@ let scenarios = 0;
 const screenshotDirectory = process.env.NAVIGATION_SCREENSHOTS_DIR;
 if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true });
 try {
+  for (const width of [320, 390, 768, 1050, 1051, 1440]) {
+    for (const locale of ['es', 'en']) {
+      const context = await browser.newContext({
+        viewport: { width, height: width === 320 ? 740 : 844 },
+      });
+      const page = await context.newPage();
+      await page.goto(
+        `http://127.0.0.1:${address.port}/homes/demo/settings?primary&locale=${locale}`,
+      );
+      const nav = page.locator('.side-nav');
+      const settings = nav.getByRole('link', {
+        name: locale === 'es' ? 'Ajustes del piso' : 'Home settings',
+        exact: true,
+      });
+      for (const theme of ['light', 'dark']) {
+        await page.evaluate((theme) => {
+          document.documentElement.dataset.theme = theme;
+        }, theme);
+        await expect(nav.locator('a:visible')).toHaveCount(width <= 1050 ? 7 : 6);
+        if (width <= 1050) {
+          await expect(settings).toBeVisible();
+          await expect(settings).toHaveAttribute('aria-current', 'page');
+          await expect(settings.locator('svg.lucide-settings')).toBeVisible();
+          await expect(page.locator('.sidebar-bottom')).toBeHidden();
+          const metrics = await nav.evaluate((nav) =>
+            Array.from(nav.querySelectorAll('a')).map((link) => {
+              const rect = link.getBoundingClientRect();
+              const label = link.querySelector('.nav-label-mobile');
+              return {
+                x: rect.x,
+                right: rect.right,
+                width: rect.width,
+                height: rect.height,
+                label: label.textContent,
+                font: getComputedStyle(label).font,
+                textWidth: label.getBoundingClientRect().width,
+                available:
+                  link.clientWidth -
+                  parseFloat(getComputedStyle(link).paddingLeft) -
+                  parseFloat(getComputedStyle(link).paddingRight),
+              };
+            }),
+          );
+          for (const metric of metrics) {
+            expect(metric.width).toBeGreaterThanOrEqual(44);
+            expect(metric.height).toBeGreaterThanOrEqual(44);
+            expect(
+              metric.textWidth,
+              `${width}/${locale}: ${JSON.stringify(metric)}`,
+            ).toBeLessThanOrEqual(metric.available + 0.5);
+            expect(metric.x).toBeGreaterThanOrEqual(0);
+            expect(metric.right).toBeLessThanOrEqual(width);
+          }
+          expect(
+            await settings.evaluate(
+              (link) => getComputedStyle(link, '::before').borderInlineStartWidth,
+            ),
+          ).toBe('1px');
+        } else {
+          await expect(settings).toBeHidden();
+          await expect(page.locator('.sidebar-bottom a')).toBeVisible();
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+          width,
+        );
+        if (screenshotDirectory && [320, 390, 1440].includes(width))
+          await page.screenshot({
+            path: path.join(screenshotDirectory, `settings-${width}-${locale}-${theme}.png`),
+          });
+        scenarios++;
+      }
+      await context.close();
+    }
+  }
+  console.log(
+    `${scenarios} workspace settings scenarios passed: responsive visibility, labels, touch targets, separation and overflow in both languages and themes.`,
+  );
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 667, height: 375 },

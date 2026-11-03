@@ -36,10 +36,48 @@ test('nested workspace routes retain exactly one active section in both language
         ),
       );
       const links = html.match(/<a\b[^>]*>/g) ?? [];
-      assert.equal(links.length, 6);
+      assert.equal(links.length, 7);
       const active = links.filter((link) => link.includes('aria-current='));
       assert.equal(active.length, 1);
       assert.ok(active[0].includes(`aria-label="${label}"`));
+    }
+  }
+});
+
+test('home settings follows the six sections with its own gear, labels and exact active route', () => {
+  for (const t of [es, en]) {
+    for (const path of ['/homes/test/settings', '/homes/test', '/homes/test/settings-other']) {
+      const html = renderToStaticMarkup(
+        createElement(
+          PathnameContext.Provider,
+          { value: path },
+          createElement(Navigation, { homeId: 'test', t }),
+        ),
+      );
+      const links = Array.from(html.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/g), (match) => match[0]);
+      assert.deepEqual(
+        links.map((link) => link.match(/href="([^"]+)"/)?.[1]),
+        [
+          '/homes/test',
+          '/homes/test/calendar',
+          '/homes/test/organization',
+          '/homes/test/expenses',
+          '/homes/test/community',
+          '/homes/test/chat',
+          '/homes/test/settings',
+        ],
+      );
+      const settings = links[6];
+      assert.ok(settings.includes(`aria-label="${t.homeSettings}"`));
+      assert.ok(settings.includes('nav-settings'));
+      assert.ok(settings.includes('lucide-settings'));
+      assert.ok(
+        settings.includes(
+          path === '/homes/test/settings' ? 'aria-current="page"' : 'href="/homes/test/settings"',
+        ),
+      );
+      if (path !== '/homes/test/settings') assert.ok(!settings.includes('aria-current='));
+      assert.ok(settings.includes(t === es ? '>Ajustes</span>' : '>Settings</span>'));
     }
   }
 });
