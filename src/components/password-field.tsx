@@ -1,5 +1,6 @@
 'use client';
 import { useId, useState } from 'react';
+import { AuthInput } from './auth-input';
 import { Eye, EyeOff } from 'lucide-react';
 
 export function PasswordField({
@@ -9,6 +10,7 @@ export function PasswordField({
   autoComplete,
   minLength,
   hint,
+  invalidMessage,
 }: {
   label: string;
   showLabel: string;
@@ -16,6 +18,7 @@ export function PasswordField({
   autoComplete: string;
   minLength: number;
   hint?: string;
+  invalidMessage?: string;
 }) {
   const id = useId();
   const [visible, setVisible] = useState(false);
@@ -23,7 +26,8 @@ export function PasswordField({
     <div className="password-field">
       <label htmlFor={id}>{label}</label>
       <div className="password-input">
-        <input
+        <AuthInput
+          invalidMessage={invalidMessage ?? hint ?? label}
           id={id}
           name="password"
           type={visible ? 'text' : 'password'}

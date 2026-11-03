@@ -1,10 +1,11 @@
 'use client';
 import { useRetainedForm } from '@/components/ui/use-retained-form';
-import { useActionState, type ReactNode } from 'react';
+import { createContext, useActionState, type ReactNode } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { FormFeedback } from './ui/form-feedback';
 import { useFormStatus } from 'react-dom';
 import type { ActionState } from '@/app/actions';
+export const ActionFormState = createContext<ActionState>({});
 function Fields({ children }: { children: ReactNode }) {
   const { pending } = useFormStatus();
   return <fieldset disabled={pending}>{children}</fieldset>;
@@ -55,7 +56,9 @@ export function ActionForm({
   const retainForm = useRetainedForm(state.error, pending);
   return (
     <form onSubmit={retainForm} action={formAction} className={className} aria-busy={pending}>
-      <Fields>{children}</Fields>
+      <ActionFormState.Provider value={state}>
+        <Fields>{children}</Fields>
+      </ActionFormState.Provider>
       <FormFeedback error={state.error} success={state.success} pending={pending} />
       <Submit label={label} pendingLabel={pendingLabel} danger={danger} secondary={secondary} />
     </form>

@@ -1,3 +1,4 @@
+import { AuthInput } from './auth-input';
 import Link from 'next/link';
 import { House } from 'lucide-react';
 import { redirect } from 'next/navigation';
@@ -14,10 +15,14 @@ export async function AuthScreen({
   kind,
   next = '',
   error = '',
+  registered,
+  passwordChanged,
 }: {
   kind: 'login' | 'register' | 'recover' | 'reset';
   next?: string;
   error?: string;
+  registered?: string;
+  passwordChanged?: string;
 }) {
   if (!configured()) redirect('/setup');
   next = safeNext(next);
@@ -39,7 +44,7 @@ export async function AuthScreen({
         ? t.register
         : kind === 'recover'
           ? t.sendLink
-          : t.reset;
+          : t.savePassword;
   return (
     <div className="auth-shell">
       <aside className="auth-story">
@@ -65,37 +70,53 @@ export async function AuthScreen({
               {error === 'google' ? t.googleError : error === 'link' ? t.sessionError : t.authError}
             </p>
           )}
+          {kind === 'login' && (registered === '1' || passwordChanged === '1') && (
+            <p className="notice" role="status">
+              {passwordChanged === '1' ? t.passwordChanged : t.registrationSent}
+            </p>
+          )}
           <ActionForm action={authAction.bind(null, kind)} label={label} pendingLabel={t.saving}>
             <input type="hidden" name="next" value={next} />
             {kind === 'register' && (
               <label>
                 {t.name}
-                <input name="name" autoComplete="name" minLength={2} maxLength={80} required />
+                <AuthInput
+                  invalidMessage={t.invalid}
+                  name="name"
+                  autoComplete="name"
+                  minLength={2}
+                  maxLength={80}
+                  required
+                />
               </label>
             )}
             {kind !== 'reset' && (
               <label>
                 {t.email}
-                <input
+                <AuthInput
+                  invalidMessage={t.invalid}
                   name="email"
                   type="email"
                   autoComplete="email"
                   spellCheck={false}
                   autoCapitalize="none"
+                  pattern={String.raw`[^\s@]+@[^\s@]+\.[^\s@]+`}
                   required
                   maxLength={254}
                 />
               </label>
             )}
-            {kind === 'register' && <RegisterPasswords t={t} />}
-            {kind !== 'recover' && kind !== 'register' && (
+            {(kind === 'register' || kind === 'reset') && (
+              <RegisterPasswords t={t} reset={kind === 'reset'} />
+            )}
+            {kind === 'login' && (
               <PasswordField
-                label={kind === 'reset' ? t.newPassword : t.password}
+                label={t.password}
                 showLabel={t.showPassword}
                 hideLabel={t.hidePassword}
-                autoComplete={kind === 'login' ? 'current-password' : 'new-password'}
-                minLength={kind === 'login' ? 1 : 4}
-                hint={kind !== 'login' ? t.passwordHint : undefined}
+                autoComplete="current-password"
+                minLength={1}
+                invalidMessage={t.invalid}
               />
             )}
             {kind === 'login' && (

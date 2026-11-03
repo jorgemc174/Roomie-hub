@@ -1,3 +1,4 @@
+import { AuthInput } from '../../../src/components/auth-input';
 import { createRoot } from 'react-dom/client';
 import { ProfileForm } from '../../../src/app/(account)/profile/profile-form';
 import { RegisterPasswords } from '../../../src/components/register-passwords';
@@ -23,8 +24,26 @@ createRoot(document.getElementById('root')!).render(
         document.documentElement.dataset.registered = 'true';
       }}
     >
+      <AuthInput name="name" required minLength={2} maxLength={80} invalidMessage={t.invalid} />
+      <AuthInput
+        name="email"
+        type="email"
+        required
+        pattern={String.raw`[^\s@]+@[^\s@]+\.[^\s@]+`}
+        invalidMessage={t.invalid}
+      />
       <RegisterPasswords t={t} />
       <button>Register</button>
+    </form>
+    <form
+      id="reset"
+      onSubmit={(event) => {
+        event.preventDefault();
+        document.documentElement.dataset.reset = 'true';
+      }}
+    >
+      <RegisterPasswords t={t} reset />
+      <button>{t.savePassword}</button>
     </form>
   </>,
 );

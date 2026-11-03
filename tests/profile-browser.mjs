@@ -101,7 +101,11 @@ try {
           ['image/png', 4_000_001],
         ]) {
           await photo.setInputFiles({ name: 'bad-file', mimeType, buffer: Buffer.alloc(size) });
-          await expect(form.getByRole('alert')).toContainText('4 MB');
+          await expect(form.getByRole('alert')).toHaveText(
+            locale === 'es'
+              ? 'Formato no soportado o archivo demasiado grande'
+              : 'Unsupported format or file too large',
+          );
           await save.click();
           await expect(page.locator('html')).not.toHaveAttribute('data-submissions');
           await cancel.click();
@@ -137,6 +141,66 @@ try {
         await cancel.click();
         await expect(form.locator('img')).toHaveAttribute('src', savedPreview);
         const register = page.locator('#register');
+        await register.getByRole('button', { name: 'Register', exact: true }).click();
+        for (const field of ['name', 'email', 'password', 'password_confirmation']) {
+          await expect(register.locator(`[name=${field}]`)).toHaveAttribute('aria-invalid', 'true');
+          await expect(register.locator(`[name=${field}]`)).toHaveAttribute(
+            'aria-describedby',
+            /.+/,
+          );
+        }
+        await register.locator('[name=name]').fill('Good name');
+        await register.locator('[name=email]').fill('bad-email');
+        await expect(register.locator('[name=email]')).toHaveAttribute('aria-invalid', 'true');
+        await register.locator('[name=email]').fill('valid@example.test');
+        for (const form of [register, page.locator('#reset')]) {
+          await form.locator('[name=password]').fill('abcde');
+          await form.locator('[name=password_confirmation]').fill('abcde');
+          await form
+            .getByRole('button', {
+              name:
+                form === register
+                  ? 'Register'
+                  : locale === 'es'
+                    ? 'Guardar contraseña'
+                    : 'Save password',
+              exact: true,
+            })
+            .click();
+          await expect(form.locator('[name=password]')).toHaveAttribute('aria-invalid', 'true');
+          expect(await form.locator('[name=password]').getAttribute('minlength')).toBe('6');
+          const confirmationReason = await form
+            .locator('[name=password_confirmation]')
+            .evaluate(
+              (input) =>
+                document.getElementById(input.getAttribute('aria-describedby'))?.textContent,
+            );
+          expect(confirmationReason).toBe(
+            locale === 'es' ? 'Entre 6 y 128 caracteres.' : 'Between 6 and 128 characters.',
+          );
+          await expect(page.locator('html')).not.toHaveAttribute(
+            form === register ? 'data-registered' : 'data-reset',
+          );
+        }
+        const reset = page.locator('#reset');
+        await reset.locator('[name=password]').fill('abcdef');
+        await reset.locator('[name=password_confirmation]').fill('different');
+        await reset
+          .getByRole('button', {
+            name: locale === 'es' ? 'Guardar contraseña' : 'Save password',
+            exact: true,
+          })
+          .click();
+        await expect(page.locator('html')).not.toHaveAttribute('data-reset');
+        await reset.locator('[name=password_confirmation]').fill('abcdef');
+        await reset
+          .getByRole('button', {
+            name: locale === 'es' ? 'Guardar contraseña' : 'Save password',
+            exact: true,
+          })
+          .click();
+        await expect(page.locator('html')).toHaveAttribute('data-reset', 'true');
+
         await register.locator('[name=password]').fill('abcd');
         await register.locator('[name=password_confirmation]').fill('different');
         await register.getByRole('button', { name: 'Register', exact: true }).click();

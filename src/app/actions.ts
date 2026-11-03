@@ -13,7 +13,11 @@ import { validCurrency } from '@/lib/currencies';
 import { validTimezone } from '@/lib/timezones';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { authReturnUrl, siteOrigin as siteUrl } from '@/lib/auth-redirects';
-export type ActionState = { error?: string; success?: string };
+export type ActionState = {
+  error?: string;
+  success?: string;
+  fieldErrors?: Record<string, string>;
+};
 const field = (form: FormData, key: string) => String(form.get(key) ?? '').trim();
 export async function setPreferences(form: FormData) {
   const jar = await cookies();
@@ -36,20 +40,25 @@ export async function authAction(
 ): Promise<ActionState> {
   const { t } = await i18n();
   try {
-    if (
-      kind === 'register' &&
-      !matchingPasswords(
-        String(form.get('password') ?? ''),
-        String(form.get('password_confirmation') ?? ''),
-      )
-    )
-      return { error: t.passwordMismatch };
-    const db = await supabase();
     const email = field(form, 'email');
     const password = String(form.get('password') ?? '');
     const next = safeNext(field(form, 'next'));
+    const fieldErrors: Record<string, string> = {};
+    if (kind !== 'reset' && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))
+      fieldErrors.email = t.invalid;
+    if (
+      kind !== 'recover' &&
+      (password.length > 128 || password.length < (kind === 'register' || kind === 'reset' ? 6 : 1))
+    )
+      fieldErrors.password = kind === 'login' ? t.invalid : t.passwordHint;
+    if (kind === 'register' || kind === 'reset') {
+      if (!matchingPasswords(password, String(form.get('password_confirmation') ?? '')))
+        fieldErrors.password_confirmation = t.passwordMismatch;
+    }
+    if (kind === 'register' && !validName(field(form, 'name'))) fieldErrors.name = t.invalid;
+    if (Object.keys(fieldErrors).length) return { error: t.invalid, fieldErrors };
+    const db = await supabase();
     if (kind === 'recover') {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: t.invalid };
       const { error } = await db.auth.resetPasswordForEmail(email, {
         redirectTo: authReturnUrl(siteUrl(), '/auth/confirm', '/reset-password'),
       });
@@ -58,16 +67,20 @@ export async function authAction(
     }
     if (kind === 'reset') {
       await requireUser();
-      if (password.length < 4 || password.length > 128) return { error: t.invalid };
       const { error } = await db.auth.updateUser({ password });
-      if (error) return { error: authErrorMessage(error, t) };
-      redirect('/homes');
+      if (error)
+        return {
+          error: authErrorMessage(error, t),
+          ...(error.code === 'weak_password'
+            ? { fieldErrors: { password: t.passwordRejected } }
+            : {}),
+        };
+      const { error: signOutError } = await db.auth.signOut({ scope: 'local' });
+      if (signOutError) return { error: t.requestError };
+      redirect('/login?passwordChanged=1');
     }
-    if (!email || password.length > 128 || password.length < (kind === 'register' ? 4 : 1))
-      return { error: t.invalid };
     if (kind === 'register') {
       const name = field(form, 'name');
-      if (!validName(name)) return { error: t.invalid };
       const { data, error } = await db.auth.signUp({
         email,
         password,
@@ -76,8 +89,19 @@ export async function authAction(
           emailRedirectTo: authReturnUrl(siteUrl(), '/auth/confirm', next),
         },
       });
-      if (error) return { error: authErrorMessage(error, t) };
-      if (!data.session) return { success: t.confirmEmail };
+      if (
+        error?.code === 'user_already_exists' ||
+        error?.code === 'email_exists' ||
+        (!error && !data.session)
+      )
+        redirect(`/login?${new URLSearchParams({ registered: '1', next })}`);
+      if (error)
+        return {
+          error: authErrorMessage(error, t),
+          ...(error.code === 'weak_password'
+            ? { fieldErrors: { password: t.passwordRejected } }
+            : {}),
+        };
     } else {
       const { error } = await db.auth.signInWithPassword({ email, password });
       if (error) return { error: authErrorMessage(error, t) };
@@ -298,7 +322,7 @@ export async function profileAction(previous: ActionState, form: FormData): Prom
     }
     await setPreferences(form);
     revalidatePath('/', 'layout');
-    return { success: t.saved };
+    return { success: t.profileUpdated };
   } catch (error) {
     unstable_rethrow(error);
     return {

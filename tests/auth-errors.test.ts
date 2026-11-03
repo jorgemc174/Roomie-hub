@@ -28,3 +28,26 @@ test('registration errors distinguish rejection, rate limiting and connectivity 
     );
   }
 });
+
+test('PA literal account messages', () => {
+  assert.equal(es.authError, 'Credenciales incorrectas');
+  assert.equal(es.sessionError, 'El enlace ha expirado o no es válido');
+  assert.equal(
+    es.googleError,
+    'No se pudo iniciar sesión con Google. Inténtalo de nuevo más tarde',
+  );
+  assert.equal(es.avatarImageError, 'Formato no soportado o archivo demasiado grande');
+  assert.equal(es.profileUpdated, 'Perfil actualizado con éxito');
+  assert.match(es.passwordHint, /6/);
+});
+
+test('registration acknowledgement never claims account creation', () => {
+  assert.equal(
+    es.registrationSent,
+    'Registro recibido. Revisa tu correo para confirmar la cuenta. Si ya tenías cuenta, inicia sesión o recupera tu contraseña.',
+  );
+  assert.equal(
+    en.registrationSent,
+    'Registration received. Check your email to confirm your account. If you already had an account, sign in or recover your password.',
+  );
+});
