@@ -3,6 +3,7 @@ import { House } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { Brand } from './brand';
 import { Preferences } from './preferences';
+import { RegisterPasswords } from './register-passwords';
 import { PasswordField } from './password-field';
 import { ActionForm } from './action-form';
 import { authAction, googleAction } from '@/app/actions';
@@ -86,7 +87,8 @@ export async function AuthScreen({
                 />
               </label>
             )}
-            {kind !== 'recover' && (
+            {kind === 'register' && <RegisterPasswords t={t} />}
+            {kind !== 'recover' && kind !== 'register' && (
               <PasswordField
                 label={kind === 'reset' ? t.newPassword : t.password}
                 showLabel={t.showPassword}
