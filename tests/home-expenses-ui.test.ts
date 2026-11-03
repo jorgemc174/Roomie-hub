@@ -15,6 +15,11 @@ import { OptionsMenu } from '../src/components/ui/options-menu';
 import { SectionDisclosure } from '../src/components/section-disclosure';
 import * as expensesNav from '../src/features/expenses/nav';
 import { PendingOccurrence } from '../src/features/expenses/pending-occurrence';
+import {
+  readExpenseActivity,
+  readCategoryTotals,
+  type ExpenseActivity,
+} from '../src/features/expenses/activity';
 import * as money from '../src/features/expenses/money';
 import * as messages from '../src/features/expenses/messages';
 import { calendarMessages } from '../src/features/calendar/messages';
@@ -55,11 +60,13 @@ function reads(tables: Record<string, unknown[]>, failed?: string) {
   return {
     calls,
     from(table: string) {
+      let category: unknown;
       const query = {
         select(...args: unknown[]) {
           return record('select', args);
         },
         eq(...args: unknown[]) {
+          if (args[0] === 'category') category = args[1];
           return record('eq', args);
         },
         is(...args: unknown[]) {
@@ -92,7 +99,9 @@ function reads(tables: Record<string, unknown[]>, failed?: string) {
         ) {
           return Promise.resolve(
             resolve({
-              data: tables[table] ?? [],
+              data: (tables[table] ?? []).filter(
+                (r) => category === undefined || (r as { category?: string }).category === category,
+              ),
               count: tables[table]?.length ?? 0,
               error: failed === table ? { code: 'READ_FAILED' } : null,
             }),
@@ -152,6 +161,7 @@ test('Home prioritizes operational summaries, keeps one tasks/shopping destinati
       '@/lib/i18n/server': { i18n: async () => ({ locale }) },
       './messages': messages,
       './money': money,
+      './activity': { readExpenseActivity, readCategoryTotals },
     });
     const expenseSummary = await ExpenseSummary({ homeId: 'test' });
     const { default: HomePage } = await component<{
@@ -282,12 +292,25 @@ async function expensesPage(
   search: Record<string, string>,
   balance = '1250',
   empty = false,
+  activity: ExpenseActivity[] = [],
 ) {
   const db = {
     ...reads({
       expenses: empty
         ? []
         : [
+            {
+              id: 'rent',
+              title: 'Monthly rent',
+              amount: 5000,
+              currency: 'EUR',
+              expense_date: '2026-11-01',
+              payer: 'me',
+              payer_name: 'Pat',
+              category: 'rent',
+              version: 1,
+              deleted_at: null,
+            },
             {
               id: 'expense',
               title: 'Groceries',
@@ -309,6 +332,7 @@ async function expensesPage(
         {
           id: 'payment',
           payment_date: '2026-11-01',
+          created_at: '2026-11-01T12:00:00Z',
           from_name: 'Sam',
           to_name: 'Pat',
           amount: 1250,
@@ -330,20 +354,30 @@ async function expensesPage(
         },
       ],
     }),
-    rpc: async (name: string) => ({
+    rpc: async (name: string, args?: { selected_category?: string }) => ({
       error: null,
       data:
-        name === 'expense_balances'
-          ? [
-              { user_id: 'me', name: 'Pat', active: true, balance },
-              {
-                user_id: 'other',
-                name: 'Sam',
-                active: true,
-                balance: (-BigInt(balance)).toString(),
-              },
-            ]
-          : { more: true },
+        name === 'expense_category_totals'
+          ? (empty
+              ? []
+              : [
+                  { category: 'rent', amount: '5000' },
+                  { category: 'groceries', amount: '2500' },
+                ]
+            ).filter((r) => !args?.selected_category || r.category === args.selected_category)
+          : name === 'expense_activity'
+            ? activity
+            : name === 'expense_balances'
+              ? [
+                  { user_id: 'me', name: 'Pat', active: true, balance },
+                  {
+                    user_id: 'other',
+                    name: 'Sam',
+                    active: true,
+                    balance: (-BigInt(balance)).toString(),
+                  },
+                ]
+              : { more: true },
     }),
   };
   const action = () => Promise.resolve({});
@@ -374,6 +408,7 @@ async function expensesPage(
     '@/lib/timezones': { homeDate },
     './messages': messages,
     './money': money,
+    './activity': { readExpenseActivity, readCategoryTotals },
     './expense-form': {
       ExpenseForm: ({
         id,
@@ -446,5 +481,114 @@ test('empty expenses use the existing CreatePanel as the sole creation entry in 
     const empty = html.slice(html.indexOf('<section class="ui-empty-state"'));
     assert.ok(empty.includes(messages.expenseMessages(locale).empty));
     assert.ok(!empty.slice(0, empty.indexOf('</section>')).includes('<a'));
+  }
+});
+
+test('expense category filter and summary use URL state and exact amounts in both languages', async () => {
+  for (const locale of ['es', 'en'] as const) {
+    const t = messages.expenseMessages(locale);
+    const html = await expensesPage(locale, { category: 'groceries', page: '1' });
+    assert.ok(html.includes('name="category"'));
+    assert.match(html, /<option value="groceries" selected="">/);
+    assert.ok(html.includes(t.clearFilter));
+    assert.ok(html.includes(t.listedTotal));
+    assert.ok(html.includes(t.categorySummary));
+    assert.ok(!html.includes('Monthly rent'));
+    const all = await expensesPage(locale, {});
+    assert.ok(all.includes('Monthly rent'));
+    assert.ok(all.includes(money.formatMoney(7500n, 'EUR', locale)));
+    assert.ok(html.includes(money.formatMoney(2500n, 'EUR', locale)));
+    assert.ok(html.includes(locale === 'es' ? '100,00' : '100.00'));
+    assert.ok(html.includes('page=0&amp;category=groceries'));
+    const invalid = await expensesPage(locale, { category: 'invalid' });
+    assert.match(invalid, /<option value="" selected="">/);
+    assert.ok(!invalid.includes(t.clearFilter));
+  }
+});
+
+test('suggested payment opens the existing form with current sender, recipient and exact amount', async () => {
+  for (const locale of ['es', 'en'] as const) {
+    const html = await expensesPage(locale, { tab: 'balances' });
+    assert.ok(html.includes(messages.expenseMessages(locale).registerSuggested));
+    assert.ok(html.includes('sender=other&amp;recipient=me&amp;amount=1250#record-payment'));
+    const opened = await expensesPage(locale, {
+      tab: 'balances',
+      create: 'payment',
+      sender: 'other',
+      recipient: 'me',
+      amount: '1250',
+    });
+    assert.ok(opened.includes('id="record-payment" open=""'));
+    assert.match(opened, /name="sender">[\s\S]*?<option value="other" selected="">/);
+    assert.match(opened, /name="recipient">[\s\S]*?<option value="me" selected="">/);
+    assert.match(opened, /name="amount"[^>]*value="12.50"/);
+    const stale = await expensesPage(
+      locale,
+      { tab: 'balances', create: 'payment', sender: 'other', recipient: 'me', amount: '1250' },
+      '0',
+    );
+    assert.ok(!stale.includes('value="12.50"'));
+    assert.ok(!stale.includes(messages.expenseMessages(locale).registerSuggested));
+  }
+});
+
+test('activity renders revision time and payment time in the home timezone in both languages', async () => {
+  const activity: ExpenseActivity[] = [
+    {
+      id: 'r2',
+      kind: 'revision',
+      recorded_at: '2026-11-01T12:00:00Z',
+      payload: {
+        id: 'r2',
+        home_id: 'test',
+        expense_id: 'expense',
+        actor: 'me',
+        actor_name: 'Pat',
+        revision: 2,
+        recorded_at: '2026-11-01T12:00:00Z',
+        snapshot: {
+          expense: {
+            title: 'Edited dinner',
+            amount: 1000,
+            currency: 'EUR',
+            payer_name: 'Pat',
+            deleted_at: null,
+          },
+          splits: [],
+        },
+      },
+    },
+    {
+      id: 'p1',
+      kind: 'payment',
+      recorded_at: '2026-11-01T11:00:00Z',
+      payload: {
+        id: 'p1',
+        home_id: 'test',
+        from_user: 'other',
+        to_user: 'me',
+        from_name: 'Sam',
+        to_name: 'Pat',
+        amount: 500,
+        currency: 'EUR',
+        payment_date: '2026-10-31',
+        created_by: 'me',
+        created_by_name: 'Pat',
+        created_at: '2026-11-01T11:00:00Z',
+      },
+    },
+  ];
+  for (const locale of ['es', 'en'] as const) {
+    const html = await expensesPage(locale, { tab: 'history' }, '0', false, activity);
+    const expected = new Intl.DateTimeFormat(locale, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'Europe/Madrid',
+    }).format(new Date(activity[0].recorded_at));
+    assert.ok(html.includes(expected));
+    assert.ok(html.includes('dateTime="2026-11-01T12:00:00Z"'));
+    assert.ok(html.includes(messages.expenseMessages(locale).paymentRecorded));
+    assert.ok(html.indexOf('Edited dinner') < html.indexOf('Sam'));
+    assert.ok(!html.includes(messages.expenseMessages(locale).noHistory));
   }
 });

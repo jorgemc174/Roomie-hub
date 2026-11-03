@@ -12,7 +12,16 @@ import { ActionForm } from '@/components/action-form';
 import { readRows as paginatedRows } from '@/features/organization/read-rows';
 import { homeDate } from '@/lib/timezones';
 import { expenseMessages, categoryNames } from './messages';
-import { formatMoney, suggestPayments, inferCategory } from './money';
+import {
+  formatMoney,
+  suggestPayments,
+  inferCategory,
+  categories,
+  summarizeCategories,
+  decimal,
+  currencyScale,
+} from './money';
+import { readExpenseActivity, readCategoryTotals } from './activity';
 import { ExpenseForm } from './expense-form';
 import { financeAction } from './actions';
 import type { ExpenseBody, Expense, ExpenseSplit } from './models';
@@ -97,18 +106,13 @@ export async function ExpensesPage({
     if (result.error) throw new Error('finance_read_failed');
     return result.data ?? [];
   }
+  const category = categories.find((c) => c === search.category);
+  let expenseQuery = db.from('expenses').select('*').eq('home_id', homeId).is('deleted_at', null);
+  if (category) expenseQuery = expenseQuery.eq('category', category);
   // Fetch only the displayed window; balances remain computed from the complete exact ledger.
   const expenses =
     tab === 'expenses'
-      ? await readPage(
-          db
-            .from('expenses')
-            .select('*')
-            .eq('home_id', homeId)
-            .is('deleted_at', null)
-            .order('expense_date', { ascending: false })
-            .order('id'),
-        )
+      ? await readPage(expenseQuery.order('expense_date', { ascending: false }).order('id'))
       : [];
   const expenseIds = expenses.map((e) => e.id);
   const [splits, payments, recurring, occurrences, receipts, events, links, members] =
@@ -165,16 +169,7 @@ export async function ExpensesPage({
               .order('id'),
           )
         : [],
-      tab === 'history'
-        ? readPage(
-            db
-              .from('expense_events')
-              .select('*')
-              .eq('home_id', homeId)
-              .order('recorded_at', { ascending: false })
-              .order('id'),
-          )
-        : [],
+      tab === 'history' ? readExpenseActivity(db, homeId, page) : [],
       typeof search.shopping === 'string'
         ? readRows(
             db
@@ -187,6 +182,9 @@ export async function ExpensesPage({
         : [],
       getMembers(homeId),
     ]);
+  const summary = summarizeCategories(
+    tab === 'expenses' ? await readCategoryTotals(db, homeId, category) : [],
+  );
   const hasNext = [expenses, payments, recurring, occurrences, events].some(
     (rows) => rows.length === 50,
   );
@@ -208,6 +206,21 @@ export async function ExpensesPage({
     new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(
       new Date(d + 'T12:00:00Z'),
     );
+  const timestamp = (value: string) =>
+    new Intl.DateTimeFormat(locale, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: home.timezone,
+    }).format(new Date(value));
+  // Only accept a suggestion that still matches the current ledger. URL parameters
+  // never authorize a payment; the existing action/RPC validates the submitted form.
+  const suggestedPayment =
+    search.create === 'payment'
+      ? suggestions.find(
+          (p) =>
+            p.from === search.sender && p.to === search.recipient && p.amount === search.amount,
+        )
+      : undefined;
   let initial: ExpenseBody | undefined;
   let shoppingList: string | undefined;
   let shoppingError = false;
@@ -286,6 +299,48 @@ export async function ExpensesPage({
               />
             )}
           </CreatePanel>
+          <form key={category ?? 'all'} action={base} method="get" className="row wrap">
+            <input type="hidden" name="tab" value="expenses" />
+            <label>
+              {t.categoryFilter}
+              <select name="category" defaultValue={category ?? ''}>
+                <option value="">{t.allCategories}</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {categoryNames[locale][c]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="button secondary" type="submit">
+              {t.applyFilter}
+            </button>
+            {category && (
+              <Link className="text-link" href={base}>
+                {t.clearFilter}
+              </Link>
+            )}
+          </form>
+          <p>
+            {t.listedTotal}: <strong>{formatMoney(summary.total, home.currency, locale)}</strong>
+          </p>
+          <SectionDisclosure title={t.categorySummary} id="category-summary">
+            <p>{t.categorySummaryHelp}</p>
+            {!summary.categories.length && <p>{t.empty}</p>}
+            <ul>
+              {summary.categories.map((c) => (
+                <li key={c.category}>
+                  {categoryNames[locale][c.category]}:{' '}
+                  {formatMoney(c.amount, home.currency, locale)} ·{' '}
+                  {new Intl.NumberFormat(locale, {
+                    style: 'percent',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(Number(c.basisPoints) / 10000)}
+                </li>
+              ))}
+            </ul>
+          </SectionDisclosure>
           {!expenses.some((e) => !e.deleted_at) && <EmptyState title={t.empty} />}
           {expenses
             .filter((e) => !e.deleted_at)
@@ -376,6 +431,11 @@ export async function ExpensesPage({
           <CreatePanel
             title={t.recordPayment}
             closeLabel={ui.closePanel}
+            key={
+              suggestedPayment
+                ? `${suggestedPayment.from}-${suggestedPayment.to}-${suggestedPayment.amount}`
+                : 'manual-payment'
+            }
             id="record-payment"
             defaultOpen={search.create === 'payment'}
           >
@@ -387,7 +447,7 @@ export async function ExpensesPage({
               <input type="hidden" name="id" value={crypto.randomUUID()} />
               <label>
                 {t.sender}
-                <select name="sender" defaultValue={user.id}>
+                <select name="sender" defaultValue={suggestedPayment?.from ?? user.id}>
                   {balances
                     .filter((b) => b.active || BigInt(b.balance) < 0n)
                     .map((b) => (
@@ -402,6 +462,7 @@ export async function ExpensesPage({
                 <select
                   name="recipient"
                   defaultValue={
+                    suggestedPayment?.to ??
                     suggestions.find((s) => s.from === user.id)?.to ??
                     balances.find((b) => b.user_id !== user.id)?.user_id
                   }
@@ -417,7 +478,16 @@ export async function ExpensesPage({
               </label>
               <label>
                 {t.amount}
-                <input name="amount" inputMode="decimal" required />
+                <input
+                  name="amount"
+                  inputMode="decimal"
+                  defaultValue={
+                    suggestedPayment
+                      ? decimal(suggestedPayment.amount, currencyScale(home.currency))
+                      : undefined
+                  }
+                  required
+                />
               </label>
               <label>
                 {t.date}
@@ -452,7 +522,13 @@ export async function ExpensesPage({
               <p key={i}>
                 {balances.find((b) => b.user_id === p.from)?.name} →{' '}
                 {balances.find((b) => b.user_id === p.to)?.name}:{' '}
-                <strong>{formatMoney(p.amount, home.currency, locale)}</strong>
+                <strong>{formatMoney(p.amount, home.currency, locale)}</strong>{' '}
+                <Link
+                  className="button secondary"
+                  href={`${base}?tab=balances&create=payment&sender=${p.from}&recipient=${p.to}&amount=${p.amount}#record-payment`}
+                >
+                  {t.registerSuggested}
+                </Link>
               </p>
             ))}
           </section>
@@ -529,22 +605,32 @@ export async function ExpensesPage({
           <h2>{t.audit}</h2>
           <p>{t.deletedHelp}</p>
           {!events.length && <p>{t.noHistory}</p>}
-          {events.map((e) => (
-            <details key={e.id}>
-              <summary>
-                {(e.snapshot as unknown as { expense: Expense }).expense.title} · {t.version}{' '}
-                {e.revision} · {e.actor_name}
-              </summary>
-              <ExpenseRevision snapshot={e.snapshot} locale={locale} />
-            </details>
-          ))}
+          {events.map((e) =>
+            e.kind === 'payment' ? (
+              <p key={`payment-${e.id}`}>
+                <time dateTime={e.recorded_at}>{timestamp(e.recorded_at)}</time> ·{' '}
+                {t.paymentRecorded} · {e.payload.from_name} → {e.payload.to_name}:{' '}
+                {formatMoney(e.payload.amount, e.payload.currency, locale)} · {t.date}:{' '}
+                {date(e.payload.payment_date)} · {e.payload.created_by_name}
+              </p>
+            ) : (
+              <details key={`revision-${e.id}`}>
+                <summary>
+                  <time dateTime={e.recorded_at}>{timestamp(e.recorded_at)}</time> ·{' '}
+                  {(e.payload.snapshot as unknown as { expense: Expense }).expense.title} ·{' '}
+                  {t.version} {e.payload.revision} · {e.payload.actor_name}
+                </summary>
+                <ExpenseRevision snapshot={e.payload.snapshot} locale={locale} />
+              </details>
+            ),
+          )}
         </section>
       )}
       <nav className="row wrap" aria-label={t.pages}>
         {page > 0 && (
           <Link
             className="button secondary"
-            href={`${base}?tab=${tab}&page=${page - 1}${tab === 'balances' ? '&payments=history#payment-history' : ''}`}
+            href={`${base}?tab=${tab}&page=${page - 1}${tab === 'expenses' && category ? `&category=${category}` : ''}${tab === 'balances' ? '&payments=history#payment-history' : ''}`}
           >
             {t.previousPage}
           </Link>
@@ -552,7 +638,7 @@ export async function ExpensesPage({
         {hasNext && (
           <Link
             className="button secondary"
-            href={`${base}?tab=${tab}&page=${page + 1}${tab === 'balances' ? '&payments=history#payment-history' : ''}`}
+            href={`${base}?tab=${tab}&page=${page + 1}${tab === 'expenses' && category ? `&category=${category}` : ''}${tab === 'balances' ? '&payments=history#payment-history' : ''}`}
           >
             {t.nextPage}
           </Link>

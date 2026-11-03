@@ -166,3 +166,46 @@ export function inferCategory(title: string): Category {
   for (const c of categories) if (categoryAliases[c]?.some((a) => s.includes(a))) return c;
   return 'other';
 }
+
+// Percentages use integer hundredths and largest remainders, so the displayed
+// shares add up to exactly 100.00%, even for totals beyond Number.MAX_SAFE_INTEGER.
+export function summarizeCategories(
+  expenses: { category: Category; amount: string | bigint | number }[],
+) {
+  const totals = new Map<Category, bigint>();
+  for (const expense of expenses)
+    totals.set(expense.category, (totals.get(expense.category) ?? 0n) + BigInt(expense.amount));
+  const total = [...totals.values()].reduce((sum, amount) => sum + amount, 0n);
+  if (total === 0n) return { total, categories: [] };
+  const rows = [...totals].map(([category, amount]) => ({
+    category,
+    amount,
+    basisPoints: (amount * 10000n) / total,
+    remainder: (amount * 10000n) % total,
+  }));
+  let remaining = 10000n - rows.reduce((sum, row) => sum + row.basisPoints, 0n);
+  rows.sort((a, b) =>
+    a.remainder > b.remainder
+      ? -1
+      : a.remainder < b.remainder
+        ? 1
+        : a.category.localeCompare(b.category),
+  );
+  for (const row of rows) {
+    if (remaining > 0n) {
+      row.basisPoints++;
+      remaining--;
+    }
+  }
+  rows.sort((a, b) =>
+    a.amount > b.amount ? -1 : a.amount < b.amount ? 1 : a.category.localeCompare(b.category),
+  );
+  return {
+    total,
+    categories: rows.map(({ category, amount, basisPoints }) => ({
+      category,
+      amount,
+      basisPoints,
+    })),
+  };
+}
