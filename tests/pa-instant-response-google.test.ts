@@ -194,6 +194,7 @@ test('PA1157: OAuth initiation failures retain the literal message before leavin
               },
             }),
           },
+          '@/lib/supabase/recovery': {},
           '@/lib/supabase/config': {
             config: () => ({ url: 'https://auth.test', key: 'public-test-key' }),
           },

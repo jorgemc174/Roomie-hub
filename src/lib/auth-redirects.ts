@@ -10,7 +10,7 @@ export function siteOrigin() {
 /** Every provider carries its own destination; no mutable shared cookie or localStorage. */
 export function authReturnUrl(
   origin: string,
-  path: '/auth/confirm' | '/auth/callback',
+  path: '/auth/confirm' | '/auth/callback' | '/auth/recovery',
   next: string,
 ) {
   const url = new URL(path, new URL(origin).origin);

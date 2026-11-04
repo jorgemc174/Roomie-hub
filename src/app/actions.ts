@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect, unstable_rethrow } from 'next/navigation';
 import { supabase } from '@/lib/supabase/server';
+import { recoveryClient } from '@/lib/supabase/recovery';
 import { config as supabaseConfig } from '@/lib/supabase/config';
 import { requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
@@ -57,14 +58,14 @@ export async function authAction(
     }
     if (kind === 'register' && !validName(field(form, 'name'))) fieldErrors.name = t.invalid;
     if (Object.keys(fieldErrors).length) return { error: t.invalid, fieldErrors };
-    const db = await supabase();
     if (kind === 'recover') {
-      const { error } = await db.auth.resetPasswordForEmail(email, {
-        redirectTo: authReturnUrl(siteUrl(), '/auth/confirm', '/reset-password'),
+      const { error } = await recoveryClient().auth.resetPasswordForEmail(email, {
+        redirectTo: authReturnUrl(siteUrl(), '/auth/recovery', next),
       });
       if (error) return { error: authErrorMessage(error, t) };
       return { success: t.recoverySent };
     }
+    const db = await supabase();
     if (kind === 'reset') {
       await requireUser();
       const { error } = await db.auth.updateUser({ password });
