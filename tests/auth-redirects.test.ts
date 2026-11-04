@@ -61,14 +61,14 @@ test('Google cancellation is informational, preserves safe next and rejects exte
   const { googleCallbackFailurePath } = await import('../src/lib/auth-redirects');
   for (const next of ['/homes/join?code=abc', 'https://evil.test']) {
     const url = new URL(
-      googleCallbackFailurePath(next, 'access_denied', true),
+      googleCallbackFailurePath(next, 'access_denied'),
       'https://roomie.test',
     );
     assert.equal(url.searchParams.get('notice'), 'googleCancelled');
     assert.equal(url.searchParams.has('error'), false);
     assert.equal(url.searchParams.get('next'), safeNext(next));
   }
-  assert.match(googleCallbackFailurePath(null, 'server_error', true), /error=google/);
+  assert.match(googleCallbackFailurePath(null, 'server_error'), /error=google/);
 });
 
 test('callback cancellation returns immediately without session cookies even when code is present', async () => {

@@ -79,6 +79,7 @@ async function renderActivity(
     },
     './messages': { calendarMessages },
     './form': { CalendarForm: wrapper },
+    './activity-response-form': { ActivityResponseForm: () => null },
     './activity-location-fields': { ActivityLocationFields },
     './logic': logic,
   };

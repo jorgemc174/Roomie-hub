@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const providerError = request.nextUrl.searchParams.get('error');
   const origin = siteOrigin();
   const response = NextResponse.redirect(
-    new URL(googleCallbackFailurePath(next, providerError, Boolean(code)), origin),
+    new URL(googleCallbackFailurePath(next, providerError), origin),
   );
   response.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate, max-age=0');
   response.headers.set('Pragma', 'no-cache');

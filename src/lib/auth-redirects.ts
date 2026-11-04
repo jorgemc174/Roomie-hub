@@ -25,13 +25,10 @@ export function authFailurePath(next: string | null, error: 'link' | 'auth' | 'g
   return `/login?${query}`;
 }
 
-export function googleCallbackFailurePath(
-  next: string | null,
-  error: string | null,
-  hasCode: boolean,
-) {
+export function googleCallbackFailurePath(next: string | null, error: string | null) {
   if (error === 'access_denied') {
     return `/login?${new URLSearchParams({ notice: 'googleCancelled', next: safeNext(next) })}`;
   }
-  return authFailurePath(next, hasCode || error !== null ? 'google' : 'link');
+  // A missing code/verifier is also a failed OAuth flow, not an expired email link.
+  return authFailurePath(next, 'google');
 }
