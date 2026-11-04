@@ -20,6 +20,25 @@ export function authReturnUrl(
 export function authDestination(next: string | null, type?: string | null) {
   return type === 'recovery' ? '/reset-password' : safeNext(next);
 }
+export type EmailOtpType = 'email' | 'signup' | 'recovery';
+/**
+ * Email links arrive either with token_hash/type (configured templates, any device) or,
+ * with Supabase's default templates, already verified and carrying a PKCE code.
+ */
+export function emailConfirmation(
+  params: URLSearchParams,
+):
+  | { kind: 'otp'; tokenHash: string; type: EmailOtpType }
+  | { kind: 'code'; code: string }
+  | { kind: 'invalid' } {
+  const tokenHash = params.get('token_hash');
+  const type = params.get('type');
+  if (tokenHash && (type === 'email' || type === 'signup' || type === 'recovery'))
+    return { kind: 'otp', tokenHash, type };
+  const code = params.get('code');
+  if (code) return { kind: 'code', code };
+  return { kind: 'invalid' };
+}
 export function authFailurePath(next: string | null, error: 'link' | 'auth' | 'google' = 'link') {
   const query = new URLSearchParams({ error, next: safeNext(next) });
   return `/login?${query}`;

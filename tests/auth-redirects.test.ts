@@ -1,7 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { safeNext } from '../src/lib/validation';
-import { authReturnUrl, authDestination, authFailurePath } from '../src/lib/auth-redirects';
+import {
+  authReturnUrl,
+  authDestination,
+  authFailurePath,
+  emailConfirmation,
+} from '../src/lib/auth-redirects';
 test('unsafe literal, encoded and normalized auth destinations are rejected', () => {
   for (const next of [
     'https://evil.test',
@@ -60,10 +65,7 @@ test('recovery cannot skip changing the password; legacy links default to homes'
 test('Google cancellation is informational, preserves safe next and rejects external next', async () => {
   const { googleCallbackFailurePath } = await import('../src/lib/auth-redirects');
   for (const next of ['/homes/join?code=abc', 'https://evil.test']) {
-    const url = new URL(
-      googleCallbackFailurePath(next, 'access_denied'),
-      'https://roomie.test',
-    );
+    const url = new URL(googleCallbackFailurePath(next, 'access_denied'), 'https://roomie.test');
     assert.equal(url.searchParams.get('notice'), 'googleCancelled');
     assert.equal(url.searchParams.has('error'), false);
     assert.equal(url.searchParams.get('next'), safeNext(next));
@@ -106,4 +108,21 @@ test('cancellation copy is informational in both dictionaries and auth screen', 
   const { readFile } = await import('node:fs/promises');
   const screen = await readFile('src/components/auth-screen.tsx', 'utf8');
   assert.match(screen, /notice === 'googleCancelled'[\s\S]*?className="notice" role="status"/);
+});
+
+test('PA 1139/1140: recovery links are accepted with token_hash and with the default PKCE code', () => {
+  const link = (query: string) =>
+    emailConfirmation(
+      new URL(`https://roomie.test/auth/confirm?next=%2Freset-password&${query}`).searchParams,
+    );
+  assert.deepEqual(link('token_hash=h&type=recovery'), {
+    kind: 'otp',
+    tokenHash: 'h',
+    type: 'recovery',
+  });
+  // Default Supabase template: /verify already checked the token and returns ?code= only.
+  assert.deepEqual(link('code=pkce-code'), { kind: 'code', code: 'pkce-code' });
+  assert.deepEqual(link('token_hash=h&type=magiclink'), { kind: 'invalid' });
+  assert.deepEqual(link(''), { kind: 'invalid' });
+  assert.equal(authDestination('/reset-password'), '/reset-password');
 });
