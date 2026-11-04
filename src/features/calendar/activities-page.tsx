@@ -16,6 +16,7 @@ import {
 } from './queries';
 import { calendarMessages } from './messages';
 import { CalendarForm } from './form';
+import { ActivityResponseForm } from './activity-response-form';
 import { ActivityLocationFields } from './activity-location-fields';
 import { localInput, formatInstant } from './logic';
 import type { Activity } from './models';
@@ -203,26 +204,12 @@ export async function ActivitiesPage({
             ) : (
               <>
                 {Date.parse(a.ends_at ?? a.starts_at) > Date.parse(now) && (
-                  <CalendarForm
+                  <ActivityResponseForm
                     homeId={homeId}
-                    operation="attend"
                     id={a.id}
                     locale={locale}
-                    label={t.saveResponse}
-                    key={`${a.id}-${response}`}
-                  >
-                    <label>
-                      {t.yourResponse}
-                      <select name="response" required defaultValue={response}>
-                        <option value="" disabled>
-                          {t.chooseResponse}
-                        </option>
-                        <option value="going">{t.going}</option>
-                        <option value="maybe">{t.maybe}</option>
-                        <option value="not_going">{t.not_going}</option>
-                      </select>
-                    </label>
-                  </CalendarForm>
+                    response={response}
+                  />
                 )}
                 <details>
                   <summary>{t.edit}</summary>
