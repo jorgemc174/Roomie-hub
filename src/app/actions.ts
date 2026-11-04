@@ -312,6 +312,13 @@ export async function profileAction(previous: ActionState, form: FormData): Prom
     const avatar = path ?? (form.get('remove_image') ? null : profile.avatar_path);
     const locale = field(form, 'locale') === 'en' ? 'en' : 'es';
     const theme = field(form, 'theme') === 'dark' ? 'dark' : 'light';
+    // A photo removed on purpose must not come back from the provider on a later login.
+    if (!path && form.get('remove_image')) {
+      const { error: markError } = await db.auth.updateUser({
+        data: { roomiehub_google_avatar_attempted: true },
+      });
+      if (markError) return { error: t.requestError };
+    }
     const { error } = await db
       .from('profiles')
       .update({ name, avatar_path: avatar, locale, theme })

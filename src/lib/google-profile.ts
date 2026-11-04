@@ -15,20 +15,24 @@ export async function importGoogleAvatar(
       user.user_metadata.roomiehub_google_avatar_attempted
     )
       return;
-    // Mark even skipped/failed imports: removing a photo must remain permanent.
-    const { error: markError } = await db.auth.updateUser({
-      data: { roomiehub_google_avatar_attempted: true },
-    });
-    if (markError) return;
+    // Mark only definitive outcomes: a transient download or storage failure is
+    // retried on the next login. Removing a photo in Perfil also sets this marker.
+    const settle = () => db.auth.updateUser({ data: { roomiehub_google_avatar_attempted: true } });
     const { data: profile, error } = await db
       .from('profiles')
       .select('avatar_path')
       .eq('id', user.id)
       .maybeSingle();
-    if (error || !profile || profile.avatar_path) return;
+    if (error || !profile) return;
+    if (profile.avatar_path) return void (await settle());
     const source = user.user_metadata.avatar_url || user.user_metadata.picture;
-    if (typeof source !== 'string') return;
-    const url = new URL(source);
+    if (typeof source !== 'string') return void (await settle());
+    let url: URL;
+    try {
+      url = new URL(source);
+    } catch {
+      return void (await settle());
+    }
     if (
       url.protocol !== 'https:' ||
       !url.hostname.endsWith('.googleusercontent.com') ||
@@ -36,7 +40,7 @@ export async function importGoogleAvatar(
       url.password ||
       (url.port && url.port !== '443')
     )
-      return;
+      return void (await settle());
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3000);
     let bytes: Uint8Array;
@@ -50,7 +54,7 @@ export async function importGoogleAvatar(
       if (Number(response.headers.get('content-length')) > AVATAR_MAX_BYTES) {
         controller.abort();
         await response.body.cancel();
-        return;
+        return void (await settle());
       }
       const reader = response.body.getReader();
       const chunks: Uint8Array[] = [];
@@ -62,7 +66,7 @@ export async function importGoogleAvatar(
         if (size > AVATAR_MAX_BYTES) {
           controller.abort();
           await reader.cancel();
-          return;
+          return void (await settle());
         }
         chunks.push(value);
       }
@@ -77,7 +81,8 @@ export async function importGoogleAvatar(
     }
     // Infer from the signature, never trust a URL extension or server MIME header.
     const mime = ['image/png', 'image/jpeg', 'image/webp'].find((type) => validImage(bytes, type));
-    if (!mime || !validAvatarFile({ type: mime, size: bytes.byteLength })) return;
+    if (!mime || !validAvatarFile({ type: mime, size: bytes.byteLength }))
+      return void (await settle());
     const ext = mime === 'image/png' ? 'png' : mime === 'image/jpeg' ? 'jpg' : 'webp';
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
     const bucket = db.storage.from('avatars');
@@ -86,6 +91,12 @@ export async function importGoogleAvatar(
       upsert: false,
     });
     if (uploadError) return;
+    // Fail closed: the photo never becomes visible unless a later removal will stick.
+    const { error: markError } = await settle();
+    if (markError) {
+      await bucket.remove([path]);
+      return;
+    }
     // A concurrent manual upload wins. Remove our unused private object if it lost.
     const { data: updated, error: updateError } = await db
       .from('profiles')

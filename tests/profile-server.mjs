@@ -213,6 +213,50 @@ try {
       (await profileAction({}, profile)).success,
       locale === 'es' ? 'Perfil actualizado con éxito' : 'Profile updated successfully',
     );
+    // PA 1171: a deliberate removal blocks a later Google re-import, and fails closed.
+    const removal = (markError) => {
+      const marks = [];
+      const updates = [];
+      globalThis.profileDb = {
+        ...globalThis.profileDb,
+        auth: {
+          async updateUser(input) {
+            marks.push(input.data.roomiehub_google_avatar_attempted);
+            return { error: markError };
+          },
+        },
+        from() {
+          return {
+            select() {
+              return this;
+            },
+            update(value) {
+              updates.push(value.avatar_path);
+              return this;
+            },
+            eq() {
+              return this;
+            },
+            async single() {
+              return { data: { avatar_path: 'self/old.png' } };
+            },
+            then(resolve) {
+              resolve({ error: null });
+            },
+          };
+        },
+      };
+      return { marks, updates };
+    };
+    const removeForm = registration();
+    removeForm.set('remove_image', 'on');
+    const removed = removal(null);
+    assert.ok((await profileAction({}, removeForm)).success);
+    assert.deepEqual(removed.marks, [true]);
+    assert.deepEqual(removed.updates, [null]);
+    const unmarked = removal({ code: 'failed' });
+    assert.ok((await profileAction({}, removeForm)).error);
+    assert.deepEqual(unmarked.updates, []);
     globalThis.profileDb = undefined;
   }
   console.log(

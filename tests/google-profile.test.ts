@@ -99,7 +99,7 @@ const download: typeof fetch = async (_url, options) => {
 test('imports Google avatar into private profile storage once', async () => {
   const f = fixture();
   await importGoogleAvatar(f.db, f.user, download);
-  assert.deepEqual(f.calls, ['mark', 'upload', 'update']);
+  assert.deepEqual(f.calls, ['upload', 'mark', 'update']);
 });
 test('own photo, missing metadata, other providers and previous attempts are left alone', async () => {
   for (const options of [
@@ -172,11 +172,13 @@ test('stream is cancelled as soon as the byte limit is exceeded', async () => {
   assert.equal(f.calls.includes('upload'), false);
 });
 test('metadata and storage failures never invalidate login', async () => {
-  for (const failure of ['mark', 'upload']) {
-    const f = fixture({ failure });
-    await assert.doesNotReject(importGoogleAvatar(f.db, f.user, download));
-    assert.equal(f.calls.includes('update'), false);
-  }
+  const upload = fixture({ failure: 'upload' });
+  await assert.doesNotReject(importGoogleAvatar(upload.db, upload.user, download));
+  assert.equal(upload.calls.includes('update'), false);
+  // Fail closed: without a durable marker the photo is not published.
+  const mark = fixture({ failure: 'mark' });
+  await assert.doesNotReject(importGoogleAvatar(mark.db, mark.user, download));
+  assert.deepEqual(mark.calls, ['upload', 'mark', 'remove']);
 });
 
 test('deleted or deliberately absent avatar is not reimported on the next login', async () => {
@@ -194,13 +196,13 @@ test('picture fallback and signature take priority over MIME headers', async () 
     f.user,
     async () => new Response(png, { headers: { 'content-type': 'text/html' } }),
   );
-  assert.deepEqual(f.calls, ['mark', 'upload', 'update']);
+  assert.deepEqual(f.calls, ['upload', 'mark', 'update']);
 });
 test('failed profile update or concurrent own photo cleans up unused storage', async () => {
   for (const failure of ['update', 'race']) {
     const f = fixture({ failure });
     await importGoogleAvatar(f.db, f.user, download);
-    assert.deepEqual(f.calls, ['mark', 'upload', 'update', 'remove']);
+    assert.deepEqual(f.calls, ['upload', 'mark', 'update', 'remove']);
   }
 });
 test('short timeout aborts a stalled download without invalidating login', async () => {
@@ -223,4 +225,26 @@ test('short timeout aborts a stalled download without invalidating login', async
   );
   assert.equal(aborted, true);
   assert.equal(f.calls.includes('upload'), false);
+});
+
+test('transient failures are retried on the next login; definitive ones are not', async () => {
+  const transient: (typeof fetch)[] = [
+    async () => {
+      throw Error('network');
+    },
+    async () => new Response(null, { status: 503 }),
+  ];
+  for (const fetcher of transient) {
+    const f = fixture();
+    await importGoogleAvatar(f.db, f.user, fetcher);
+    assert.equal(f.calls.includes('mark'), false);
+    await importGoogleAvatar(f.db, f.user, download);
+    assert.deepEqual(f.calls, ['upload', 'mark', 'update']);
+  }
+  const stored = fixture({ failure: 'upload' });
+  await importGoogleAvatar(stored.db, stored.user, download);
+  assert.equal(stored.calls.includes('mark'), false);
+  const notImage = fixture();
+  await importGoogleAvatar(notImage.db, notImage.user, async () => new Response('not an image'));
+  assert.deepEqual(notImage.calls, ['mark']);
 });
