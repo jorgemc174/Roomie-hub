@@ -12,6 +12,7 @@ process.env.NEXT_PUBLIC_SITE_URL = 'https://local.test';
 const stubs = {
   '@/lib/supabase/config': `export function config() { return { url: 'https://local.test', key: 'test-only' }; }`,
   '@/lib/supabase/server': `export async function supabase() { return globalThis.authDb; }`,
+  '@/lib/supabase/recovery': `export function recoveryClient() { return globalThis.recoveryDb; }`,
   '@/lib/i18n/server': `import { es, en } from ${JSON.stringify(path.resolve('src/lib/i18n/dictionaries.ts'))}; export async function i18n() { return { t: globalThis.testLocale === 'en' ? en : es }; }`,
   '@/lib/data': `export async function requireUser() { return { user: { id: 'self' }, db: globalThis.profileDb ?? {
     from() { return { select() { return this; }, eq() { return this; }, async single() { return { data: { avatar_path: null } }; } }; }
@@ -100,6 +101,44 @@ try {
         form.set(key, value);
       return form;
     };
+    const savedDb = globalThis.authDb;
+    globalThis.authDb = undefined; // Recovery must not depend on SSR session cookies.
+    let genericRecovery;
+    try {
+      for (const email of ['known@example.test', 'unknown@example.test']) {
+        for (const next of ['/homes/join?code=abc', 'https://external.test']) {
+          let requested = false;
+          globalThis.recoveryDb = {
+            auth: {
+              async resetPasswordForEmail(address, options) {
+                requested = true;
+                assert.equal(address, email);
+                const target = new URL(options.redirectTo);
+                assert.equal(target.origin, 'https://local.test');
+                assert.equal(target.pathname, '/auth/recovery');
+                assert.equal(
+                  target.searchParams.get('next'),
+                  next.startsWith('/') ? next : '/homes',
+                );
+                return { error: null };
+              },
+            },
+          };
+          const form = registration();
+          form.set('email', email);
+          form.set('next', next);
+          const result = await authAction('recover', {}, form);
+          assert.equal(requested, true);
+          assert.ok(result.success);
+          assert.equal(result.error, undefined);
+          genericRecovery ??= result;
+          assert.deepEqual(result, genericRecovery);
+        }
+      }
+    } finally {
+      globalThis.authDb = savedDb;
+      globalThis.recoveryDb = undefined;
+    }
     for (const kind of ['register', 'reset']) {
       for (const [password, confirmation, errorField] of [
         ['abcde', 'abcde', 'password'],
