@@ -36,3 +36,11 @@ export function validImage(bytes: Uint8Array, mime: string) {
     );
   return false;
 }
+
+// Shared with home settings uploads; MIME and bytes must agree.
+export async function imageBytes(file: File): Promise<Uint8Array> {
+  if (file.size > 5 * 1024 * 1024) throw new Error('image');
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!validImage(bytes, file.type)) throw new Error('image');
+  return bytes;
+}

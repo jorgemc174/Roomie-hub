@@ -67,8 +67,8 @@ test('D3: scheduler installation, attachment purge and scheduled job execution',
         jobs.map(({ jobname, schedule }) => ({ jobname, schedule })),
         [
           { jobname: 'roomiehub-cron-history', schedule: '17 3 * * *' },
-          { jobname: 'roomiehub-deliveries', schedule: '*/5 * * * *' },
-          { jobname: 'roomiehub-domain-jobs', schedule: '*/5 * * * *' },
+          { jobname: 'roomiehub-deliveries', schedule: '* * * * *' },
+          { jobname: 'roomiehub-domain-jobs', schedule: '* * * * *' },
         ],
       );
     });
@@ -249,7 +249,7 @@ test('D3: scheduler installation, attachment purge and scheduled job execution',
         );
         const activity = randomUUID();
         await db.query(
-          "insert into activities(id,home_id,title,starts_at,created_by,created_by_name,create_request) values($1,$2,'Reminder',now()+interval '59 minutes',$3,'Alice','{}')",
+          "insert into activities(id,home_id,title,starts_at,created_by,created_by_name,create_request) values($1,$2,'Reminder',now()+interval '61 minutes',$3,'Alice','{}')",
           [activity, h, users[0]],
         );
         await db.query(
