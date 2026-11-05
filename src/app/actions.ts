@@ -8,10 +8,10 @@ import { recoveryClient } from '@/lib/supabase/recovery';
 import { config as supabaseConfig } from '@/lib/supabase/config';
 import { requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
-import { safeNext, validImage, validName } from '@/lib/validation';
+import { imageBytes, safeNext, validName } from '@/lib/validation';
 import { matchingPasswords, validAvatarFile } from '@/lib/profile-validation';
 import { validCurrency } from '@/lib/currencies';
-import { validTimezone } from '@/lib/timezones';
+import { DEFAULT_HOME_TIMEZONE, validTimezone } from '@/lib/timezones';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { authReturnUrl, siteOrigin as siteUrl } from '@/lib/auth-redirects';
 export type ActionState = {
@@ -174,9 +174,8 @@ async function upload(
 ): Promise<string | null> {
   const file = form.get('image');
   if (!(file instanceof File) || file.size === 0) return null;
-  if (bucket === 'avatars' ? !validAvatarFile(file) : file.size > 5242880) throw new Error('image');
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  if (!validImage(bytes, file.type)) throw new Error('image');
+  if (bucket === 'avatars' && !validAvatarFile(file)) throw new Error('image');
+  const bytes = await imageBytes(file);
   const ext = file.type === 'image/png' ? 'png' : file.type === 'image/jpeg' ? 'jpg' : 'webp';
   const path = `${owner}/${crypto.randomUUID()}.${ext}`;
   const db = await supabase();
@@ -198,15 +197,42 @@ export async function homeAction(
     const id = field(form, 'home_id');
     if (kind === 'create') {
       const name = field(form, 'name');
-      const currency = field(form, 'currency');
-      if (!validName(name) || !validCurrency(currency)) return { error: t.invalid };
+      const currency = field(form, 'currency') || 'EUR';
+      const zone = field(form, 'timezone') || DEFAULT_HOME_TIMEZONE;
+      if (!validName(name) || !validCurrency(currency) || !validTimezone(zone))
+        return { error: t.invalid };
+      // Validate bytes before create_home: invalid uploads must not leave a new home.
+      const file = form.get('image');
+      if (file instanceof File && file.size > 0) await imageBytes(file);
       const { data, error } = await db.rpc('create_home', {
         home_name: name,
         home_currency: currency,
       });
       if (error) return { error: t.requestError };
+      let incomplete = false;
+      try {
+        const { error: zoneError } = await db.rpc('update_home_timezone', { target: data, zone });
+        if (zoneError) throw new Error('timezone');
+        const path = await upload(form, 'home-images', data);
+        if (path) {
+          const { error: imageError } = await db.rpc('update_home', {
+            target: data,
+            home_name: name,
+            home_currency: currency,
+            home_image: path,
+            week_start: 1,
+          });
+          if (imageError) {
+            await db.storage.from('home-images').remove([path]);
+            throw new Error('image_save');
+          }
+        }
+      } catch {
+        // Creation already succeeded. Leave the form so retry cannot create a duplicate.
+        incomplete = true;
+      }
       revalidatePath('/homes');
-      redirect(`/homes/${data}`);
+      redirect(incomplete ? `/homes/new?created=${data}` : `/homes/${data}`);
     }
     if (kind === 'join') {
       const code = field(form, 'code').toLowerCase();

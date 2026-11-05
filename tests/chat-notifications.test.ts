@@ -309,7 +309,7 @@ test('Phase 6: chat, canonical notifications, privacy and jobs', async (t) => {
         for (const minutes of [1440, 60, 15])
           for (let n = 0; n < 3; n++)
             await db.query(
-              "select messaging_private.remind_home($1,(select starts_at-$3::int*interval '1 minute'+interval '2 minutes' from activities where id=$2))",
+              "select messaging_private.remind_home($1,(select starts_at-$3::int*interval '1 minute'-interval '1 minute' from activities where id=$2))",
               [h, activity, minutes],
             );
         assert.equal(
@@ -421,7 +421,7 @@ test('Phase 6: chat, canonical notifications, privacy and jobs', async (t) => {
         for (const minutes of [1440, 60, 15])
           for (let n = 0; n < 2; n++)
             await db.query(
-              "select messaging_private.remind_home($1,(select deadline_at-$3::int*interval '1 minute'+interval '2 minutes' from chore_instances where id=$2))",
+              "select messaging_private.remind_home($1,(select deadline_at-$3::int*interval '1 minute'-interval '1 minute' from chore_instances where id=$2))",
               [h, task, minutes],
             );
         for (const id of [task, reservation])
@@ -777,7 +777,7 @@ test('D2: reminders cover more than 100 homes in one scheduler pass without dupl
     await db.query("insert into homes(name) select 'Reminder home' from generate_series(1,205)");
     await db.query('insert into home_members(home_id,user_id) select id,$1 from homes', [users[0]]);
     await db.query(
-      "insert into activities(id,home_id,title,starts_at,created_by,created_by_name,create_request) select gen_random_uuid(),id,'Reminder',now()+interval '59 minutes',$1,'Alice','{}'::jsonb from homes",
+      "insert into activities(id,home_id,title,starts_at,created_by,created_by_name,create_request) select gen_random_uuid(),id,'Reminder',now()+interval '61 minutes',$1,'Alice','{}'::jsonb from homes",
       [users[0]],
     );
     await db.query(

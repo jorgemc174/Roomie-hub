@@ -77,6 +77,8 @@ export const es = {
   avatarImageError: 'Formato no soportado o archivo demasiado grande',
   cancel: 'Cancelar',
   unsavedChanges: 'Tienes cambios sin guardar. ¿Quieres salir y descartarlos?',
+  homeCreatedIncomplete:
+    'El piso se ha creado, pero no se pudieron guardar todos los ajustes. Los campos sin guardar conservan sus valores por defecto. Revisa la zona horaria y la imagen en Ajustes; no necesitas crear otro piso.',
   imageHint: 'JPG, PNG o WebP. Máximo 5 MB.',
   removeImage: 'Eliminar imagen actual',
   weekStart: 'La semana empieza el',
@@ -255,6 +257,8 @@ export const en: Dictionary = {
   avatarImageError: 'Unsupported format or file too large',
   cancel: 'Cancel',
   unsavedChanges: 'You have unsaved changes. Leave and discard them?',
+  homeCreatedIncomplete:
+    'Your home was created, but some settings could not be saved. Unsaved fields keep their defaults. Check the time zone and image in Settings; you do not need to create another home.',
   imageHint: 'JPG, PNG or WebP. Up to 5 MB.',
   removeImage: 'Remove current image',
   weekStart: 'The week starts on',
