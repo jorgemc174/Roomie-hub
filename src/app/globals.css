@@ -1939,3 +1939,15 @@ textarea:focus-visible {
     background: var(--bg);
   }
 }
+
+/* PA 1161: the updated name stays visible next to the avatar on every width. */
+.workspace .topbar .topbar-action > span.topbar-profile-name:not(.badge),
+.topbar .topbar-action > span.topbar-profile-name:not(.badge) {
+  display: block;
+}
+@media (max-width: 700px) {
+  .topbar .topbar-action > span.topbar-profile-name {
+    max-width: 5.5rem;
+    font-size: 0.82rem;
+  }
+}
