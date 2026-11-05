@@ -120,6 +120,33 @@ textarea {
   max-width: 68ch;
   font-size: 0.875rem;
 }
+.home-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.home-heading .mini-cover {
+  flex-shrink: 0;
+}
+.home-heading h1,
+.home-heading p {
+  overflow-wrap: anywhere;
+}
+.home-sections ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  padding: 0;
+  margin: 0 0 var(--space-6);
+  list-style: none;
+}
+.home-sections a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
 .dashboard-member-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));

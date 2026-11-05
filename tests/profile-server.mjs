@@ -18,7 +18,7 @@ const stubs = {
     from() { return { select() { return this; }, eq() { return this; }, async single() { return { data: { avatar_path: null } }; } }; }
   } }; }`,
   'next/headers': `export async function cookies() { return { set() {} }; } export async function headers() { throw new Error('unexpected_headers'); }`,
-  'next/cache': `export function revalidatePath() {}`,
+  'next/cache': `export function revalidatePath(...args) { globalThis.revalidated = args; }`,
   'next/navigation': `export function unstable_rethrow(e) { if (e?.redirect) throw e; } export function redirect(destination) { throw Object.assign(new Error('redirect'), { redirect: destination }); }`,
 };
 try {
@@ -247,11 +247,13 @@ try {
         };
       },
     };
+    globalThis.revalidated = undefined;
     const profile = registration();
     assert.equal(
       (await profileAction({}, profile)).success,
       locale === 'es' ? 'Perfil actualizado con éxito' : 'Profile updated successfully',
     );
+    assert.deepEqual(globalThis.revalidated, ['/', 'layout']);
     // PA 1171: a deliberate removal blocks a later Google re-import, and fails closed.
     const removal = (markError) => {
       const marks = [];

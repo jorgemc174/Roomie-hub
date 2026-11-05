@@ -1,10 +1,12 @@
 import Link from 'next/link';
-import { Settings, UserRound } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { NotificationBell } from '@/features/notifications/inbox';
+import { getProfile, signedImage } from '@/lib/data';
+import { avatarInitials } from '@/lib/profile-validation';
 import { Brand } from './brand';
 import { AccountLink } from './account-navigation';
 import type { Messages } from '@/lib/i18n/dictionaries';
-export function Topbar({
+export async function Topbar({
   t,
   homeId,
   homeName,
@@ -13,6 +15,8 @@ export function Topbar({
   homeId?: string;
   homeName?: string;
 }) {
+  const profile = await getProfile();
+  const image = await signedImage('avatars', profile.avatar_path);
   return (
     <header className="topbar">
       {homeId && homeName ? (
@@ -36,8 +40,14 @@ export function Topbar({
         )}
         <NotificationBell />
         <AccountLink className="topbar-action" href="/profile" aria-label={t.personal}>
-          <UserRound size={20} aria-hidden="true" />
-          <span>{t.personal}</span>
+          {image ? (
+            <img className="avatar" src={image} alt="" width={44} height={44} />
+          ) : (
+            <div className="avatar" aria-hidden="true">
+              {avatarInitials(profile.name)}
+            </div>
+          )}
+          <span className="topbar-profile-name">{profile.name}</span>
         </AccountLink>
       </nav>
     </header>

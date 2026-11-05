@@ -1,3 +1,4 @@
+import { HomeSections } from '../src/components/navigation';
 import { CategoryFilter } from '../src/features/expenses/category-filter';
 import { CategoryLabel, CategorySummary } from '../src/features/expenses/category-summary';
 import test from 'node:test';
@@ -170,6 +171,8 @@ test('Home prioritizes operational summaries, keeps one tasks/shopping destinati
       default: (props: { params: Promise<{ homeId: string }> }) => Promise<ReactNode>;
     }>('src/app/(workspace)/homes/[homeId]/page.tsx', {
       '@/components/ui/page-header': { PageHeader },
+      '@/components/navigation': { HomeSections },
+      '@/components/home-members': { HomeMembers: () => null },
       '@/features/organization/summary': { OrganizationSummary: () => summary },
       '@/features/expenses/summary': {
         ExpenseSummary: () => expenseSummary,
@@ -181,8 +184,10 @@ test('Home prioritizes operational summaries, keeps one tasks/shopping destinati
         UpcomingEvent: () => createElement('p', null, t.nextEvent),
       },
       'next/link': { default: Link },
-      'lucide-react': { UserPlus: () => null, ArrowUpRight: () => null },
+      'lucide-react': { UserPlus: () => null, ArrowUpRight: () => null, House: () => null },
       '@/lib/data': {
+        getHome: async () => ({ name: 'Shared home', image_path: null }),
+        getProfile: async () => ({ name: 'María' }),
         getMembers: async () => [],
         requireUser: async () => ({ user: { id: 'me' } }),
         signedImage: async () => null,
@@ -192,7 +197,9 @@ test('Home prioritizes operational summaries, keeps one tasks/shopping destinati
     const html = renderToStaticMarkup(
       await HomePage({ params: Promise.resolve({ homeId: 'test' }) }),
     );
-    const links = Array.from(html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>/g), (m) => m[1]);
+    // The section directory repeats main destinations; summaries retain one operational link each.
+    const summaries = html.slice(html.indexOf('class="dashboard-summaries"'));
+    const links = Array.from(summaries.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>/g), (m) => m[1]);
     assert.equal(links.filter((href) => href === '/homes/test/organization').length, 1);
     assert.equal(
       links.filter((href) => href === '/homes/test/organization?tab=shopping').length,

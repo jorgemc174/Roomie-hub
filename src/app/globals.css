@@ -1470,6 +1470,12 @@ fieldset {
   min-height: 44px;
   border-radius: 12px;
 }
+.topbar-profile-name {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .topbar-action:hover {
   background: var(--bg);
 }

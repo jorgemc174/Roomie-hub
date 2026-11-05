@@ -1,3 +1,4 @@
+import { HomeMembers } from '@/components/home-members';
 import { CopyButton } from '@/components/ui/copy-button';
 import { financeAction } from '@/features/expenses/actions';
 import { expenseMessages } from '@/features/expenses/messages';
@@ -11,7 +12,7 @@ export default async function Settings({ params }: { params: Promise<{ homeId: s
   const { homeId } = await params;
   const home = await getHome(homeId);
   const members = await getMembers(homeId);
-  const { db } = await requireUser();
+  const { db, user } = await requireUser();
   const { data: invite, error } = await db
     .from('invitations')
     .select('code')
@@ -96,6 +97,7 @@ export default async function Settings({ params }: { params: Promise<{ homeId: s
           </datalist>
         </ActionForm>
       </section>
+      <HomeMembers members={members} currentUserId={user.id} t={t} locale={locale} />
       <section id="invitation" className="panel">
         <h2>{t.invitation}</h2>
         <p>{t.invitationBody}</p>

@@ -11,11 +11,30 @@ export const modules = [
   { key: 'community', icon: Heart },
   { key: 'chat', icon: MessageCircle },
 ] as const;
+const sections = [{ key: 'home', icon: House } as const, ...modules];
+
+export function HomeSections({ homeId, t }: { homeId: string; t: Messages }) {
+  return (
+    <nav className="home-sections" aria-label={t.homeSections}>
+      <ul>
+        {sections.map(({ key, icon: Icon }) => (
+          <li key={key}>
+            <Link href={`/homes/${homeId}${key === 'home' ? '' : `/${key}`}`}>
+              <Icon size={20} aria-hidden="true" />
+              {t[key]}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 export function Navigation({ homeId, t }: { homeId: string; t: Messages }) {
   const pathname = usePathname();
   return (
     <nav className="side-nav" aria-label={t.home}>
-      {[{ key: 'home', icon: House } as const, ...modules].map(({ key, icon: Icon }) => {
+      {sections.map(({ key, icon: Icon }) => {
         const href = `/homes/${homeId}${key === 'home' ? '' : `/${key}`}`;
         const active = pathname === href || (key !== 'home' && pathname.startsWith(`${href}/`));
         return (
