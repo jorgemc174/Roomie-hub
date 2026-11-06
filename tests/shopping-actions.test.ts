@@ -75,7 +75,12 @@ test('shopping names have their own validation and never call SQL for empty or w
         form.set('name', name);
         form.set('list_id', list);
         const result = await action.run(op, form);
-        assert.ok(result.error);
+        assert.equal(
+          result.error,
+          op === 'add_item'
+            ? organizationMessages(locale).productNameInvalid
+            : organizationMessages(locale).listNameInvalid,
+        );
         assert.notEqual(result.error, organizationMessages(locale).invalid);
       }
     }
@@ -103,7 +108,11 @@ test('creation navigates to the new list, reopening is explicit, and SQL lock er
     const invalid = await actions(locale, { message: 'invalid_name' });
     assert.equal(
       (await invalid.run('create_list', form)).error,
-      organizationMessages(locale).shoppingInvalid,
+      organizationMessages(locale).listNameInvalid,
+    );
+    assert.equal(
+      (await invalid.run('add_item', form)).error,
+      organizationMessages(locale).productNameInvalid,
     );
   }
 });

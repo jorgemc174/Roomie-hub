@@ -1137,3 +1137,18 @@ span.ui-spinner {
   height: 100%;
   border-radius: inherit;
 }
+
+.shopping-delete-dialog {
+  width: min(28rem, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  margin: auto;
+  padding: var(--panel-padding);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--ink);
+}
+.shopping-delete-dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}

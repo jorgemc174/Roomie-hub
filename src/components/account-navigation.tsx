@@ -36,10 +36,39 @@ export function AccountLink({
 }
 
 export function AccountReturn({ label }: { label: string }) {
-  const href = accountReturnHref(useCurrentHref());
-  if (!href) return null;
+  const current = useCurrentHref();
+  const path = usePathname();
+  const search = useSearchParams();
+  const href =
+    path === '/notifications/preferences' && !search.has('returnTo') && !search.has('from')
+      ? '/homes'
+      : accountReturnHref(current);
+  if (!href && !['/profile', '/notifications'].includes(path)) return null;
   return (
-    <Link href={href} className="text-link account-return">
+    <Link
+      href={href ?? '/homes'}
+      className="back-link account-return"
+      onClick={(event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+          return;
+        // The Navigation API exposes the actual preceding entry, including SPA navigation.
+        // Never use history.length alone: that entry could belong to another site.
+        const navigation = (
+          window as Window & {
+            navigation?: {
+              currentEntry?: { index: number };
+              entries: () => { url?: string }[];
+            };
+          }
+        ).navigation;
+        const index = navigation?.currentEntry?.index ?? 0;
+        const previous = navigation?.entries()[index - 1]?.url;
+        if (previous && new URL(previous).origin === window.location.origin) {
+          event.preventDefault();
+          window.history.back();
+        }
+      }}
+    >
       <ArrowLeft size={18} aria-hidden="true" />
       {label}
     </Link>

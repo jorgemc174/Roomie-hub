@@ -188,7 +188,9 @@ for (const locale of ['es', 'en'] as const) {
           prevented = false,
           stopped = false;
         let calls = 0,
-          refs = 0;
+          refs = 0,
+          states = 0;
+        let restored = false;
         const details = {
           open: true,
           querySelector: () => ({
@@ -200,12 +202,16 @@ for (const locale of ['es', 'en'] as const) {
         const react = {
           ...React,
           useRef: () => ({ current: refs++ === 0 ? input : details }),
-          useState: () => [
-            false,
-            (value: boolean) => {
-              invalid = value;
-            },
-          ],
+          useState: () => {
+            const stateIndex = states++;
+            return [
+              false,
+              (value: boolean) => {
+                if (stateIndex === 0) invalid = value;
+                else restored = value;
+              },
+            ];
+          },
           useId: () => 'name-error',
         } as unknown as typeof React;
         const { ShoppingListNameForm } = await shoppingControls(react);
@@ -221,7 +227,8 @@ for (const locale of ['es', 'en'] as const) {
           children: React.ReactElement[];
           onSubmitCapture: (event: unknown) => void;
         }>;
-        const wrapper = rename ? (tree.props.children[1] as typeof tree) : tree;
+        const detailsTree = tree.props.children[0] as typeof tree;
+        const wrapper = rename ? (detailsTree.props.children[1] as typeof tree) : tree;
         wrapper.props.onSubmitCapture({
           preventDefault: () => {
             prevented = true;
@@ -236,6 +243,7 @@ for (const locale of ['es', 'en'] as const) {
         assert.equal(prevented, empty);
         assert.equal(stopped, empty);
         assert.equal(invalid, empty && !rename);
+        assert.equal(restored, empty && rename);
         assert.equal(focused, empty && !rename);
         assert.equal(details.open, !(empty && rename));
         assert.equal(closedFocus, empty && rename);
