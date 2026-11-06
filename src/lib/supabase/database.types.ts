@@ -433,6 +433,10 @@ export type Database = {
         Returns: string;
       };
       create_home: { Args: { home_name: string; home_currency?: string }; Returns: string };
+      preview_invitation: {
+        Args: { invite_code: string };
+        Returns: { home_id: string; home_name: string; already_member: boolean }[];
+      };
       join_home: { Args: { invite_code: string }; Returns: string };
       update_home: {
         Args: {
