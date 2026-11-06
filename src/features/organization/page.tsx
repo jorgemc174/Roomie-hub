@@ -377,13 +377,7 @@ export async function OrganizationPage({
                   ))}
                 </ul>
                 {!list.completed_at && (
-                  <ActionForm action={action('add_item')} label={t.newItem} pendingLabel={t.saving}>
-                    {hidden('list_id', list.id)}
-                    <label>
-                      {t.name}
-                      <input name="name" required maxLength={100} />
-                    </label>
-                  </ActionForm>
+                  <ShoppingListNameForm action={action('add_item')} t={t} itemListId={list.id} />
                 )}
                 {list.completed_at && (
                   <ActionForm

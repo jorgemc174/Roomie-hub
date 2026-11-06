@@ -23,6 +23,7 @@ export function OptionsMenu({ label, children }: { label: string; children: Reac
         close(element?.contains(document.activeElement) ?? false);
     }
     function escape(event: KeyboardEvent) {
+      if (event.target instanceof Element && event.target.closest('dialog[open]')) return;
       if (event.key === 'Escape' && element?.open) {
         event.preventDefault();
         close(true);

@@ -125,7 +125,7 @@ export async function organizationAction(
         (['create_list', 'rename_list', 'add_item'].includes(operation) &&
           (!name || name.length > 100))
       )
-        return { error: t.shoppingInvalid };
+        return { error: operation === 'add_item' ? t.productNameInvalid : t.listNameInvalid };
       const shoppingResult = await db.rpc('shopping_command', {
         target: homeId,
         operation,
@@ -147,7 +147,9 @@ export async function organizationAction(
             : message === 'list_completed'
               ? t.listLocked
               : message === 'invalid_name'
-                ? t.shoppingInvalid
+                ? operation === 'add_item'
+                  ? t.productNameInvalid
+                  : t.listNameInvalid
                 : message === 'not_found'
                   ? t.missing
                   : message.startsWith('invalid_') ||
