@@ -105,8 +105,8 @@ const es = {
   missing: 'Este elemento ya no está disponible. Actualiza la página.',
   error: 'No se ha podido guardar. Comprueba la conexión e inténtalo de nuevo.',
   migration:
-    'Organización necesita la migración 202609150004_task_lifecycle_timezone.sql en Supabase. Consulta docs/setup.md.',
-  loadError: 'No se ha podido cargar Organización. Comprueba la conexión y vuelve a intentarlo.',
+    'Hace falta la migración 202609150004_task_lifecycle_timezone.sql en Supabase. Consulta docs/setup.md.',
+  loadError: 'No se han podido cargar los datos. Comprueba la conexión y vuelve a intentarlo.',
   retry: 'Volver a cargar',
   summary: 'Para hoy y los próximos días',
   pendingTasks: 'Mis tareas pendientes',
@@ -230,8 +230,8 @@ const en: Record<keyof typeof es, string> = {
   missing: 'This item is no longer available. Refresh the page.',
   error: 'Could not save. Check your connection and try again.',
   migration:
-    'Organization needs migration 202609150004_task_lifecycle_timezone.sql in Supabase. See docs/setup.md.',
-  loadError: 'Could not load Organization. Check your connection and try again.',
+    'This view requires migration 202609150004_task_lifecycle_timezone.sql in Supabase. See docs/setup.md.',
+  loadError: 'Could not load the data. Check your connection and try again.',
   retry: 'Reload',
   summary: 'Today and the days ahead',
   pendingTasks: 'My pending tasks',

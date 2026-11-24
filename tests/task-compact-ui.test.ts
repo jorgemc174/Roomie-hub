@@ -12,7 +12,9 @@ import * as logic from '../src/features/organization/logic';
 import { splitTaskPeriods } from '../src/features/organization/task-periods';
 import { organizationMessages } from '../src/features/organization/messages';
 import type { ChoreInstance } from '../src/features/organization/models';
-import { OrganizationNav, OrganizationOptions } from '../src/features/organization/nav';
+import { OrganizationOptions } from '../src/features/organization/nav';
+import { CommunityNav } from '../src/features/community/nav';
+import { ExpensesNav, ExpensesOptions } from '../src/features/expenses/nav';
 import { TaskNavigation } from '../src/features/organization/task-navigation';
 import { OptionsMenu } from '../src/components/ui/options-menu';
 import { CreatePanel } from '../src/components/ui/create-panel';
@@ -241,9 +243,11 @@ test('task deep links open folded ancestors on initial load and hash changes, an
   assert.equal(listener, undefined);
 });
 
-test('empty tasks, shopping and absences keep exactly one creation entry and a stable Organization h1', async () => {
+test('empty tasks, shopping and absences keep one creation entry in their destination', async () => {
   for (const locale of ['es', 'en'] as const) {
     const t = organizationMessages(locale);
+    const ui = locale === 'es' ? es : en;
+    let loadFails = false;
     const { OrganizationPage } = await component<{
       OrganizationPage: (props: {
         homeId: string;
@@ -252,7 +256,9 @@ test('empty tasks, shopping and absences keep exactly one creation entry and a s
     }>('src/features/organization/page.tsx', {
       '@/components/ui/create-panel': { CreatePanel },
       '@/components/ui/empty-state': { EmptyState },
-      './nav': { OrganizationNav, OrganizationOptions },
+      './nav': { OrganizationOptions },
+      '@/features/community/nav': { CommunityNav },
+      '@/features/expenses/nav': { ExpensesNav, ExpensesOptions },
       '@/components/ui/options-menu': { OptionsMenu },
       '@/components/ui/page-header': { PageHeader },
       './task-list': { TaskList },
@@ -264,7 +270,7 @@ test('empty tasks, shopping and absences keep exactly one creation entry and a s
       './task-navigation': { TaskNavigation },
       '@/components/section-disclosure': { SectionDisclosure },
       '@/features/expenses/messages': { expenseMessages: () => ({}) },
-      'next/link': { default: Link },
+      'next/link': Link,
       '@/lib/data': {
         getHome: async () => ({ timezone: 'UTC' }),
         getMembers: async () => [],
@@ -291,7 +297,9 @@ test('empty tasks, shopping and absences keep exactly one creation entry and a s
           ),
       },
       '@/lib/timezones': { homeDate: () => today },
-      './generation': { ensureOrganizationPeriod: async () => ({ error: null }) },
+      './generation': {
+        ensureOrganizationPeriod: async () => ({ error: loadFails ? { code: 'other' } : null }),
+      },
     });
     for (const [tab, label] of [
       ['tasks', t.newTask],
@@ -301,7 +309,7 @@ test('empty tasks, shopping and absences keep exactly one creation entry and a s
       const html = renderToStaticMarkup(
         await OrganizationPage({ homeId: 'test', search: { tab } }),
       );
-      assert.ok(html.includes(`<h1>${t.title}</h1>`));
+      assert.ok(html.includes(`<h1>${tab === 'shopping' ? ui.expenses : ui.community}</h1>`));
       assert.equal((html.match(/class="panel ui-create-panel"/g) ?? []).length, 1);
       const empty = html.slice(
         html.indexOf('<section class="ui-empty-state"'),
@@ -310,5 +318,15 @@ test('empty tasks, shopping and absences keep exactly one creation entry and a s
       assert.ok(!empty.includes('<a'));
       assert.ok(!empty.includes(label));
     }
+    loadFails = true;
+    const error = renderToStaticMarkup(
+      await OrganizationPage({
+        homeId: 'test',
+        search: { tab: 'absences', create: 'absence' },
+      }),
+    );
+    assert.ok(error.includes('role="alert"'));
+    assert.ok(error.includes('href="/homes/test/community?tab=absences&amp;create=absence"'));
+    assert.ok(error.includes('href="/homes/test/community?tab=tasks"'));
   }
 });

@@ -71,5 +71,64 @@ export type CalendarEvent = {
   people: string[];
   names: string[];
   location?: string;
+  resourceId?: string;
   href: string;
+};
+// Lean records for client components: the agenda never needs idempotency metadata.
+export type ActivityView = Pick<
+  Activity,
+  | 'id'
+  | 'title'
+  | 'description'
+  | 'location'
+  | 'location_kind'
+  | 'starts_at'
+  | 'ends_at'
+  | 'created_by'
+  | 'created_by_name'
+  | 'cancelled_at'
+  | 'version'
+>;
+export type ReservationView = Pick<
+  Reservation,
+  | 'id'
+  | 'resource_id'
+  | 'resource_name'
+  | 'title'
+  | 'responsible_id'
+  | 'responsible_name'
+  | 'starts_at'
+  | 'ends_at'
+  | 'cancelled_at'
+  | 'version'
+>;
+export type ParticipantView = Pick<
+  ActivityMember,
+  'activity_id' | 'user_id' | 'user_name' | 'response'
+>;
+export type ResourceOption = Pick<Resource, 'id' | 'name' | 'active'>;
+export type Person = { user_id: string; name: string };
+// Everything the calendar needs to create, show and manage its own records in place.
+export type CalendarManage = {
+  activities: ActivityView[];
+  participants: ParticipantView[];
+  reservations: ReservationView[];
+  resources: ResourceOption[];
+  people: Person[];
+  createIds: { activity: string; reservation: string };
+  now: string;
+  nowLocal: string;
+  create: 'activity' | 'reservation' | '';
+  closeLabel: string;
+};
+export type CalendarAgendaProps = {
+  homeId: string;
+  locale: import('@/lib/i18n/dictionaries').Locale;
+  timezone: string;
+  userId: string;
+  day: string;
+  today: string;
+  resource: string;
+  events: CalendarEvent[];
+  manage: CalendarManage;
 };

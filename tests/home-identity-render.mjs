@@ -153,10 +153,11 @@ try {
               await expect(
                 page.getByText(`${t.greeting}, María del Mar`, { exact: true }),
               ).toBeVisible();
-              await expect(page.locator('.home-sections a')).toHaveCount(6);
+              await expect(page.locator('.home-sections a')).toHaveCount(5);
               const links = await page
                 .locator('.home-sections a')
                 .evaluateAll((links) => links.map((a) => a.getAttribute('href')));
+              assert.ok(!links.some((href) => href.endsWith('/organization')));
               assert.deepEqual(
                 links,
                 await page

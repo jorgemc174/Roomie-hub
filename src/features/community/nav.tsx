@@ -4,12 +4,10 @@ import { SectionTabs } from '@/components/section-tabs';
 import { OptionsMenu } from '@/components/ui/options-menu';
 import type { Locale } from '@/lib/i18n/dictionaries';
 import { communityMessages } from './messages';
+import { organizationMessages } from '@/features/organization/messages';
 
 export function communityTab(value: string | string[] | undefined) {
-  return typeof value === 'string' &&
-    ['points', 'punishments', 'ranking', 'reasons'].includes(value)
-    ? value
-    : 'ranking';
+  return value === 'punishments' || value === 'reasons' ? value : 'points';
 }
 
 export function CommunityNav({
@@ -26,13 +24,14 @@ export function CommunityNav({
     <div className="section-navigation">
       <SectionTabs
         label={t.title}
-        items={(['ranking', 'points', 'punishments', 'activities'] as const).map((key) => ({
-          href:
-            key === 'activities'
-              ? `/homes/${homeId}/community/activities`
-              : `/homes/${homeId}/community?tab=${key}`,
-          label: t[key],
-          current: tab === key,
+        items={[
+          ['points', t.pointsAndRanking],
+          ['tasks', organizationMessages(locale).tasks],
+          ['punishments', t.punishments],
+        ].map(([key, label]) => ({
+          href: `/homes/${homeId}/community?tab=${key}`,
+          label,
+          current: tab === key || (tab === 'absences' && key === 'tasks'),
         }))}
       />
     </div>

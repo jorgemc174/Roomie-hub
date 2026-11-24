@@ -86,7 +86,7 @@ const es = {
   overdue: 'Atrasada',
   scheduled: 'Programada',
   sourceHelp:
-    'El calendario consulta registros existentes. No genera tareas ni contabiliza gastos. Los recurrentes muestran su siguiente fecha y los pendientes emitidos.',
+    'Las actividades y las reservas se crean y se gestionan aquí. Las tareas y los gastos se consultan en su sección: el calendario no genera tareas ni contabiliza gastos. Los recurrentes muestran su siguiente fecha y los pendientes emitidos.',
   error: 'No se pudo completar la operación. Comprueba la conexión e inténtalo de nuevo.',
   invalid: 'Revisa los campos, las fechas y la duración.',
   conflict: 'Este recurso ya está reservado en ese horario.',
@@ -99,12 +99,25 @@ const es = {
   closed: 'Este registro ya terminó o está cancelado.',
   migration:
     'Falta aplicar las migraciones de calendario y actividades (006 y 202611030002_activity_responses.sql).',
-  backOrganization: 'Organización',
   community: 'Convivencia',
   details: 'Ver y gestionar',
   noEnd: 'Sin hora de fin',
   events: 'eventos',
   creatorJoins: 'El creador queda apuntado automáticamente y puede salirse después.',
+  options: 'Opciones',
+  month: 'Mes',
+  eventType: 'Tipo de evento',
+  selectedDayHelp:
+    'Se rellena con el día seleccionado. Puedes cambiar la fecha y la hora antes de guardar.',
+  pastDay:
+    'Este día ya ha pasado. Para crear una actividad o una reserva, elige hoy o un día posterior.',
+  resourcesInOptions:
+    'Puedes crear, editar o desactivar recursos en las opciones del calendario (⋯).',
+  missingItem: 'Ese evento no existe o no pertenece a este piso.',
+  allHistory: 'Ver todo el historial',
+  upcomingHelp: 'Actividades y reservas que todavía no han terminado, por fecha de inicio.',
+  historyHelp:
+    'Actividades y reservas terminadas o canceladas, de la más antigua a la más reciente.',
 };
 const en: Record<keyof typeof es, string> = {
   calendar: 'Calendar',
@@ -193,7 +206,7 @@ const en: Record<keyof typeof es, string> = {
   overdue: 'Overdue',
   scheduled: 'Scheduled',
   sourceHelp:
-    'The calendar reads existing records. It does not generate chores or post expenses. Recurrences show their next date and issued pending periods.',
+    'Activities and reservations are created and managed here. Tasks and expenses open in their own section: the calendar does not generate tasks or post expenses. Recurrences show their next date and issued pending periods.',
   error: 'Could not complete the operation. Check your connection and try again.',
   invalid: 'Check the fields, dates and duration.',
   conflict: 'This resource is already booked at that time.',
@@ -206,12 +219,23 @@ const en: Record<keyof typeof es, string> = {
   closed: 'This record has ended or was cancelled.',
   migration:
     'Apply the calendar and activities migrations (006 and 202611030002_activity_responses.sql).',
-  backOrganization: 'Organization',
   community: 'Community',
   details: 'View and manage',
   noEnd: 'No end time',
   events: 'events',
   creatorJoins: 'The creator joins automatically and can leave afterwards.',
+  options: 'Options',
+  month: 'Month',
+  eventType: 'Event type',
+  selectedDayHelp:
+    'Filled in with the selected day. You can change the date and time before saving.',
+  pastDay:
+    'This day has passed. To create an activity or a reservation, choose today or a later day.',
+  resourcesInOptions: 'You can create, edit or deactivate resources in the calendar options (⋯).',
+  missingItem: 'That event does not exist or does not belong to this home.',
+  allHistory: 'View all history',
+  upcomingHelp: 'Activities and reservations that have not ended yet, by start time.',
+  historyHelp: 'Finished or cancelled activities and reservations, oldest first.',
 };
 export function calendarMessages(locale: Locale) {
   return locale === 'en' ? en : es;

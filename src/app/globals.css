@@ -292,6 +292,7 @@ a:hover {
 input,
 select {
   width: 100%;
+  min-width: 0;
   background: var(--surface);
   color: var(--ink);
   border: 1px solid var(--line);
@@ -310,6 +311,7 @@ input[type='file'] {
 }
 label {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 7px;
   font-size: 0.9rem;

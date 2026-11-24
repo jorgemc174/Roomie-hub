@@ -1,12 +1,11 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { CalendarDays, ListTodo, Wallet, Heart, MessageCircle } from 'lucide-react';
+import { CalendarDays, Wallet, Heart, MessageCircle } from 'lucide-react';
 import { getHome } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import { futureModules, type FutureModule } from '@/features/contracts';
 const icons = {
   calendar: CalendarDays,
-  organization: ListTodo,
   expenses: Wallet,
   community: Heart,
   chat: MessageCircle,

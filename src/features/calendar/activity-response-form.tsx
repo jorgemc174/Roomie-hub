@@ -25,7 +25,8 @@ export function ActivityResponseForm({
       <input type="hidden" name="version" value="0" />
       <fieldset disabled={pending}>
         <legend>{t.yourResponse}</legend>
-        <div className="row wrap">
+        {/* Not .row: its generic button reset would hide which answer is selected. */}
+        <div className="inline-actions">
           {(['going', 'maybe', 'not_going'] as const).map((answer) => (
             <button
               key={answer}

@@ -2,6 +2,7 @@ import type { Locale } from '@/lib/i18n/dictionaries';
 const es = {
   title: 'Convivencia',
   points: 'Puntos',
+  pointsAndRanking: 'Puntos y ranking',
   punishments: 'Castigos',
   ranking: 'Ranking',
   options: 'Opciones',
@@ -101,6 +102,7 @@ const es = {
 const en: Record<keyof typeof es, string> = {
   title: 'Living together',
   points: 'Points',
+  pointsAndRanking: 'Points and ranking',
   punishments: 'Consequences',
   ranking: 'Ranking',
   options: 'Options',

@@ -22,11 +22,11 @@ Implementación existente: Next.js 16 App Router, React 19, TypeScript estricto,
 
 ## Operating Context
 
-Un usuario puede pertenecer a varios pisos. Acceso → Mis pisos → piso → seis secciones: Inicio, Calendario, Organización, Gastos, Convivencia y Chat. Cambiar de piso y cerrar sesión se hace desde Mi perfil. El logo del workspace vuelve al piso actual. Perfil y Notificaciones conservan el contexto de origen.
+Un usuario puede pertenecer a varios pisos. Acceso → Mis pisos → piso → cinco secciones: Inicio, Calendario, Gastos, Convivencia y Chat. Cambiar de piso y cerrar sesión se hace desde Mi perfil. El logo del workspace vuelve al piso actual. Perfil y Notificaciones conservan el contexto de origen.
 
 ## Capabilities and Constraints
 
-- Organización agrupa tareas, compra, reservas y ausencias. Calendario integra registros existentes y enlaza a su origen.
+- Calendario reúne la consulta y gestión de actividades y reservas. Convivencia incluye tareas y ausencias y Gastos incluye las listas de compra.
 - Gastos conserva dinero exacto, participantes, moneda por piso, repartos, comprobantes, liquidaciones, recurrencias y auditoría.
 - Convivencia conserva anonimato, reglas de compensación y castigos; Ranking no pertenece a Inicio.
 - Todos los miembros activos tienen los mismos permisos. No existe administrador de piso.

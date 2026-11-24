@@ -61,7 +61,7 @@ try {
       });
     };
     await visit(home);
-    await expect(page.locator('.side-nav a')).toHaveCount(6);
+    await expect(page.locator('.side-nav a')).toHaveCount(5);
     await expect(page.getByRole('link', { name: 'Invitar compañeros', exact: true })).toBeVisible();
     if (variant.width === 768) {
       expect(
@@ -74,25 +74,26 @@ try {
       check: 'workspace-navigation',
       passed: true,
     });
-    await visit(home + '/organization');
+    await visit(home + '/community?tab=tasks');
     const count = await page.locator('.task-row').count();
     if (count) {
       await expect(page.locator('.task-period-heading time').first()).toBeVisible();
       await expect(page.locator('.task-row .task-occurrence-date time').first()).toBeVisible();
       const ids = await page.locator('.task-row').evaluateAll((rows) => rows.map((r) => r.id));
       expect(new Set(ids).size).toBe(count);
-      await page.goto(base + home + '/organization#' + ids[0], { waitUntil: 'networkidle' });
+      await page.goto(base + home + '/community?tab=tasks#' + ids[0], { waitUntil: 'networkidle' });
       expect(
         await visibleAboveNavigation(page.locator('.task-row .task-occurrence-date').first()),
       ).toBe(true);
       await page.locator('.task-row details summary').first().click();
       await expect(page.locator('.task-row details').first()).toHaveAttribute('open', '');
     }
-    const view = page.getByRole('combobox', { name: 'Tareas', exact: true });
-    const all = await view.locator('option').all();
-    await view.selectOption(await all[1].getAttribute('value'));
+    await page.locator('.task-view-controls details > summary').click();
+    await page.locator('select[name=view]').selectOption('all');
+    await page.locator('.task-view-controls form button[type=submit]').click();
     await page.waitForURL((url) => url.searchParams.get('view') === 'all');
     const from = new URL(page.url()).searchParams.get('from');
+    await page.locator('.ui-page-header .ui-options-menu > summary').click();
     await page.getByRole('link', { name: 'Configurar tareas', exact: true }).click();
     await page.waitForURL((url) => url.searchParams.get('view') === 'manage');
     await page.getByRole('link', { name: 'Volver a las tareas', exact: true }).click();
@@ -106,6 +107,7 @@ try {
       visibleOccurrences: count,
     });
     await visit(home + '/community');
+    await expect(page.getByRole('heading', { name: 'Ranking', exact: true })).toBeVisible();
     expect(await visibleAboveNavigation(page.locator('#create-rating > summary'))).toBe(true);
     await page.locator('#create-rating > summary').click();
     await expect(page.locator('#create-rating')).toHaveAttribute('open', '');

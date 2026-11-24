@@ -2,11 +2,10 @@
 import Link from 'next/link';
 import { NavigationHint } from './navigation-hint';
 import { usePathname } from 'next/navigation';
-import { House, CalendarDays, ListTodo, Wallet, Heart, MessageCircle } from 'lucide-react';
+import { House, CalendarDays, Wallet, Heart, MessageCircle } from 'lucide-react';
 import type { Messages } from '@/lib/i18n/dictionaries';
 export const modules = [
   { key: 'calendar', icon: CalendarDays },
-  { key: 'organization', icon: ListTodo },
   { key: 'expenses', icon: Wallet },
   { key: 'community', icon: Heart },
   { key: 'chat', icon: MessageCircle },
@@ -46,24 +45,9 @@ export function Navigation({ homeId, t }: { homeId: string; t: Messages }) {
             aria-current={active ? (pathname === href ? 'page' : 'location') : undefined}
           >
             <Icon size={21} aria-hidden="true" />
-            <span className="nav-label">
-              {
-                t[
-                  key as keyof Pick<
-                    Messages,
-                    'home' | 'calendar' | 'organization' | 'expenses' | 'community' | 'chat'
-                  >
-                ]
-              }
-            </span>
+            <span className="nav-label">{t[key]}</span>
             <span className="nav-label-mobile" aria-hidden="true">
-              {key === 'calendar'
-                ? t.calendarShort
-                : key === 'organization'
-                  ? t.organize
-                  : key === 'community'
-                    ? t.liveTogether
-                    : t[key]}
+              {key === 'calendar' ? t.calendarShort : key === 'community' ? t.liveTogether : t[key]}
             </span>
             <NavigationHint />
           </Link>

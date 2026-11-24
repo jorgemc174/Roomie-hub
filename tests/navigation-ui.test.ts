@@ -5,14 +5,10 @@ import { jsx } from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PathnameContext } from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
 import { Navigation } from '../src/components/navigation';
-import {
-  OrganizationNav,
-  OrganizationOptions,
-  OrganizationLoadError,
-} from '../src/features/organization/nav';
+import { GET as legacyOrganization } from '../src/app/(workspace)/homes/[homeId]/organization/route';
+import { OrganizationOptions } from '../src/features/organization/nav';
 import { TaskNavigation } from '../src/features/organization/task-navigation';
 import { organizationMessages } from '../src/features/organization/messages';
-import { calendarMessages } from '../src/features/calendar/messages';
 import { CommunityNav, CommunityOptions, communityTab } from '../src/features/community/nav';
 import { communityMessages } from '../src/features/community/messages';
 import { ExpensesNav, ExpensesOptions } from '../src/features/expenses/nav';
@@ -25,7 +21,7 @@ test('nested workspace routes retain exactly one active section in both language
   for (const t of [es, en]) {
     for (const [path, label] of [
       ['/homes/test', t.home],
-      ['/homes/test/organization/reservations', t.organization],
+      ['/homes/test/calendar', t.calendar],
       ['/homes/test/community/activities', t.community],
     ]) {
       const html = renderToStaticMarkup(
@@ -36,7 +32,8 @@ test('nested workspace routes retain exactly one active section in both language
         ),
       );
       const links = html.match(/<a\b[^>]*>/g) ?? [];
-      assert.equal(links.length, 6);
+      assert.equal(links.length, 5);
+      assert.ok(!html.includes('href="/homes/test/organization"'));
       const active = links.filter((link) => link.includes('aria-current='));
       assert.equal(active.length, 1);
       assert.ok(active[0].includes(`aria-label="${label}"`));
@@ -55,29 +52,36 @@ test('route prefixes alone do not activate an unrelated workspace section', () =
   assert.ok(!html.includes('aria-current='));
 });
 
-test('organization keeps three routine tabs and absences in header options in both locales', () => {
+test('the old organization route redirects to its new section with filters and create state', async () => {
+  const params = Promise.resolve({ homeId: 'test' });
+  const cases = [
+    ['view=all&from=2026-10-03', '/community?tab=tasks&view=all&from=2026-10-03'],
+    ['tab=shopping&create=list', '/expenses?tab=shopping&create=list'],
+    ['tab=absences&create=absence', '/community?tab=absences&create=absence'],
+  ] as const;
+  for (const [search, href] of cases) {
+    const request = new Request(`http://localhost/homes/test/organization?${search}`);
+    const response = await legacyOrganization(request, { params });
+    assert.equal(response.status, 307);
+    assert.equal(response.headers.get('Location'), `/homes/test${href}`);
+  }
+});
+
+test('tasks keep absences in their options and make the active tab visible', () => {
   for (const locale of ['es', 'en'] as const) {
-    const t = organizationMessages(locale);
-    for (const tab of ['tasks', 'shopping', 'reservations', 'absences']) {
+    for (const tab of ['tasks', 'absences']) {
       const html = renderToStaticMarkup(
-        createElement(OrganizationNav, { homeId: 'test', locale, tab }),
+        createElement(CommunityNav, { homeId: 'test', locale, tab }),
       );
-      const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
-      const labels = Array.from(nav.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/g), (match) =>
-        match[1].replace(/<[^>]*>/g, ''),
-      );
-      assert.deepEqual(labels, [t.tasks, t.shopping, calendarMessages(locale).reservations]);
-      assert.ok(!nav.includes('tab=absences'));
       const options = renderToStaticMarkup(
         createElement(OrganizationOptions, { homeId: 'test', locale, tab }),
       );
-      assert.ok(options.includes('href="/homes/test/organization?tab=absences"'));
-      assert.ok(options.includes(t.absences));
-      assert.equal(((html + options).match(/aria-current="page"/g) ?? []).length, 1);
-      if (tab === 'absences') {
-        assert.ok(html.includes(t.backToTasks));
-        assert.ok(html.includes('href="/homes/test/organization"'));
-      }
+      assert.ok(html.includes('href="/homes/test/community?tab=tasks"'));
+      assert.ok(html.includes('aria-current="page"'));
+      assert.ok(!html.includes('tab=absences'));
+      assert.ok(options.includes('href="/homes/test/community?tab=absences"'));
+      assert.ok(options.includes(organizationMessages(locale).absences));
+      assert.equal(options.includes('aria-current="page"'), tab === 'absences');
     }
   }
 });
@@ -100,7 +104,8 @@ test('task filters submit view and date together and summarize only non-default 
       assert.ok(summary.includes(t.filters));
       assert.ok(summary.includes(t.from));
       if (view === 'all' || view === 'cancelled') assert.ok(summary.includes(t[view]));
-      assert.ok(html.includes('action="/homes/test/organization" method="get"'));
+      assert.ok(html.includes('action="/homes/test/community" method="get"'));
+      assert.ok(html.includes('name="tab" value="tasks"'));
       assert.ok(html.includes('<select name="view">'));
       assert.ok(html.includes(`value="${view}" selected=""`));
       assert.ok(html.includes('name="from"'));
@@ -137,7 +142,9 @@ test('task configuration and its return keep the selected view and date in the U
         from: '2026-10-03',
       }),
     );
-    assert.ok(options.includes(`?view=manage&amp;from=2026-10-03&amp;returnView=${view}`));
+    assert.ok(
+      options.includes(`?tab=tasks&amp;view=manage&amp;from=2026-10-03&amp;returnView=${view}`),
+    );
     const back = renderToStaticMarkup(
       jsx(TaskNavigation, {
         homeId: 'test',
@@ -148,32 +155,38 @@ test('task configuration and its return keep the selected view and date in the U
         children: null,
       }),
     );
-    assert.ok(back.includes(`href="/homes/test/organization?view=${view}&amp;from=2026-10-03"`));
+    assert.ok(
+      back.includes(`href="/homes/test/community?tab=tasks&amp;view=${view}&amp;from=2026-10-03"`),
+    );
     assert.ok(!back.includes('<form'));
   }
 });
 
-test('community defaults to ranking and retains explicit views and safe fallback', () => {
-  for (const value of [undefined, '', 'unknown', ['points', 'ranking']]) {
-    assert.equal(communityTab(value), 'ranking');
+test('community opens combined points and ranking from both old and default links', () => {
+  for (const value of [undefined, '', 'unknown', 'ranking', ['points', 'ranking']]) {
+    assert.equal(communityTab(value), 'points');
   }
-  for (const tab of ['ranking', 'points', 'punishments', 'reasons']) {
+  for (const tab of ['points', 'punishments', 'reasons']) {
     assert.equal(communityTab(tab), tab);
   }
 });
 
-test('community leads with ranking and keeps configuration in header options in both locales', () => {
+test('community shows points and ranking together, tasks and punishments in both locales', () => {
   for (const locale of ['es', 'en'] as const) {
     const t = communityMessages(locale);
-    for (const tab of ['ranking', 'points', 'punishments', 'activities', 'reasons']) {
+    for (const tab of ['points', 'tasks', 'punishments', 'reasons']) {
       const html = renderToStaticMarkup(
         createElement(CommunityNav, { homeId: 'test', locale, tab }),
       );
       const labels = Array.from(html.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/g), (match) =>
         match[1].replace(/<[^>]*>/g, ''),
       );
-      assert.deepEqual(labels, [t.ranking, t.points, t.punishments, t.activities]);
-      assert.ok(html.includes('href="/homes/test/community/activities"'));
+      assert.deepEqual(labels, [
+        t.pointsAndRanking,
+        organizationMessages(locale).tasks,
+        t.punishments,
+      ]);
+      assert.ok(!html.includes('/community/activities'));
       assert.ok(!html.includes('tab=reasons'));
       const options = renderToStaticMarkup(
         createElement(CommunityOptions, { homeId: 'test', locale, tab }),
@@ -186,22 +199,27 @@ test('community leads with ranking and keeps configuration in header options in 
         link.includes('aria-current="page"'),
       );
       assert.equal(active.length, 1);
-      assert.ok(active[0].includes(tab === 'activities' ? '/community/activities' : `?tab=${tab}`));
+      assert.ok(active[0].includes(`?tab=${tab}`));
     }
   }
 });
 
-test('expenses separates three routine destinations from its change history and keeps deep links active', () => {
+test('expenses includes purchase lists and separates routine destinations from its change history and keeps deep links active', () => {
   for (const locale of ['es', 'en'] as const) {
     const t = expenseMessages(locale);
-    for (const tab of ['expenses', 'balances', 'recurring', 'history']) {
+    for (const tab of ['expenses', 'balances', 'recurring', 'shopping', 'history']) {
       const html = renderToStaticMarkup(
         createElement(ExpensesNav, { homeId: 'test', locale, tab }),
       );
       const labels = Array.from(html.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/g), (match) =>
         match[1].replace(/<[^>]*>/g, ''),
       );
-      assert.deepEqual(labels, [t.movements, t.balances, t.recurring]);
+      assert.deepEqual(labels, [
+        t.movements,
+        t.balances,
+        t.recurring,
+        organizationMessages(locale).shopping,
+      ]);
       assert.ok(!html.includes('tab=history'));
       const options = renderToStaticMarkup(
         createElement(ExpensesOptions, { homeId: 'test', locale, tab }),
@@ -252,22 +270,4 @@ test('message options preserve edit ownership, reactions and pending safeguards'
   );
   assert.ok(own.includes('>Editar</button>'));
   assert.equal((own.match(/<button\b/g) ?? []).length, (own.match(/disabled=""/g) ?? []).length);
-});
-
-test('organization load errors keep secondary routes and retry destination available', () => {
-  const href = '/homes/test/organization?tab=absences&from=2026-10-01&create=absence';
-  const html = renderToStaticMarkup(
-    createElement(OrganizationLoadError, {
-      homeId: 'test',
-      locale: 'es',
-      tab: 'absences',
-      retryHref: href,
-      message: 'Load failed',
-    }),
-  );
-  assert.ok(html.includes('aria-current="page"'));
-  assert.ok(html.includes('href="/homes/test/organization?tab=shopping"'));
-  assert.ok(html.includes('href="/homes/test/organization/reservations"'));
-  assert.ok(html.includes('href="' + href.replaceAll('&', '&amp;') + '"'));
-  assert.ok(html.includes('role="alert"'));
 });

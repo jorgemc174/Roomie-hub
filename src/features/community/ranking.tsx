@@ -20,6 +20,7 @@ export function CommunityRanking({
     number = (value: number) => new Intl.NumberFormat(locale).format(Number(value));
   return (
     <section className="stack">
+      <h2>{t.ranking}</h2>
       <p className="community-ranking-rule" id="ranking-order">
         {t.rankingOrder}
       </p>
@@ -63,7 +64,7 @@ export function CommunityRanking({
               <th scope="row">
                 <Link
                   className="ranking-member"
-                  href={`/homes/${homeId}/community?tab=points&person=${balance.user_id}`}
+                  href={`/homes/${homeId}/community?tab=points&person=${balance.user_id}#point-balance`}
                 >
                   {avatars[balance.user_id] ? (
                     <img className="avatar" src={avatars[balance.user_id]!} alt="" />

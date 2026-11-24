@@ -47,7 +47,9 @@ async function shoppingPage(locale: 'es' | 'en', completed: boolean) {
   const dependencies: Record<string, unknown> = {
     '@/components/ui/create-panel': { CreatePanel: container },
     '@/components/ui/empty-state': { EmptyState: () => null },
-    './nav': { OrganizationNav: () => null, OrganizationOptions: () => null },
+    './nav': { OrganizationOptions: () => null },
+    '@/features/community/nav': { CommunityNav: () => null },
+    '@/features/expenses/nav': { ExpensesNav: () => null, ExpensesOptions: () => null },
     '@/components/ui/options-menu': { OptionsMenu: container },
     '@/components/ui/page-header': { PageHeader: () => null },
     './task-list': { TaskList: () => null },

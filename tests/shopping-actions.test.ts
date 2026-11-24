@@ -97,7 +97,7 @@ test('creation navigates to the new list, reopening is explicit, and SQL lock er
     await assert.rejects(action.run('create_list', form), /NEXT_REDIRECT/);
     assert.equal(
       action.redirects[0],
-      `/homes/${home}/organization?tab=shopping&created=${list}#shopping-${list}`,
+      `/homes/${home}/expenses?tab=shopping&created=${list}#shopping-${list}`,
     );
     assert.ok((await action.run('reopen_list', form)).success);
     const locked = await actions(locale, { message: 'list_completed' });

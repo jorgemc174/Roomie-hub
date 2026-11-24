@@ -10,13 +10,13 @@ Sin variables la aplicación muestra instrucciones de conexión; no crea sesione
 
 ## Validar
 
-`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`. Navegador: `pnpm exec playwright install chromium` y `pnpm test:e2e`. Alcance exacto y comprobaciones pendientes: [docs/validation.md](docs/validation.md).
+`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`. Navegador: `pnpm exec playwright install chromium` y `pnpm test:e2e`. Para las pruebas de los formularios de Calendario en Chromium, ejecuta `pnpm build` y `pnpm test:calendar:browser`. Alcance exacto y comprobaciones pendientes: [docs/validation.md](docs/validation.md).
 
 ## Implementado
 
 Registro, login/logout, recuperación y sesión SSR; perfil con nombre/foto; creación y unión a varios pisos, invitaciones regenerables, workspace y ajustes; permisos iguales y borrado exclusivo con un único miembro activo; Storage privado, RLS y suscripción Realtime base. Diseño mobile-first, claro/oscuro, diccionarios es/en y manifest inicial.
 
-Organización incluye tareas recurrentes, reparto ponderado, rotaciones manuales, ausencias con reasignación, fechas límite y múltiples listas de compra, con Realtime. Gastos incluye reparto, pagos y recurrentes; Reservas, Actividades y Calendario están implementados. Convivencia incluye valoraciones, conversiones automáticas, penalizaciones por retraso, castigos y ranking. Chat y notificaciones siguen pendientes. No hay localStorage ni datos de negocio ficticios.
+Convivencia agrupa tareas, ausencias, castigos y la pestaña Puntos y ranking. Gastos incluye reparto, pagos, recurrentes y listas de compra. Calendario permite consultar y gestionar actividades y reservas. Chat y notificaciones siguen pendientes. No hay localStorage ni datos de negocio ficticios.
 
 ## Archivos principales
 
@@ -42,7 +42,7 @@ Monedas internacionales (30 opciones, EUR inicial), privacidad del perfil actual
 ### Fase 2
 
 - Nueva migración: `supabase/migrations/202609150003_organization.sql`.
-- UI: Organización → Tareas / Compra / Ausencias. Mi perfil contiene Mis pisos y Cerrar sesión.
+- UI actual: Convivencia → Tareas y Ausencias. Gastos → Compra. Mi perfil contiene Mis pisos y Cerrar sesión.
 - Tareas iniciales: Configurar tareas → Añadir tareas iniciales; seguro para pisos nuevos o existentes, sin duplicados ni reemplazar ediciones.
 - Definiciones editables; instancias con un responsable, peso, periodo, deadline y snapshots de nombres. Historial de asignaciones y completados.
 - Generación solo en Tareas para hoy y mañana según la zona del piso, RPC explícita para otros rangos y preparación para jobs. No hay cron instalado ni puntos por retraso en esta fase.
@@ -64,7 +64,7 @@ Aplicar `supabase/migrations/202609150005_expenses.sql` después de 004. Ver [en
 
 ## Fase 4 — Reservas, actividades y calendario
 
-Recursos configurables en Organización → Reservas, reservas sin solapamientos, actividades con participantes en Convivencia y calendario mensual con agenda, tipos y Solo lo mío. Horas del piso, RLS y sincronización entre miembros; se preservan tareas y finanzas.
+Calendario reúne las reservas sin solapamientos, las actividades con participantes y los recursos configurables. Incluye agenda mensual y filtros por tipo, recurso y Solo lo mío. Horas del piso, RLS y sincronización entre miembros; se preservan tareas y finanzas.
 
 Nueva migración `202609150006_calendar_reservations_activities.sql`, después de 005. [Entrega completa](docs/phase-4-delivery.md), [configuración](docs/setup.md) y [validación](docs/validation.md). No incluye Fase 5.
 
@@ -72,7 +72,7 @@ Los scripts también se ejecutan con `npm run lint`, `npm run typecheck`, `npm t
 
 ## Fase 5 — Convivencia
 
-Puntos, motivos configurables, anonimato en backend, fotos privadas, consumo automático de tres positivos, negativos por días completos de retraso, castigos persistentes y ranking de miembros activos. Inicio solo muestra el resumen propio. Actividades sigue disponible en Convivencia → Actividades.
+Puntos, motivos configurables, anonimato en backend, fotos privadas, consumo automático de tres positivos, negativos por días completos de retraso, castigos persistentes y ranking de miembros activos. Inicio solo muestra el resumen propio. Actividades se gestiona desde Calendario.
 
 Migraciones aditivas **007 y 008**, después de 006. [Entrega y decisiones](docs/phase-5-delivery.md), [configuración](docs/setup.md) y [resultados de validación](docs/validation.md). `npm run test:community:remote` prueba Supabase real con cuentas temporales y limpieza. La aplicación no usa clave administrativa. No se implementa Fase 6.
 

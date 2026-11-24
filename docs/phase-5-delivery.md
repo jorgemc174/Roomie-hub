@@ -87,7 +87,7 @@ Solo activos: menos negativos efectivos, más positivos disponibles y UUID estab
 
 ## 19. Realtime
 
-Cuatro tablas públicas con filtro home_id; refresco de Server Components, sin duplicar filas con inserciones optimistas. Autores/auditoría/uploads/progreso no publicados. Actividades sigue usando su implementación de Fase 4 en `/community/activities`, y el calendario enlaza a esa ruta.
+Cuatro tablas públicas con filtro home_id; refresco de Server Components, sin duplicar filas con inserciones optimistas. Autores/auditoría/uploads/progreso no publicados. La gestión de actividades usa las acciones de Fase 4 desde Calendario. La ruta histórica `/community/activities` redirige a Calendario.
 
 ## 20. RLS
 

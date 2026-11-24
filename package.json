@@ -16,6 +16,7 @@
     "test:auth:local": "node scripts/validate-google-local.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test:calendar:browser": "node tests/calendar-ui.browser.mjs",
     "test:calendar:remote": "node scripts/validate-calendar-remote.mjs",
     "test:community:remote": "node scripts/validate-community-remote.mjs",
     "test:departure:remote": "node scripts/validate-departure-remote.mjs",

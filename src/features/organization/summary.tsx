@@ -46,7 +46,7 @@ export async function OrganizationSummary({ homeId }: { homeId: string }) {
         </p>
       ) : (
         <div className="summary-counts">
-          <Link className="summary-task-counts" href={`/homes/${homeId}/organization`}>
+          <Link className="summary-task-counts" href={`/homes/${homeId}/community?tab=tasks`}>
             <span>
               <strong>{tasks.data?.length ?? 0}</strong>
               {t.pendingTasks}
@@ -59,15 +59,15 @@ export async function OrganizationSummary({ homeId }: { homeId: string }) {
               {t.overdueTasks}
             </span>
           </Link>
-          <Link href={`/homes/${homeId}/organization?tab=shopping`}>
+          <Link href={`/homes/${homeId}/expenses?tab=shopping`}>
             <strong>{items.count ?? 0}</strong>
             {t.pendingItems}
           </Link>
         </div>
       )}
       {(tasks.error || items.error) && (
-        <Link className="text-link" href={`/homes/${homeId}/organization`}>
-          {t.title} →
+        <Link className="text-link" href={`/homes/${homeId}/community?tab=tasks`}>
+          {t.tasks} →
         </Link>
       )}
     </section>

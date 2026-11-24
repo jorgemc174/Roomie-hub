@@ -1,18 +1,13 @@
 'use client';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { readCalendarNavigation, calendarNavigationHref } from './navigation';
+import { readCalendarNavigation, calendarNavigationHref, type CalendarChanges } from './navigation';
+import type { ComponentType } from 'react';
 import type { Locale } from '@/lib/i18n/dictionaries';
-import type { CalendarEvent } from './models';
+import type { CalendarAgendaProps, CalendarEvent, CalendarManage } from './models';
 import { calendarMessages } from './messages';
-import {
-  adjacentMonth,
-  eventSources,
-  monthDays,
-  filterEvents,
-  eventOnDay,
-  formatInstant,
-} from './logic';
+import { EventLink } from './event-link';
+import { adjacentMonth, eventSources, monthDays, filterEvents, eventOnDay } from './logic';
 export function CalendarView({
   homeId,
   month,
@@ -23,6 +18,8 @@ export function CalendarView({
   locale,
   userId,
   events,
+  manage,
+  Agenda,
 }: {
   homeId: string;
   month: string;
@@ -33,11 +30,16 @@ export function CalendarView({
   locale: Locale;
   userId: string;
   events: CalendarEvent[];
+  manage?: CalendarManage;
+  // Injected by ManagedCalendar: creation and management of the selected day's records.
+  Agenda?: ComponentType<CalendarAgendaProps>;
 }) {
   const t = calendarMessages(locale),
     search = useSearchParams();
-  const { day, types, mine } = readCalendarNavigation(search, month, selectedDay);
-  const filtered = filterEvents(events, types, mine, userId),
+  const { day, types, mine, resource } = readCalendarNavigation(search, month, selectedDay);
+  const resources = manage?.resources ?? [];
+  const resourceName = resources.find((x) => x.id === resource)?.name;
+  const filtered = filterEvents(events, types, mine, userId, resourceName ? resource : ''),
     days = monthDays(month, weekStart),
     agenda = filtered.filter((e) => eventOnDay(e, day, timezone));
   const label = (d: string, options: Intl.DateTimeFormatOptions) =>
@@ -45,10 +47,12 @@ export function CalendarView({
       new Date(`${d}T12:00:00Z`),
     );
   const base = `/homes/${homeId}/calendar`;
-  const href = (changes: Parameters<typeof calendarNavigationHref>[2]) =>
-    calendarNavigationHref(base, search, changes);
-  function update(changes: Parameters<typeof calendarNavigationHref>[2]) {
-    const next = href(changes);
+  // A record deep link or an opened creation panel applies once; later states are explicit.
+  const transient: CalendarChanges = { item: null, create: null };
+  const href = (changes: CalendarChanges) =>
+    calendarNavigationHref(base, search, { ...transient, ...changes });
+  function update(changes: CalendarChanges) {
+    const next = href({ month, day, ...changes });
     if (`${window.location.pathname}${window.location.search}` === next) return;
     // Day/filter selection is not a new screen: keep Back free of intermediate clicks.
     window.history.replaceState(null, '', next);
@@ -60,6 +64,7 @@ export function CalendarView({
           <summary>
             {t.filter} · {types.length}
             {mine ? ` · ${t.mine}` : ''}
+            {resourceName ? ` · ${resourceName}` : ''}
           </summary>
           <fieldset className="calendar-filters">
             <legend className="sr-only">{t.filter}</legend>
@@ -88,6 +93,23 @@ export function CalendarView({
               />
               {t.mine}
             </label>
+            {resources.length > 0 && (
+              <label>
+                {t.resource}
+                <select
+                  value={resourceName ? resource : ''}
+                  onChange={(e) => update({ resource: e.target.value || null })}
+                >
+                  <option value="">{t.allResources}</option>
+                  {resources.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.name}
+                      {x.active ? '' : ` · ${t.inactive}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </fieldset>
         </details>
         <div className="calendar-quick-actions">
@@ -97,7 +119,8 @@ export function CalendarView({
             onNavigate={(event) => {
               if (today.startsWith(month)) {
                 event.preventDefault();
-                if (day !== today) update({ month: today.slice(0, 7), day: today });
+                if (day !== today || search.has('item') || search.has('create'))
+                  update({ month: today.slice(0, 7), day: today });
               }
             }}
           >
@@ -141,7 +164,7 @@ export function CalendarView({
                 aria-pressed={d === day}
                 aria-label={`${label(d, { dateStyle: 'full' })}: ${count} ${t.events}`}
                 onClick={() => {
-                  if (d !== day) update({ day: d });
+                  if (d !== day || search.has('item') || search.has('create')) update({ day: d });
                 }}
               >
                 <span>{Number(d.slice(8))}</span>
@@ -151,33 +174,32 @@ export function CalendarView({
           })}
         </div>
       </section>
-      <section className="panel" aria-live="polite">
-        <h2>
+      <section className="stack" aria-labelledby="calendar-agenda-heading">
+        <h2 id="calendar-agenda-heading" aria-live="polite">
           {t.agenda} · {label(day, { dateStyle: 'long' })}
         </h2>
-        {!agenda.length && <p>{t.noEvents}</p>}
-        <ul className="calendar-agenda">
-          {agenda.map((event) => (
-            <li key={event.id} className={`calendar-event kind-${event.sourceType}`}>
-              <Link href={event.href}>
-                <div>
-                  <span className={`badge kind-${event.sourceType}`}>{t[event.sourceType]}</span>{' '}
-                  <span>{t[event.status]}</span>
-                </div>
-                <h3>{event.title}</h3>
-                <p>
-                  {event.allDay ? t.allDay : formatInstant(event.startsAt, timezone, locale)}
-                  {event.endsAt && !event.allDay
-                    ? ` → ${formatInstant(event.endsAt, timezone, locale)}`
-                    : ''}
-                </p>
-                {event.names.length > 0 && <p>{event.names.join(', ')}</p>}
-                {event.location && <p>{event.location}</p>}
-                <small>{t.details} →</small>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {Agenda && manage ? (
+          <Agenda
+            homeId={homeId}
+            locale={locale}
+            timezone={timezone}
+            userId={userId}
+            day={day}
+            today={today}
+            resource={resourceName ? resource : ''}
+            events={agenda}
+            manage={manage}
+          />
+        ) : (
+          <>
+            {!agenda.length && <p>{t.noEvents}</p>}
+            <ul className="calendar-agenda">
+              {agenda.map((event) => (
+                <EventLink key={event.id} event={event} locale={locale} timezone={timezone} />
+              ))}
+            </ul>
+          </>
+        )}
       </section>
     </div>
   );

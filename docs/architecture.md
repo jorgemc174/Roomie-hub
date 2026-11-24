@@ -100,7 +100,7 @@ Referencia operativa: [protocolo Realtime de Supabase](https://supabase.com/docs
 
 ### Navegación
 
-Organización tiene pestañas Tareas/Compra/Ausencias y vistas Mis tareas/Todas/Configurar. Los formularios secundarios se despliegan con details accesible por teclado. Mi perfil contiene Mis pisos y Cerrar sesión; el logo del workspace vuelve al piso actual. Inicio resume tareas actuales pendientes/atrasadas y productos pendientes. La Fase 3 añade saldo resumido. No añade ranking, reservas, actividades ni chat.
+Convivencia incluye Tareas con las vistas Mis tareas, Todas y Configurar y el acceso a Ausencias. Compra se encuentra en Gastos. Los formularios secundarios se despliegan con details accesible por teclado. Mi perfil contiene Mis pisos y Cerrar sesión; el logo del workspace vuelve al piso actual. Inicio resume tareas actuales pendientes/atrasadas y productos pendientes. La Fase 3 añade saldo resumido. No añade ranking, reservas, actividades ni chat.
 
 ### Ciclo de vida y zona horaria (004)
 

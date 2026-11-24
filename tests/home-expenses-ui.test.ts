@@ -200,11 +200,8 @@ test('Home prioritizes operational summaries, keeps one tasks/shopping destinati
     // The section directory repeats main destinations; summaries retain one operational link each.
     const summaries = html.slice(html.indexOf('class="dashboard-summaries"'));
     const links = Array.from(summaries.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>/g), (m) => m[1]);
-    assert.equal(links.filter((href) => href === '/homes/test/organization').length, 1);
-    assert.equal(
-      links.filter((href) => href === '/homes/test/organization?tab=shopping').length,
-      1,
-    );
+    assert.equal(links.filter((href) => href === '/homes/test/community?tab=tasks').length, 1);
+    assert.equal(links.filter((href) => href === '/homes/test/expenses?tab=shopping').length, 1);
     assert.ok(!links.some((href) => href.includes('create=task')));
     assert.ok(html.includes(org.pendingTasks));
     assert.ok(html.includes(org.overdueTasks));

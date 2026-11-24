@@ -1,4 +1,5 @@
 import { ExpensesPage } from '@/features/expenses/page';
+import { OrganizationPage } from '@/features/organization/page';
 export default async function Page({
   params,
   searchParams,
@@ -6,5 +7,7 @@ export default async function Page({
   params: Promise<{ homeId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  return <ExpensesPage homeId={(await params).homeId} search={await searchParams} />;
+  const [{ homeId }, search] = await Promise.all([params, searchParams]);
+  if (search.tab === 'shopping') return <OrganizationPage homeId={homeId} search={search} />;
+  return <ExpensesPage homeId={homeId} search={search} />;
 }

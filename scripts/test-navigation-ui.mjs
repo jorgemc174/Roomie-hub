@@ -80,16 +80,16 @@ try {
     const area = page.locator('[data-testid=swipe-area]'),
       route = page.locator('[data-testid=route]');
     await swipe(area, -150);
-    await expect(route).toHaveText('/homes/demo/organization?tab=shopping');
+    await expect(route).toHaveText('/homes/demo/community?tab=tasks');
     scenarios++;
     await swipe(area, 100);
-    await expect(route).toHaveText('/homes/demo/organization');
+    await expect(route).toHaveText('/homes/demo/community?tab=points');
     scenarios++;
     await swipe(area, 0, 80);
-    await expect(route).toHaveText('/homes/demo/organization');
+    await expect(route).toHaveText('/homes/demo/community?tab=points');
     scenarios++;
     await swipe(page.locator('input[name=protected]'), -90);
-    await expect(route).toHaveText('/homes/demo/organization');
+    await expect(route).toHaveText('/homes/demo/community?tab=points');
     scenarios++;
     const trigger = page.locator('.ui-create-panel > summary');
     await trigger.click();
@@ -109,27 +109,11 @@ try {
     await page.goto(`${origin}/?primary`);
     await page.locator('[data-testid=swipe-area]').waitFor();
     await swipe(page.locator('[data-testid=swipe-area]'), -150);
-    await expect(route).toHaveText('/homes/demo/organization');
+    await expect(route).toHaveText('/homes/demo/community?tab=points');
     scenarios++;
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       viewport.width,
     );
-    await page.goto(`${origin}/?loadError=1&tab=absences&from=2026-10-01`);
-    const retryUrl = page.url();
-    await expect(page.getByRole('link', { name: 'Ausencias', exact: true })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    await expect(page.getByRole('alert')).toContainText('Isolated read error component');
-    await page.getByRole('link', { name: 'Volver a cargar', exact: true }).click();
-    await expect(page).toHaveURL(retryUrl);
-    await page.getByRole('link', { name: 'Compra', exact: true }).click();
-    await page.waitForURL((url) => url.searchParams.get('tab') === 'shopping');
-    await expect(page.getByRole('link', { name: 'Compra', exact: true })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    scenarios++;
     await page.goto(`${origin}/?calendar=1&month=2026-10`);
     const day = (value) =>
       page.locator('button.calendar-day').filter({ hasText: new RegExp(`^${value}$`) });
@@ -182,7 +166,7 @@ try {
     page.on('pageerror', (error) => errors.push(error.message));
     const origin = `http://127.0.0.1:${address.port}`;
     const source =
-      '/homes/11111111-1111-4111-8111-111111111111/organization?view=all&from=2026-10-01#task-example';
+      '/homes/11111111-1111-4111-8111-111111111111/community?tab=tasks&view=all&from=2026-10-01#task-example';
     await page.goto(origin + source);
     const profile = page.getByRole('link', { name: 'Profile', exact: true });
     await expect
@@ -218,9 +202,9 @@ try {
     await expect(returnLink).toHaveAttribute('href', source);
     scenarios++;
     await page.goto(origin + '/notifications/preferences');
-    await expect(returnLink).toHaveAttribute('href', '/notifications');
+    await expect(returnLink).toHaveAttribute('href', '/homes');
     await page.goto(origin + '/profile?returnTo=https%3A%2F%2Foutside.invalid');
-    await expect(returnLink).toHaveCount(0);
+    await expect(returnLink).toHaveAttribute('href', '/homes');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       viewport.width,
     );
@@ -250,10 +234,11 @@ try {
           animations: 'disabled',
         });
     };
-    await page.goto(`${base}/organization?view=all&from=2026-10-03`);
-    const view = page.getByRole('combobox', { name: 'Tareas', exact: true });
+    await page.goto(`${base}/community?tab=tasks&view=all&from=2026-10-03`);
+    await page.getByText(/Filtros/, { selector: 'summary' }).click();
+    const view = page.locator('select[name=view]');
     await expect(view.locator('option')).toHaveCount(3);
-    await expect(view).toHaveValue('/homes/menus/organization?view=all&from=2026-10-03');
+    await expect(view).toHaveValue('all');
     const labelFits = await view.evaluate((select) => {
       const style = getComputedStyle(select),
         canvas = document.createElement('canvas');
@@ -275,6 +260,7 @@ try {
       expect(allTabsVisible).toBe(true);
     }
     await capture('tasks-light');
+    await page.locator('.ui-options-menu > summary').click();
     await page.getByRole('link', { name: 'Configurar tareas', exact: true }).click();
     await page.waitForURL((url) => url.searchParams.get('view') === 'manage');
     await expect(page.getByRole('combobox')).toHaveCount(0);
@@ -282,7 +268,8 @@ try {
       page.getByRole('heading', { name: 'Configurar tareas', exact: true }),
     ).toBeVisible();
     await page.getByRole('link', { name: 'Volver a las tareas', exact: true }).click();
-    await expect(view).toHaveValue('/homes/menus/organization?view=all&from=2026-10-03');
+    await expect(view).toHaveValue('all');
+    await expect(page).toHaveURL(/tab=tasks&view=all&from=2026-10-03/);
     scenarios++;
     await page.goto(`${base}/expenses?tab=balances`);
     const panel = page.locator('.ui-create-panel');
@@ -297,9 +284,11 @@ try {
     await panel.getByRole('button', { name: 'Enviar prueba' }).click();
     await expect(page.locator('[data-testid=menu-submitted]')).toHaveText('1');
     scenarios++;
+    await page.locator('.ui-options-menu > summary').click();
     await page.getByRole('link', { name: 'Historial de cambios', exact: true }).click();
     await page.waitForURL((url) => url.searchParams.get('tab') === 'history');
-    await expect(page.locator('nav.section-tabs a')).toHaveCount(3);
+    await expect(page.locator('nav.section-tabs a')).toHaveCount(4);
+    await page.locator('.ui-options-menu > summary').click();
     await expect(
       page.getByRole('link', { name: 'Historial de cambios', exact: true }),
     ).toHaveAttribute('aria-current', 'page');
@@ -318,8 +307,10 @@ try {
     await expect(filter.getByLabel('Campo de prueba')).toHaveValue('Filter retained');
     await page.goto(`${base}/community?person=filter-test`);
     await expect(filter.getByLabel('Campo de prueba')).toBeVisible();
+    await page.locator('.ui-options-menu > summary').click();
     await page.getByRole('link', { name: 'Ajustes de puntos', exact: true }).click();
     await page.waitForURL((url) => url.searchParams.get('tab') === 'reasons');
+    await page.locator('.ui-options-menu > summary').click();
     await expect(
       page.getByRole('link', { name: 'Ajustes de puntos', exact: true }),
     ).toHaveAttribute('aria-current', 'page');

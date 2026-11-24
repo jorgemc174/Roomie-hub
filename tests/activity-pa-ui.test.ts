@@ -7,84 +7,33 @@ import { createElement, type ReactNode } from 'react';
 import * as jsxRuntime from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { calendarMessages } from '../src/features/calendar/messages';
-import { ActivityLocationFields } from '../src/features/calendar/activity-location-fields';
 import * as logic from '../src/features/calendar/logic';
 import type { Locale } from '../src/lib/i18n/dictionaries';
-import type { ActivityMember } from '../src/features/calendar/models';
+import type { ParticipantView } from '../src/features/calendar/models';
 
-// Render the actual server page with isolated reads, without credentials or business writes.
+// Activities are now managed inside the calendar agenda: render the real activity card with
+// isolated forms, without credentials, Supabase reads or business writes.
 async function renderActivity(
   locale: Locale,
-  responses: ActivityMember['response'][],
+  responses: ParticipantView['response'][],
   history = false,
 ) {
-  const members = responses.map((response, index) => ({
+  const participants = responses.map((response, index) => ({
     activity_id: 'plan',
     user_id: `user-${index}`,
     user_name: `Person ${index}`,
     response,
   }));
-  const wrapper = ({ children }: { children: ReactNode }) => createElement('div', null, children);
+  const wrapper = ({ children }: { children?: ReactNode }) => createElement('div', null, children);
   const dependencies: Record<string, unknown> = {
-    '@/components/ui/create-panel': { CreatePanel: wrapper },
-    '@/components/ui/empty-state': { EmptyState: () => null },
-    '@/components/ui/page-header': { PageHeader: () => null },
-    '@/features/community/nav': { CommunityNav: () => null, CommunityOptions: wrapper },
-    'next/link': { default: wrapper },
-    '@/lib/data': {
-      getHome: async () => ({ timezone: 'UTC' }),
-      getMembers: async () => [],
-      requireUser: async () => ({
-        user: { id: 'user-0' },
-        db: {
-          from: () => ({
-            select: () => ({ eq: () => ({ limit: async () => ({ error: null }) }) }),
-          }),
-        },
-      }),
-    },
-    '@/lib/i18n/server': { i18n: async () => ({ locale, t: { closePanel: 'Close' } }) },
-    '@/lib/timezones': { homeDate: () => '2026-11-04' },
-    '@/features/organization/logic': { addDays: () => '2026-11-05' },
-    './queries': {
-      calendarItem: () => undefined,
-      calendarPageIndex: () => 0,
-      readActivityPage: async () => ({
-        rows: [
-          {
-            id: 'plan',
-            title: 'Shared plan',
-            description: 'Description',
-            location: 'Living room',
-            location_kind: 'home',
-            created_by: 'user-0',
-            created_by_name: 'Creator',
-            starts_at: history ? '2000-01-01T21:00:00Z' : '2099-01-01T21:00:00Z',
-            ends_at: null,
-            cancelled_at: null,
-            version: 1,
-          },
-        ],
-        hasMore: false,
-      }),
-      readActivityMembers: async () => [
-        ...members,
-        {
-          activity_id: 'other-plan',
-          user_id: 'other',
-          user_name: 'Other plan person',
-          response: 'going',
-        },
-      ],
-    },
-    './messages': { calendarMessages },
     './form': { CalendarForm: wrapper },
     './activity-response-form': { ActivityResponseForm: () => null },
-    './activity-location-fields': { ActivityLocationFields },
+    './fields': { ActivityFields: () => null, ReservationFields: () => null },
+    './messages': { calendarMessages },
     './logic': logic,
   };
   const { outputText } = ts.transpileModule(
-    await readFile('src/features/calendar/activities-page.tsx', 'utf8'),
+    await readFile('src/features/calendar/event-card.tsx', 'utf8'),
     {
       compilerOptions: {
         module: ts.ModuleKind.CommonJS,
@@ -93,15 +42,9 @@ async function renderActivity(
       },
     },
   );
-  const exports: {
-    ActivitiesPage?: (props: {
-      homeId: string;
-      search: Record<string, string>;
-    }) => Promise<ReactNode>;
-  } = {};
+  const exports: { ActivityCard?: (props: Record<string, unknown>) => ReactNode } = {};
   vm.runInNewContext(outputText, {
     exports,
-    crypto,
     require: (name: string) => {
       if (name === 'react/jsx-runtime') return jsxRuntime;
       if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`);
@@ -109,7 +52,36 @@ async function renderActivity(
     },
   });
   const html = renderToStaticMarkup(
-    await exports.ActivitiesPage!({ homeId: 'home', search: history ? { view: 'history' } : {} }),
+    createElement(exports.ActivityCard!, {
+      homeId: 'home',
+      locale,
+      timezone: 'UTC',
+      userId: 'user-0',
+      now: '2026-11-04T12:00:00Z',
+      activity: {
+        id: 'plan',
+        title: 'Shared plan',
+        description: 'Description',
+        location: 'Living room',
+        location_kind: 'home',
+        created_by: 'user-0',
+        created_by_name: 'Creator',
+        starts_at: history ? '2000-01-01T21:00:00Z' : '2099-01-01T21:00:00Z',
+        ends_at: null,
+        cancelled_at: null,
+        version: 1,
+      },
+      participants: [
+        ...participants,
+        {
+          activity_id: 'other-plan',
+          user_id: 'other',
+          user_name: 'Other plan person',
+          response: 'going',
+        },
+      ],
+      people: [],
+    }),
   );
   return html.slice(html.indexOf('<article'), html.indexOf('</article>') + '</article>'.length);
 }
@@ -133,7 +105,7 @@ for (const locale of ['es', 'en'] as const) {
           const names = responses.flatMap((response, i) =>
             response === answer ? [`Person ${i}`] : [],
           );
-          const heading = `<h4>${t[answer]} (${new Intl.NumberFormat(locale).format(names.length)})</h4>`;
+          const heading = `<h5 class="font-semibold">${t[answer]} (${new Intl.NumberFormat(locale).format(names.length)})</h5>`;
           assert.ok(html.includes(heading), `Missing visible counter: ${heading}`);
           const group = html.slice(
             html.indexOf(heading),

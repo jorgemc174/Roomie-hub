@@ -2,11 +2,10 @@ import { CalendarView } from '../../../src/features/calendar/calendar-view';
 // Real UI components with a local router test boundary; no mocked Supabase data.
 import { useMemo, useState } from 'react';
 import { AccountLink, AccountReturn } from '../../../src/components/account-navigation';
-import { OrganizationLoadError } from '../../../src/features/organization/nav';
 import { MenusFixture } from './menus';
 import { createRoot } from 'react-dom/client';
 import { RouterContext } from './router';
-import { SectionTabs } from '../../../src/components/section-tabs';
+import { CommunityNav } from '../../../src/features/community/nav';
 import { Navigation } from '../../../src/components/navigation';
 import { SwipeNavigation } from '../../../src/components/swipe-navigation';
 import { CreatePanel } from '../../../src/components/ui/create-panel';
@@ -22,12 +21,12 @@ function App() {
   const [path, setPath] = useState(
       location.pathname.startsWith('/homes/demo')
         ? location.pathname + location.search
-        : '/homes/demo/organization',
+        : '/homes/demo/community?tab=points',
     ),
     [saved, setSaved] = useState(0);
   const primary = new URLSearchParams(location.search).has('primary');
   const router = useMemo(() => ({ push: (href: string) => setPath(href) }), []);
-  const current = new URL(path, 'http://fixture.local').searchParams.get('tab') || 'tasks';
+  const current = new URL(path, 'http://fixture.local').searchParams.get('tab') || 'points';
   const fixtureMonth = new URLSearchParams(location.search).get('month') || '2026-10';
   if (location.pathname.startsWith('/homes/menus/')) return <MenusFixture />;
   if (
@@ -35,18 +34,6 @@ function App() {
     location.pathname.includes('11111111-1111-4111-8111-111111111111')
   )
     return <AccountFixture />;
-  if (new URLSearchParams(location.search).has('loadError'))
-    return (
-      <main id="main" className="page">
-        <OrganizationLoadError
-          homeId="demo"
-          locale="es"
-          tab="absences"
-          retryHref={location.pathname + location.search}
-          message="Isolated read error component"
-        />
-      </main>
-    );
   if (new URLSearchParams(location.search).has('calendar'))
     return (
       <main className="page" id="main">
@@ -71,24 +58,7 @@ function App() {
         </aside>
         <main className="page organization" id="main">
           <h1>Navigation component tests</h1>
-          {!primary && (
-            <SectionTabs
-              label="Organización"
-              items={[
-                { href: '/homes/demo/organization', label: 'Tareas', current: current === 'tasks' },
-                {
-                  href: '/homes/demo/organization?tab=shopping',
-                  label: 'Compra',
-                  current: current === 'shopping',
-                },
-                {
-                  href: '/homes/demo/organization?tab=absences',
-                  label: 'Ausencias',
-                  current: current === 'absences',
-                },
-              ]}
-            />
-          )}
+          {!primary && <CommunityNav homeId="demo" locale="es" tab={current} />}
           <div
             data-testid="swipe-area"
             style={{ minHeight: 130, padding: 20, background: 'var(--mint)' }}

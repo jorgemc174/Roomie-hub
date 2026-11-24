@@ -163,7 +163,7 @@ export async function organizationAction(
     revalidatePath(`/homes/${homeId}`, 'layout');
     if (createdList && uuid(createdList))
       redirect(
-        `/homes/${homeId}/organization?tab=shopping&created=${createdList}#shopping-${createdList}`,
+        `/homes/${homeId}/expenses?tab=shopping&created=${createdList}#shopping-${createdList}`,
       );
     return { success };
   } catch (error) {

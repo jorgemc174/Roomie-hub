@@ -125,7 +125,7 @@ export async function CommunityPage({
     </>
   );
   const rankingAvatars =
-    tab === 'ranking'
+    tab === 'points'
       ? Object.fromEntries(
           await Promise.all(
             rankMembers(balances).map(async (balance) => {
@@ -316,7 +316,7 @@ export async function CommunityPage({
           ))}
         </>
       )}
-      {tab === 'ranking' && (
+      {tab === 'points' && (
         <CommunityRanking
           homeId={homeId}
           locale={locale}
@@ -360,7 +360,7 @@ export async function CommunityPage({
       {tab === 'points' && (
         <>
           {current && (
-            <section className="panel">
+            <section className="panel" id="point-balance">
               <h2>{current.user_name}</h2>
               <p className="muted">{t.memberState}</p>
               {state(current)}

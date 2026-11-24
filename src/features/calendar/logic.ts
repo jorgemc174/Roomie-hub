@@ -34,6 +34,37 @@ export function formatInstant(instant: string, zone: string, locale: string) {
   }).format(new Date(instant));
 }
 export const eventSources: EventSource[] = ['tasks', 'reservations', 'activities', 'expenses'];
+// Activities and reservations are managed inside the calendar: their links open the
+// start day and keep the record ID, also when the record is beyond a history page.
+export function calendarItemHref(
+  homeId: string,
+  kind: 'activity' | 'reservation',
+  id: string,
+  startsAt: string,
+  zone: string,
+) {
+  const day = homeDate(zone, startsAt);
+  return `/homes/${homeId}/calendar?month=${day.slice(0, 7)}&day=${day}&item=${id}#${kind}-${id}`;
+}
+// Tasks are listed in Convivencia; the period keeps each occurrence reachable.
+export function calendarTaskHref(homeId: string, periodStart: string, id: string) {
+  return `/homes/${homeId}/community?tab=tasks&view=all&from=${periodStart}#task-${id}`;
+}
+// Local defaults for a new record on the selected day. Days before today cannot be used:
+// activities never start in the past and reservations allow only five minutes.
+export function dayDefaults(day: string, today: string, nowLocal: string) {
+  if (!validDate(day) || day < today) return null;
+  const nextHour = Number(nowLocal.slice(11, 13)) + 1;
+  const hour = (preferred: number) => (day > today ? preferred : Math.max(preferred, nextHour));
+  const time = (h: number, last = '23:59:00') =>
+    h > 23 ? last : `${String(h).padStart(2, '0')}:00:00`;
+  const reservation = hour(18);
+  return {
+    activity: time(hour(21)),
+    reservationStart: time(reservation),
+    reservationEnd: time(reservation + 1, '23:59:59'),
+  };
+}
 export function normalizeCalendar(
   input: {
     homeId: string;
@@ -43,10 +74,12 @@ export function normalizeCalendar(
     members: ActivityMember[];
     recurring: Recurring[];
     occurrences: Occurrence[];
+    timezone?: string;
   },
   now: string,
 ): CalendarEvent[] {
   const base = `/homes/${input.homeId}`,
+    zone = input.timezone ?? 'UTC',
     events: CalendarEvent[] = [];
   for (const t of input.tasks) {
     if (t.cancelled_at) continue;
@@ -65,7 +98,7 @@ export function normalizeCalendar(
           : 'pending',
       people: [t.assignee_id],
       names: [t.assignee_name],
-      href: `${base}/organization?view=all&from=${t.period_start}#task-${t.id}`,
+      href: calendarTaskHref(input.homeId, t.period_start, t.id),
     });
   }
   for (const r of input.reservations) {
@@ -81,7 +114,8 @@ export function normalizeCalendar(
       status: 'scheduled',
       people: [r.responsible_id],
       names: [r.responsible_name],
-      href: `${base}/organization/reservations?view=all&item=${r.id}#reservation-${r.id}`,
+      resourceId: r.resource_id,
+      href: calendarItemHref(input.homeId, 'reservation', r.id, r.starts_at, zone),
     });
   }
   for (const a of input.activities) {
@@ -99,7 +133,7 @@ export function normalizeCalendar(
       people: members.map((m) => m.user_id),
       names: members.map((m) => m.user_name),
       location: a.location,
-      href: `${base}/community/activities?view=all&item=${a.id}#activity-${a.id}`,
+      href: calendarItemHref(input.homeId, 'activity', a.id, a.starts_at, zone),
     });
   }
   for (const r of input.recurring) {
@@ -148,8 +182,15 @@ export function filterEvents(
   types: EventSource[],
   mine: boolean,
   userId: string,
+  resource = '',
 ) {
-  return events.filter((e) => types.includes(e.sourceType) && (!mine || e.people.includes(userId)));
+  // The resource filter narrows reservations only; other sources keep their type filter.
+  return events.filter(
+    (e) =>
+      types.includes(e.sourceType) &&
+      (!mine || e.people.includes(userId)) &&
+      (!resource || e.sourceType !== 'reservations' || e.resourceId === resource),
+  );
 }
 export function monthDays(month: string, weekStart: number) {
   const first = `${month}-01`;

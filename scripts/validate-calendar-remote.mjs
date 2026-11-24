@@ -213,16 +213,17 @@ try {
       await pages[i].waitForURL('**/homes');
     }
     const [pa, pb] = pages;
-    await visit(pa, `${base}/homes/${h}/organization/reservations`);
-    await pa.getByText('Recursos', { exact: true }).click();
-    await pa.getByText('Crear recurso', { exact: true }).click();
-    let form;
-    // Locate the create form by its empty required name, independent of seeded resource names.
-    form = pa
-      .locator('details')
-      .filter({ has: pa.locator('summary').filter({ hasText: /^Crear recurso$/ }) })
-      .last()
-      .locator('form');
+    const calendar = `${base}/homes/${h}/calendar?month=${day.slice(0, 7)}&day=${day}`;
+    await visit(pa, calendar);
+    await pa.locator('.ui-page-header .ui-options-menu > summary').click();
+    const resources = pa.locator('#reservation-settings');
+    if ((await resources.getAttribute('open')) === null)
+      await resources.locator(':scope > summary').click();
+    const resource = resources.locator('details').filter({
+      has: pa.locator('summary').filter({ hasText: /^Crear recurso$/ }),
+    });
+    await resource.locator('summary').click();
+    let form = resource.locator('form');
     await form.locator('[name=name]').fill('Lavadora UI');
     await form.getByRole('button', { name: 'Guardar', exact: true }).click();
     await expect(form.getByRole('status')).toBeVisible();
@@ -230,11 +231,7 @@ try {
     await pa.reload();
     await pa.waitForLoadState('networkidle');
     await pa.getByText('Crear reserva', { exact: true }).click();
-    form = pa
-      .locator('details')
-      .filter({ has: pa.locator('summary').filter({ hasText: /^Crear reserva$/ }) })
-      .last()
-      .locator('form');
+    form = pa.locator('#create-reservation form');
     await form.locator('[name=resource]').selectOption({ label: 'Lavadora UI' });
     await form.locator('[name=title]').fill('Colada UI');
     await form.locator('[name=start]').fill(`${day}T16:00`);
@@ -265,12 +262,9 @@ try {
     await article.getByRole('button', { name: 'Cancelar', exact: true }).click();
     await expect(pa.getByRole('heading', { name: 'Lavadora UI · Colada editada' })).toHaveCount(0);
     pass('browser creates resource and tomorrow reservation, edits and cancels it');
-    await Promise.all(pages.map((p) => visit(p, `${base}/homes/${h}/community/activities`)));
+    await Promise.all(pages.map((p) => visit(p, calendar)));
     await pa.getByText('Crear actividad', { exact: true }).click();
-    form = pa
-      .locator('form')
-      .filter({ has: pa.locator('[name=title]') })
-      .first();
+    form = pa.locator('#create-activity form');
     await form.locator('[name=title]').fill('Cena italiana');
     await form.locator('[name=location_kind]').selectOption('home');
     await form.locator('[name=location]').fill('En casa');
@@ -279,8 +273,10 @@ try {
     await expect(pb.getByRole('heading', { name: 'Cena italiana', exact: true })).toBeVisible({
       timeout: 25000,
     });
-    await pb.locator('[name=response]').selectOption('going');
-    await pb.getByRole('button', { name: 'Guardar respuesta', exact: true }).click();
+    const dinner = pb.locator('article').filter({
+      has: pb.getByRole('heading', { name: 'Cena italiana', exact: true }),
+    });
+    await dinner.getByRole('button', { name: 'Voy', exact: true }).click();
     await expect(
       pa
         .locator('article')
@@ -291,10 +287,11 @@ try {
     const countBefore = (await rows(a.c.from('chore_instances').select('id').eq('home_id', h)))
       .length;
     for (const p of pages) {
-      await visit(p, `${base}/homes/${h}/calendar?month=${day.slice(0, 7)}&day=${day}`);
+      await visit(p, calendar);
       for (const title of ['QA deadline', 'QA next rent', 'Cena italiana'])
         await expect(p.getByRole('heading', { name: title, exact: true })).toBeVisible();
       await expect(p.locator('.calendar-event.kind-reservations').first()).toBeVisible();
+      await p.locator('.calendar-filter-panel > summary').click();
       await p.getByLabel('Actividades', { exact: true }).uncheck();
       await expect(p.getByRole('heading', { name: 'Cena italiana', exact: true })).toHaveCount(0);
       await p.getByLabel('Actividades', { exact: true }).check();
@@ -329,8 +326,9 @@ try {
     await pb.getByRole('button', { name: 'Guardar cambios', exact: true }).click();
     await expect(pb.locator('html')).toHaveAttribute('lang', 'en');
     await expect(pb.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await visit(pb, `${base}/homes/${h}/calendar?month=${day.slice(0, 7)}&day=${day}`);
+    await visit(pb, calendar);
     await expect(pb.getByRole('heading', { name: 'Calendar', exact: true })).toBeVisible();
+    await pb.locator('.calendar-filter-panel > summary').click();
     await pb.getByLabel('Only mine', { exact: true }).check();
     assert.equal(await pb.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await pb.screenshot({

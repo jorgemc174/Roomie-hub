@@ -4,6 +4,7 @@ import { OptionsMenu } from '@/components/ui/options-menu';
 import { SectionTabs } from '@/components/section-tabs';
 import type { Locale } from '@/lib/i18n/dictionaries';
 import { expenseMessages } from './messages';
+import { organizationMessages } from '@/features/organization/messages';
 
 export function ExpensesNav({
   homeId,
@@ -24,6 +25,7 @@ export function ExpensesNav({
           ['expenses', t.movements],
           ['balances', t.balances],
           ['recurring', t.recurring],
+          ['shopping', organizationMessages(locale).shopping],
         ].map(([key, label]) => ({ href: `${base}?tab=${key}`, label, current: tab === key }))}
       />
     </div>

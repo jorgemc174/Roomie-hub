@@ -23,7 +23,7 @@ export function TaskNavigation({
   children: ReactNode;
 }) {
   const t = organizationMessages(locale),
-    base = `/homes/${homeId}/organization`,
+    base = `/homes/${homeId}/community`,
     previous = returnView === 'all' || returnView === 'cancelled' ? returnView : 'mine',
     activeView = view === 'all' || view === 'cancelled' ? view : 'mine',
     filterSummary = [
@@ -40,7 +40,7 @@ export function TaskNavigation({
         {view === 'manage' ? (
           <Link
             className="text-link section-settings"
-            href={`${base}?view=${previous}&from=${from}`}
+            href={`${base}?tab=tasks&view=${previous}&from=${from}`}
           >
             <ArrowLeft size={16} aria-hidden="true" />
             {t.backToTasks}
@@ -51,6 +51,7 @@ export function TaskNavigation({
             kind="filters"
           >
             <form className="form" action={base} method="get">
+              <input type="hidden" name="tab" value="tasks" />
               <label>
                 {t.view}
                 <select name="view" defaultValue={activeView}>

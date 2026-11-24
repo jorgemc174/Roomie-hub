@@ -224,7 +224,7 @@ test('ranking table lists every active member once, ordered by negatives, positi
     const rows = Array.from(body.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g), (match) => match[1]);
     assert.equal(rows.length, 4);
     assert.deepEqual(
-      rows.map((value) => value.match(/person=([^"]+)/)?.[1]),
+      rows.map((value) => value.match(/person=([^#"]+)#point-balance/)?.[1]),
       ['a', 'b', 'c', 'd'],
     );
     for (const [index, value] of rows.entries()) {

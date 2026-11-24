@@ -91,6 +91,47 @@ export async function readActivityPage(
   return calendarPage(query.order('starts_at').order('id'), item ? 0 : page);
 }
 
+export type CalendarListView = 'upcoming' | 'history';
+export type CalendarKind = 'activities' | 'reservations';
+
+// List views keep only their own filters; a creation panel or record focus is never carried.
+export function calendarListHref(
+  base: string,
+  options: { view: CalendarListView; kind: CalendarKind; resource?: string; page?: number },
+) {
+  const params = new URLSearchParams({ view: options.view, kind: options.kind });
+  if (options.kind === 'reservations' && options.resource) params.set('resource', options.resource);
+  if (options.page) params.set('page', String(options.page));
+  return `${base}?${params}`;
+}
+
+// Resolves an old or shared record link inside the home; RLS and home_id keep it isolated.
+export async function findCalendarItem(db: CalendarDB, homeId: string, id: string) {
+  const [activity, reservation] = await Promise.all([
+    db
+      .from('activities')
+      .select('id,starts_at,cancelled_at')
+      .eq('home_id', homeId)
+      .eq('id', id)
+      .maybeSingle(),
+    db
+      .from('reservations')
+      .select('id,starts_at,cancelled_at')
+      .eq('home_id', homeId)
+      .eq('id', id)
+      .maybeSingle(),
+  ]);
+  if (activity.error) throw activity.error;
+  if (reservation.error) throw reservation.error;
+  const found = activity.data ?? reservation.data;
+  if (!found) return null;
+  return {
+    kind: (activity.data ? 'activities' : 'reservations') as CalendarKind,
+    startsAt: found.starts_at,
+    cancelled: Boolean(found.cancelled_at),
+  };
+}
+
 export async function readActivityMembers(db: CalendarDB, homeId: string, ids: string[]) {
   if (!ids.length) return [];
   return calendarRows(

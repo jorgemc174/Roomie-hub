@@ -85,7 +85,7 @@ La salida de piso está implementada desde 005 con saldos exactos y bloqueo por 
 ## Fase 2 en un proyecto existente
 
 1. Tras las dos migraciones anteriores, ejecutar **solo** `supabase/migrations/202609150003_organization.sql` completo en SQL Editor. `Success. No rows returned` es el resultado esperado. No repetir el archivo si terminó bien. No modifica ni borra datos de Fase 1.
-2. Abrir Organización → Configurar tareas → Añadir tareas iniciales. Es opcional, idempotente y válida también para pisos existentes. Los nombres siguen el idioma de quien inicializa.
+2. Abrir Convivencia → Tareas → Configurar tareas → Añadir tareas iniciales. Es opcional, idempotente y válida también para pisos existentes. Los nombres siguen el idioma de quien inicializa.
 3. Configurar recurrencia, dificultad, modo y deadline. El periodo actual y las completadas conservan sus datos; editar o desactivar cancela las futuras pendientes, preservando eventos.
 4. Cambiar el día semanal del piso realinea las definiciones semanales. Cancela futuras pendientes; conserva actuales/completadas y evita solaparlas durante la transición.
 5. Realtime añade automáticamente `chores`, `chore_instances`, `absences`, `shopping_lists`, `shopping_items` a la publicación. Suscripciones INSERT/UPDATE con filtro home_id; bajas lógicas se propagan como UPDATE. No desactivar RLS para obtener eventos.
@@ -117,7 +117,7 @@ El entorno de aplicación sigue usando solo clave publicable y sesión del usuar
 
 Con 001–005 aplicadas, ejecutar completo una sola vez `supabase/migrations/202609150006_calendar_reservations_activities.sql` en SQL Editor. Instalaciones nuevas: 001→006 en orden. Necesita `btree_gist`; la migración la activa si falta. Crea cuatro tablas, constraints, RPCs, RLS, trigger de salida y publicación Realtime, dentro de una transacción. No repetir ni editar migraciones anteriores.
 
-Recursos iniciales son opcionales: Organización → Reservas → Recursos → Añadir baño, cocina y lavadora. Puede crearse cualquier recurso propio. No se insertan recursos automáticamente en pisos existentes. Convivencia contiene Actividades. Calendario muestra registros existentes; no hay scheduler ni materialización desde esa página.
+Recursos iniciales son opcionales: Calendario → Opciones → Gestionar espacios y recursos → Añadir baño, cocina y lavadora. Puede crearse cualquier recurso propio. No se insertan recursos automáticamente en pisos existentes. Actividades y reservas se crean y gestionan desde Calendario. Consultarlo no genera tareas ni gastos.
 
 Pruebas remotas: servidor activo en NEXT_PUBLIC_SITE_URL, `npm run test:calendar:remote`. Usa la clave administrativa local solo para crear/eliminar tres cuentas confirmadas y un piso de prueba; operaciones normales con JWT de cada cuenta. No imprime contraseñas ni tokens. SKIP_REMOTE_UI=true omite navegadores (no acredita UI/Realtime visual). El script borra únicamente los fixtures que él creó. Usar un proyecto de desarrollo, nunca producción.
 

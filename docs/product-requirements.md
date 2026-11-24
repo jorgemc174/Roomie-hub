@@ -205,21 +205,18 @@ Dashboard.
 
 ### Calendario
 
-Calendario común del piso.
-
-### Organización
-
-* tareas
-* compra
-* reservas
+Calendario común del piso. Desde el día seleccionado se pueden crear y gestionar actividades y reservas.
 
 ### Gastos
 
+* movimientos, saldos y recurrentes
+* listas de compra
+
 ### Convivencia
 
-* positivos/negativos
+* tareas y ausencias
+* puntos y ranking en una pestaña
 * castigos
-* actividades
 
 ### Chat
 
@@ -949,7 +946,6 @@ Implementa completamente:
 
 * Inicio
 * Calendario
-* Organización
 * Gastos
 * Convivencia
 * Chat

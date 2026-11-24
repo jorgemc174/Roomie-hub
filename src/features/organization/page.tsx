@@ -1,7 +1,10 @@
 import { ShoppingAnchor, DeleteShoppingList, ShoppingListNameForm } from './shopping-controls';
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
-import { OrganizationNav, OrganizationOptions, OrganizationLoadError } from './nav';
+import { OrganizationOptions } from './nav';
+import { CommunityNav } from '@/features/community/nav';
+import { ExpensesNav, ExpensesOptions } from '@/features/expenses/nav';
+import type { ReactNode } from 'react';
 import { OptionsMenu } from '@/components/ui/options-menu';
 import { PageHeader } from '@/components/ui/page-header';
 import { TaskList } from './task-list';
@@ -37,19 +40,54 @@ export async function OrganizationPage({
   const through = addDays(from, 30);
   const view = typeof search.view === 'string' ? search.view : 'mine';
   const tab = search.tab === 'shopping' || search.tab === 'absences' ? search.tab : 'tasks';
-  const base = `/homes/${homeId}/organization`;
-  const retrySearch = new URLSearchParams();
+  const shopping = tab === 'shopping';
+  const community = `/homes/${homeId}/community`;
+  const base = shopping ? `/homes/${homeId}/expenses` : community;
+  const retrySearch = new URLSearchParams({ tab });
   for (const [key, value] of Object.entries(search))
     if (typeof value === 'string') retrySearch.set(key, value);
-  const loadError = (message: string) => (
-    <OrganizationLoadError
-      homeId={homeId}
-      locale={locale}
-      tab={tab}
-      retryHref={`${base}${retrySearch.size ? `?${retrySearch}` : ''}`}
-      message={message}
-    />
+  const page = (content: ReactNode) => (
+    <div className="organization">
+      <PageHeader
+        title={shopping ? ui.expenses : ui.community}
+        action={
+          shopping ? (
+            <ExpensesOptions homeId={homeId} locale={locale} tab={tab} />
+          ) : (
+            <OrganizationOptions
+              homeId={homeId}
+              locale={locale}
+              tab={tab}
+              view={view}
+              from={from}
+            />
+          )
+        }
+      />
+      {shopping ? (
+        <ExpensesNav homeId={homeId} locale={locale} tab={tab} />
+      ) : (
+        <CommunityNav homeId={homeId} locale={locale} tab={tab} />
+      )}
+      {tab === 'absences' && (
+        <Link className="text-link section-settings" href={`${community}?tab=tasks`}>
+          {t.backToTasks}
+        </Link>
+      )}
+      {content}
+    </div>
   );
+  const loadError = (message: string) =>
+    page(
+      <section className="panel">
+        <p className="notice error" role="alert">
+          {message}
+        </p>
+        <Link className="button secondary" href={`${base}?${retrySearch}`}>
+          {t.retry}
+        </Link>
+      </section>,
+    );
   const result = await ensureOrganizationPeriod(db, homeId, tab);
   if (tab === 'tasks' && !result.error) {
     const penalties = await db.rpc('reconcile_community', { target: homeId });
@@ -60,7 +98,7 @@ export async function OrganizationPage({
   const [{ chores, rotations, instances, absences, lists, items, events }, members] =
     await Promise.all([
       readOrganizationRows(db, homeId, tab, from, through, { view, userId: user.id }),
-      getMembers(homeId),
+      shopping ? [] : getMembers(homeId),
     ]);
   if ([chores, rotations, instances, absences, lists, items, events].some((r) => r.error))
     return loadError(t.loadError);
@@ -80,15 +118,8 @@ export async function OrganizationPage({
     }).format(new Date(v)) + ` (${home.timezone ?? 'UTC'})`;
   const hidden = (name: string, value: string) => <input type="hidden" name={name} value={value} />;
   const taskRows = instances.data ?? [];
-  return (
-    <div className="organization">
-      <PageHeader
-        title={t.title}
-        action={
-          <OrganizationOptions homeId={homeId} locale={locale} tab={tab} view={view} from={from} />
-        }
-      />
-      <OrganizationNav homeId={homeId} locale={locale} tab={tab} />
+  return page(
+    <>
       {tab === 'tasks' && (
         <>
           {!!result.data?.blocked && (
@@ -402,6 +433,6 @@ export async function OrganizationPage({
           })}
         </>
       )}
-    </div>
+    </>,
   );
 }
