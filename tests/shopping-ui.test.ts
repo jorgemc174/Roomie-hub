@@ -1,3 +1,4 @@
+import { ConfirmDelete } from '../src/components/ui/confirm-delete';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -22,6 +23,7 @@ async function shoppingControls(react = React) {
       require: (name: string) => {
         if (name === 'react') return react;
         if (name === 'react/jsx-runtime') return jsxRuntime;
+        if (name === '@/components/ui/confirm-delete') return { ConfirmDelete };
         if (name === '@/components/action-form')
           return {
             ActionForm: ({ children, label }: { children: ReactNode; label: string }) =>
@@ -46,6 +48,7 @@ async function shoppingPage(locale: 'es' | 'en', completed: boolean) {
     createElement('div', null, children);
   const dependencies: Record<string, unknown> = {
     '@/components/ui/create-panel': { CreatePanel: container },
+    '@/components/ui/confirm-delete': { ConfirmDelete },
     '@/components/ui/empty-state': { EmptyState: () => null },
     './nav': { OrganizationOptions: () => null },
     '@/features/community/nav': { CommunityNav: () => null },

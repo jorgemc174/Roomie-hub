@@ -2,8 +2,16 @@
 import { useRetainedForm } from '@/components/ui/use-retained-form';
 import { FormFeedback } from '@/components/ui/form-feedback';
 import { LoaderCircle } from 'lucide-react';
-import { useActionState, useState, type FormEvent } from 'react';
+import { useActionState, useRef, useState, type FormEvent } from 'react';
 import { financeAction } from './actions';
+import { browserClient } from '@/lib/supabase/browser';
+import {
+  allowedReceiptExtension,
+  RECEIPT_ACCEPT,
+  RECEIPT_BUCKET,
+  receiptStagingFolder,
+} from './receipt-limits';
+import type { ActionState } from '@/app/actions';
 import { expenseMessages, categoryNames } from './messages';
 import {
   categories,
@@ -74,7 +82,24 @@ export function ExpenseForm({
   );
   const [kind, setKind] = useState(recurring?.kind ?? 'fixed');
   const [category, setCategory] = useState(initial?.category ?? '');
-  const [state, action, pending] = useActionState(financeAction.bind(null, homeId, operation), {});
+  const receipt = useRef<HTMLInputElement>(null);
+  const [receiptError, setReceiptError] = useState(false);
+  const [state, action, pending] = useActionState(async (previous: ActionState, form: FormData) => {
+    const file = receipt.current?.files?.[0];
+    if (!file) return financeAction(homeId, operation, previous, form);
+    const extension = allowedReceiptExtension(file.type, file.size);
+    if (!extension) return { error: t.receiptInvalid };
+    const path = `${receiptStagingFolder(homeId, userId)}${crypto.randomUUID()}.${extension}`;
+    const storage = browserClient().storage.from(RECEIPT_BUCKET);
+    const uploaded = await storage.upload(path, file, { contentType: file.type, upsert: false });
+    if (uploaded.error) return { error: t.receiptFailed };
+    form.set('receipt_path', path);
+    try {
+      return await financeAction(homeId, operation, previous, form);
+    } finally {
+      await storage.remove([path]);
+    }
+  }, {});
   const [attempted, setAttempted] = useState(false);
   const variable = operation === 'recurring' && kind === 'variable';
   const shareScale = mode === 'percentage' ? 2 : scale;
@@ -119,6 +144,12 @@ export function ExpenseForm({
     if (fieldIssues || blocked) {
       event.preventDefault();
       setAttempted(true);
+      return;
+    }
+    const file = receipt.current?.files?.[0];
+    if (file && !allowedReceiptExtension(file.type, file.size)) {
+      event.preventDefault();
+      setReceiptError(true);
       return;
     }
     retainForm(event);
@@ -358,10 +389,21 @@ export function ExpenseForm({
           <label>
             {t.receipt}
             <input
-              name="receipt"
+              ref={receipt}
               type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
+              accept={RECEIPT_ACCEPT}
+              aria-invalid={receiptError || undefined}
+              aria-describedby={receiptError ? `${requestId}-receipt-error` : undefined}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                setReceiptError(Boolean(file && !allowedReceiptExtension(file.type, file.size)));
+              }}
             />
+            {receiptError && (
+              <small id={`${requestId}-receipt-error`} className="field-error" role="alert">
+                {t.receiptInvalid}
+              </small>
+            )}
           </label>
         )}
       </fieldset>
@@ -382,7 +424,11 @@ export function ExpenseForm({
           )}
         </section>
       )}
-      <FormFeedback error={state.error} success={state.success} pending={pending} />
+      <FormFeedback
+        error={receiptError ? undefined : state.error}
+        success={state.success}
+        pending={pending}
+      />
       <button
         type="submit"
         className="button"

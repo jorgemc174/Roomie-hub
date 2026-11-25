@@ -373,7 +373,7 @@ Permitir opcionalmente:
 - foto de ticket
 - PDF
 
-Usar Supabase Storage privado.
+Usar Supabase Storage privado. La subida es directa desde el navegador y el servidor valida el objeto antes de contabilizar. El máximo son 10.485.760 bytes y se mantienen los PDF saneados.
 
 Validar:
 
@@ -431,7 +431,7 @@ Otros
 19. GASTOS RECURRENTES
 --------------------------------------------------
 
-Crear plantillas de gastos recurrentes.
+Crear plantillas de gastos recurrentes. Eliminar con confirmación quita la regla de Supabase y detiene sus emisiones, conservando los gastos ya contabilizados. Al emitir nuevos periodos se excluyen participantes inactivos y se recalcula el reparto. Si faltan participantes activos o el pagador está inactivo, se pausa la regla.
 
 Campos aproximados:
 

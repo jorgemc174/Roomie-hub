@@ -280,8 +280,10 @@ test('Phase 2 PostgreSQL: assignments, shopping, history, privileges and RLS', a
       },
     );
     await t.test(
-      'starter defaults are explicit, localized, idempotent and preserve edits',
+      'starter defaults use the creator’s language and are idempotent',
       async () => {
+        await as(alice);
+        await db.query("update public.profiles set locale='en' where id=$1", [alice]);
         const h = await home(1);
         await db.query("select public.initialize_chores($1,'en')", [h]);
         await db.query("select public.initialize_chores($1,'es')", [h]);

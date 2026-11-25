@@ -64,7 +64,7 @@ const es = {
   balance: 'Tu saldo',
   owed: 'Te deben',
   owe: 'Debes',
-  zero: 'Estás al día',
+  zero: 'Estás saldado',
   balances: 'Saldos',
   suggestions: 'Pagos sugeridos',
   suggestionHelp:
@@ -99,7 +99,7 @@ const es = {
   generate: 'Revisar periodos pendientes',
   more: 'Quedan periodos atrasados. Pulsa Revisar periodos pendientes para continuar.',
   recurrenceHelp:
-    'Se emiten solo periodos vencidos al abrir Gastos. Sin cron instalado. Las variables no cuentan hasta confirmar; las fijas con miembros inactivos requieren revisión.',
+    'Se emiten los periodos vencidos. Los importes variables requieren confirmación. Si alguien deja el piso, su parte se reparte entre los participantes activos.',
   variableHelp:
     'Para importes variables usa reparto igual o porcentajes; puedes introducir cantidades exactas al confirmar.',
   shopping: 'Crear gasto desde compra',
@@ -111,7 +111,14 @@ const es = {
   confirmLeave: 'Confirmo que quiero salir de este piso.',
   leaveDebt: 'No puedes salir. Tu saldo es',
   currencyLocked: 'La moneda no puede cambiarse porque el piso ya tiene historial financiero.',
-  receiptFailed: 'El gasto se guardó, pero el adjunto no. Puedes volver a adjuntarlo desde Editar.',
+  receiptFailed: 'No se ha podido guardar el ticket. Vuelve a intentarlo.',
+  settledExpense:
+    'Este gasto está vinculado a una liquidación ya efectuada. No se puede editar ni eliminar.',
+  deleteRecurring: 'Eliminar',
+  confirmDeleteRecurring: '¿Eliminar esta regla? Los gastos ya contabilizados se conservan.',
+  confirmDeletion: 'Confirmar eliminación',
+  recurringNeedsMembers:
+    'Para emitir nuevos gastos, selecciona un pagador activo y al menos un participante activo.',
   receiptInvalid: 'Adjunto inválido: usa JPEG, PNG, WebP o PDF de hasta 10 MB.',
   download: 'Abrir ticket',
   scheduleHistory: 'La nueva fecha inicial debe ser posterior a los periodos ya emitidos.',
@@ -187,7 +194,7 @@ const en: Record<keyof typeof es, string> = {
   balance: 'Your balance',
   owed: 'You are owed',
   owe: 'You owe',
-  zero: 'Settled up',
+  zero: 'You’re settled up',
   balances: 'Balances',
   suggestions: 'Suggested payments',
   suggestionHelp:
@@ -222,7 +229,7 @@ const en: Record<keyof typeof es, string> = {
   generate: 'Process due periods',
   more: 'More overdue periods remain. Select Process due periods to continue.',
   recurrenceHelp:
-    'Only due periods are issued when Expenses opens. No cron is installed. Variable amounts require confirmation; fixed expenses with inactive members require review.',
+    'Only due periods are issued. Variable amounts require confirmation. When someone leaves the home, their share is redistributed among active participants.',
   variableHelp:
     'Variable templates use equal or percentage shares. Exact amounts are available when confirming.',
   shopping: 'Create expense from shopping',
@@ -234,7 +241,14 @@ const en: Record<keyof typeof es, string> = {
   confirmLeave: 'I confirm that I want to leave this home.',
   leaveDebt: 'You cannot leave. Your balance is',
   currencyLocked: 'Currency cannot change because this home has financial history.',
-  receiptFailed: 'Expense saved, but the attachment failed. You can attach it again from Edit.',
+  receiptFailed: 'The receipt could not be saved. Please try again.',
+  settledExpense:
+    'This expense is linked to a recorded settlement. It cannot be edited or deleted.',
+  deleteRecurring: 'Delete',
+  confirmDeleteRecurring: 'Delete this rule? Previously posted expenses are kept.',
+  confirmDeletion: 'Confirm deletion',
+  recurringNeedsMembers:
+    'To issue new expenses, select an active payer and at least one active participant.',
   receiptInvalid: 'Invalid attachment: use JPEG, PNG, WebP or PDF up to 10 MB.',
   download: 'Open receipt',
   scheduleHistory: 'The new anchor must be after all issued periods.',

@@ -814,6 +814,9 @@ span.ui-spinner {
 .tone-negative {
   color: var(--rose-ink);
 }
+.tone-debt {
+  color: var(--debt);
+}
 .tone-money {
   color: var(--peach-ink);
 }
@@ -1154,7 +1157,7 @@ span.ui-spinner {
   border-radius: inherit;
 }
 
-.shopping-delete-dialog {
+.confirm-delete-dialog {
   width: min(28rem, calc(100% - 32px));
   max-height: calc(100dvh - 32px);
   overflow: auto;
@@ -1165,7 +1168,7 @@ span.ui-spinner {
   background: var(--surface);
   color: var(--ink);
 }
-.shopping-delete-dialog::backdrop {
+.confirm-delete-dialog::backdrop {
   background: rgb(0 0 0 / 55%);
 }
 .form .field-error {

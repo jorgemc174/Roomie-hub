@@ -1,3 +1,4 @@
+import { ConfirmDelete } from '@/components/ui/confirm-delete';
 import { ShoppingAnchor, DeleteShoppingList, ShoppingListNameForm } from './shopping-controls';
 import { CreatePanel } from '@/components/ui/create-panel';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -117,7 +118,11 @@ export async function OrganizationPage({
       timeZone: home.timezone ?? 'UTC',
     }).format(new Date(v)) + ` (${home.timezone ?? 'UTC'})`;
   const hidden = (name: string, value: string) => <input type="hidden" name={name} value={value} />;
-  const taskRows = instances.data ?? [];
+  const definitions = (chores.data ?? []).filter((c) => !c.deleted_at);
+  const unassigned = definitions.filter((c) => c.active && c.awaiting_assignment);
+  const taskRows = (instances.data ?? []).filter(
+    (row) => !row.cancelled_at || definitions.some((c) => c.id === row.chore_id),
+  );
   return page(
     <>
       {tab === 'tasks' && (
@@ -164,10 +169,16 @@ export async function OrganizationPage({
                   pendingLabel={t.saving}
                 />
               </details>
-              {(chores.data ?? []).map((c) => (
-                <details className="panel" key={c.id}>
+              {definitions.map((c) => (
+                <details
+                  className="panel"
+                  key={c.id}
+                  id={`chore-${c.id}`}
+                  open={search.chore === c.id}
+                >
                   <summary>
                     {c.name} · {c.active ? t.active : t.inactive}
+                    {c.active && c.awaiting_assignment ? ` · ${t.unassigned}` : ''}
                   </summary>
                   <ChoreForm
                     homeTimezone={home.timezone}
@@ -179,12 +190,34 @@ export async function OrganizationPage({
                     t={t}
                     today={today}
                   />
+                  <ConfirmDelete
+                    action={action('delete_chore')}
+                    label={t.delete}
+                    prompt={t.confirmDeleteTask}
+                    confirmLabel={t.confirmDelete}
+                    cancelLabel={ui.cancel}
+                    pendingLabel={t.saving}
+                  >
+                    {hidden('id', c.id)}
+                    {hidden('confirm', 'on')}
+                  </ConfirmDelete>
                 </details>
               ))}
             </>
           ) : (
             <>
-              {taskRows.length === 0 && (
+              {view !== 'cancelled' &&
+                unassigned.map((c) => (
+                  <article className="panel" key={c.id}>
+                    <Link href={`${base}?tab=tasks&view=manage&chore=${c.id}#chore-${c.id}`}>
+                      {c.name}
+                    </Link>
+                    <p>
+                      {t.active} · {t.unassigned}
+                    </p>
+                  </article>
+                ))}
+              {taskRows.length === 0 && (view === 'cancelled' || unassigned.length === 0) && (
                 <EmptyState
                   title={
                     view === 'mine'

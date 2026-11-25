@@ -10,6 +10,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as money from '../src/features/expenses/money';
 import * as messages from '../src/features/expenses/messages';
 import * as validation from '../src/features/expenses/validation';
+import * as receiptLimits from '../src/features/expenses/receipt-limits';
 import { normalizeCalendar } from '../src/features/calendar/logic';
 import { expenseNames } from '../src/features/calendar/queries';
 import type { ExpenseBody, Occurrence, Recurring } from '../src/features/expenses/models';
@@ -115,6 +116,8 @@ async function expenseForm() {
     '@/components/ui/use-retained-form': { useRetainedForm: () => () => undefined },
     '@/components/ui/form-feedback': { FormFeedback: () => null },
     './actions': { financeAction: async () => ({}) },
+    '@/lib/supabase/browser': {},
+    './receipt-limits': receiptLimits,
     './messages': messages,
     './money': money,
     './validation': validation,

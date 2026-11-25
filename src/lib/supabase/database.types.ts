@@ -367,6 +367,22 @@ export type Database = {
         Args: { target: string; item: string; body: Json };
         Returns: string;
       };
+      settled_expense_ids: { Args: { target: string; items: string[] }; Returns: string[] };
+      delete_recurring_expense: {
+        Args: { target: string; item: string; expected_version: number };
+        Returns: undefined;
+      };
+      save_expense_with_receipt: {
+        Args: {
+          target: string;
+          item: string;
+          expected_version: number;
+          body: Json;
+          object_path: string;
+          confirm_occurrence: boolean;
+        };
+        Returns: string;
+      };
       attach_expense_receipt: {
         Args: {
           target: string;
@@ -408,6 +424,7 @@ export type Database = {
         Returns: { created: number; blocked: number };
       };
       reconcile_chore_assignments: { Args: { target: string }; Returns: number };
+      delete_chore: { Args: { target: string; task: string }; Returns: undefined };
       initialize_chores: { Args: { target: string; language_code: string }; Returns: undefined };
       save_absence: {
         Args: {

@@ -68,6 +68,9 @@ export async function organizationAction(
         due_time: field(form, 'deadline_time') || '20:00',
         due_timezone: field(form, 'deadline_timezone') || 'UTC',
       });
+    } else if (operation === 'delete_chore') {
+      if (!id || field(form, 'confirm') !== 'on') return { error: t.invalid };
+      result = await db.rpc('delete_chore', { target: homeId, task: id });
     } else if (operation === 'initialize') {
       result = await db.rpc('initialize_chores', { target: homeId, language_code: locale });
     } else if (operation === 'generate') {

@@ -1,3 +1,4 @@
+import { ConfirmDelete } from '../src/components/ui/confirm-delete';
 import { HomeSections } from '../src/components/navigation';
 import { CategoryFilter } from '../src/features/expenses/category-filter';
 import { CategoryLabel, CategorySummary } from '../src/features/expenses/category-summary';
@@ -383,7 +384,9 @@ async function expensesPage(
                     balance: (-BigInt(balance)).toString(),
                   },
                 ]
-              : { more: true },
+              : name === 'settled_expense_ids'
+                ? []
+                : { more: true },
     }),
   };
   const action = () => Promise.resolve({});
@@ -391,6 +394,7 @@ async function expensesPage(
     ExpensesPage: (props: { homeId: string; search: Record<string, string> }) => Promise<ReactNode>;
   }>('src/features/expenses/page.tsx', {
     '@/components/ui/create-panel': { CreatePanel },
+    '@/components/ui/confirm-delete': { ConfirmDelete },
     '@/components/ui/empty-state': { EmptyState },
     './nav': expensesNav,
     '@/components/ui/options-menu': { OptionsMenu },

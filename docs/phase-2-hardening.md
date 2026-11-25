@@ -1,5 +1,13 @@
 # Endurecimiento de Fase 2
 
+## Actualización de Sprint 2
+
+Al crear un piso, `create_home` invoca las semillas idempotentes en la misma transacción. Las cinco definiciones nuevas se muestran activas y sin asignar en Tareas. Guardar su configuración de reparto habilita la generación de ocurrencias. La inicialización manual sigue disponible para pisos anteriores.
+
+Eliminar una definición exige confirmación. Se oculta del listado y se cancelan todas sus ocurrencias pendientes, incluida la actual. Se conservan los registros cerrados y los puntos ya emitidos para mantener la auditoría. Una definición eliminada no se puede editar, regenerar ni recuperar usando la inicialización.
+
+Al completar una ocurrencia de una definición activa se emite el periodo siguiente de esa definición bajo el mismo bloqueo y con el mismo mecanismo de asignación que la generación habitual. Si no hay nadie elegible, la generación normal reintenta cuando ese periodo entra en su ventana. Completar sigue siendo irreversible.
+
 ## 1. Migración
 
 `202609150004_task_lifecycle_timezone.sql`, aditiva. No cambia 001, 002, 003 ni la especificación del producto. Al aplicar, cancela futuras pendientes pregeneradas y conserva filas y eventos.

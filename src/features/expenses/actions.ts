@@ -1,5 +1,6 @@
 'use server';
 import { receiptFile } from './receipts';
+import { RECEIPT_BUCKET, allowedReceiptExtension, receiptStagingFolder } from './receipt-limits';
 import { revalidatePath } from 'next/cache';
 import { redirect, unstable_rethrow } from 'next/navigation';
 import { getHome, requireUser } from '@/lib/data';
@@ -31,7 +32,7 @@ export async function financeAction(
   const { locale } = await i18n(),
     t = expenseMessages(locale);
   try {
-    const { db } = await requireUser();
+    const { db, user } = await requireUser();
     const home = await getHome(homeId);
     const scale = currencyScale(home.currency);
     const id = field(form, 'id'),
@@ -77,6 +78,13 @@ export async function financeAction(
         recipient,
         total: amount.toString(),
         on_date: date,
+      });
+    } else if (operation === 'delete_recurring') {
+      if (field(form, 'confirm') !== 'on') return { error: t.invalid };
+      result = await db.rpc('delete_recurring_expense', {
+        target: homeId,
+        item: id,
+        expected_version: version,
       });
     } else if (operation === 'delete') {
       if (field(form, 'confirm') !== 'on') return { error: t.invalid };
@@ -158,20 +166,46 @@ export async function financeAction(
         if (!uuid(list)) return { error: t.invalid };
         body.shopping_list_id = list;
       }
-      const file = form.get('receipt');
-      let attachment: { body: Blob; type: string; size: number; extension: string } | undefined;
-      if (file instanceof File && file.size) {
-        if (file.size > 10485760) return { error: t.receiptInvalid };
+      const stagingPath = field(form, 'receipt_path');
+      if (form.has('receipt') || (stagingPath && operation === 'recurring'))
+        return { error: t.receiptInvalid };
+      if (stagingPath) {
+        const folder = receiptStagingFolder(homeId, user.id);
+        if (!stagingPath.startsWith(folder)) return { error: t.receiptInvalid };
+        const [nonce, extension, ...rest] = stagingPath.slice(folder.length).split('.');
+        if (!uuid(nonce) || !extension || rest.length) return { error: t.receiptInvalid };
+
+        const storage = db.storage.from(RECEIPT_BUCKET);
+        const info = await storage.info(stagingPath);
+        const type = info.data?.contentType;
+        const size = info.data?.size;
+        if (!type || size === undefined || allowedReceiptExtension(type, size) !== extension)
+          return { error: t.receiptInvalid };
+        const downloaded = await storage.download(stagingPath);
+        const file = downloaded.data;
+        if (!file || file.size !== size) return { error: t.receiptInvalid };
         const bytes = new Uint8Array(
-          await (file.type === 'application/pdf' ? file : file.slice(0, 16)).arrayBuffer(),
+          await (type === 'application/pdf' ? file : file.slice(0, 16)).arrayBuffer(),
         );
-        const checked = await receiptFile(file.type, file.size, bytes);
+        const checked = await receiptFile(type, size, bytes);
         if (!checked) return { error: t.receiptInvalid };
-        // PDFs: upload the sanitized re-serialization, not the original bytes.
-        const body = checked.bytes ? new Blob([checked.bytes], { type: file.type }) : file;
-        attachment = { body, type: file.type, size: body.size, extension: checked.extension };
-      }
-      if (operation === 'recurring') {
+
+        // Keep the original upload private. Only validated bytes reach the final path.
+        const path = `${homeId}/${id}/${user.id}/${crypto.randomUUID()}.${checked.extension}`;
+        const clean = checked.bytes ? new Blob([checked.bytes], { type }) : file;
+        const upload = await storage.upload(path, clean, { contentType: type, upsert: false });
+        if (upload.error) return { error: t.receiptFailed };
+        result = await db.rpc('save_expense_with_receipt', {
+          target: homeId,
+          item: id,
+          expected_version: version,
+          body,
+          object_path: path,
+          confirm_occurrence: operation === 'confirm',
+        });
+        // Storage RLS protects a committed attachment if the RPC response was lost.
+        if (result.error) await storage.remove([path]);
+      } else if (operation === 'recurring') {
         const freq = field(form, 'frequency'),
           n = freq === 'weekly' ? 1 : Number(field(form, 'every_n')),
           anchor = field(form, 'anchor');
@@ -203,26 +237,6 @@ export async function financeAction(
           expected_version: version,
           body,
         });
-      if (!result.error && attachment) {
-        const path = `${homeId}/${id}/${crypto.randomUUID()}.${attachment.extension}`;
-        const upload = await db.storage
-          .from('expense-receipts')
-          .upload(path, attachment.body, { contentType: attachment.type, upsert: false });
-        const attached = upload.error
-          ? upload
-          : await db.rpc('attach_expense_receipt', {
-              target: homeId,
-              item: id,
-              object_path: path,
-              media_type: attachment.type,
-              byte_size: attachment.size,
-            });
-        if (attached.error) {
-          if (!upload.error) await db.storage.from('expense-receipts').remove([path]);
-          revalidatePath(`/homes/${homeId}`, 'layout');
-          return { error: t.receiptFailed };
-        }
-      }
     } else return { error: t.invalid };
     if (result.error) throw result.error;
     revalidatePath(`/homes/${homeId}`, 'layout');
@@ -231,6 +245,8 @@ export async function financeAction(
     unstable_rethrow(e);
     const err = e as { message?: string; code?: string };
     if (err.code === 'PGRST202' || err.code === '42P01') return { error: t.migration };
+    if (err.message === 'expense_has_settlement') return { error: t.settledExpense };
+    if (err.message === 'invalid_receipt') return { error: t.receiptInvalid };
     if (err.message?.includes('idempotency_conflict')) return { error: t.idempotency };
     if (err.message?.includes('stale_version')) return { error: t.stale };
     if (err.message?.includes('list_')) return { error: t.listIncomplete };

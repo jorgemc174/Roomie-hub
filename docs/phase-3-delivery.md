@@ -43,19 +43,19 @@ Crear gasto y splits, editar ambos, borrar, convertir compra, generar/confirmar 
 
 UUID estable por envío evita duplicados. Un reintento del alta con otro contenido devuelve conflicto. Ediciones y borrado comprueban la versión leída; no sobrescriben silenciosamente cambios de otro compañero. El formulario conserva esa versión aunque Realtime actualice la página; ante conflicto hay que recargar. Después de crear, el enlace Crear gasto abre una nueva solicitud.
 
-Editar registra una nueva revisión con reparto completo. Eliminar aplica baja lógica y registra otra revisión; splits, tickets y revisiones permanecen. Una lista convertida o periodo recurrente contabilizado no se vuelve a emitir por eliminar su gasto. Los pagos se conservan sin edición/borrado en esta fase; una corrección puede registrarse como transferencia inversa, respetando los límites de exmiembros.
+Editar registra una nueva revisión con reparto completo. Eliminar aplica baja lógica y registra otra revisión. Se conservan los repartos, tickets y revisiones. Una lista convertida o periodo recurrente contabilizado no se vuelve a emitir por eliminar su gasto. El gasto se bloquea para edición y borrado si hay un pago registrado a partir de la creación del gasto, con fecha igual o posterior a la del gasto, entre el pagador o participantes con importe positivo de ese gasto. Es un criterio conservador porque los pagos liquidan el saldo global y carecen de vínculo a facturas concretas. El aviso aparece al abrir Editar o Eliminar y SQL comprueba el bloqueo de nuevo. Los pagos se conservan sin edición ni borrado en esta fase. Una corrección puede registrarse como transferencia inversa dentro de los límites de exmiembros.
 
 ## Recurrentes y fechas
 
 Frecuencias semanal, mensual y cada X meses (1–120). Fecha inicial + índice evita deriva en meses cortos: 31 enero → 28/29 febrero → 31 marzo. Se usa `home_local_date` y la zona IANA del piso, tanto al generar como para fechas iniciales del formulario.
 
-Abrir Gastos o pulsar Revisar periodos pendientes procesa únicamente fechas ya vencidas, hasta 120 periodos por llamada. Si hay más, se muestra un aviso y se puede continuar. No se pregeneran gastos futuros. No hay cron instalado; las RPC permiten un futuro worker con autorización propia y reintentos. Sin visita/invocación no se materializan periodos automáticamente.
+Abrir Gastos, pulsar Revisar periodos pendientes o ejecutar el trabajo programado procesa fechas ya vencidas, hasta 120 periodos por llamada. Si hay más, se muestra un aviso y se puede continuar. No se pregeneran gastos futuros.
 
 - Fijo: se contabiliza el importe de la plantilla si pagador/participantes siguen activos.
 - Variable: pendiente sin importe inventado; no afecta al saldo hasta confirmación explícita.
-- Si hay miembros inactivos: el fijo queda pendiente de revisión, sin asignarles nuevo gasto. La confirmación exige miembros activos.
+- Se excluyen participantes inactivos al emitir cada periodo. El reparto igual se divide entre quienes quedan, y en personalizados y porcentajes se conserva la proporción con redondeo por mayores restos. Si todas las ponderaciones restantes son cero, se reparte por igual. Con pagador inactivo o sin participantes activos se pausa la regla, se conserva el cursor y se puede ajustar y reactivar manualmente. No se altera el historial contabilizado. La confirmación exige miembros activos.
 - Plantilla variable: igual o porcentajes; cantidades personalizadas disponibles al confirmar el importe conocido.
-- Editar/desactivar plantilla afecta a periodos no emitidos. Los pendientes ya emitidos conservan su snapshot; los contabilizados son gastos históricos. Reiniciar calendario exige ancla posterior a los periodos ya emitidos.
+- Eliminar con confirmación borra la regla y sus registros de programación. Conserva los gastos ya contabilizados, sus repartos, revisiones e impacto en saldos. Editar/desactivar plantilla afecta a periodos no emitidos. Los pendientes ya emitidos conservan su configuración original y los contabilizados quedan en el historial. Reiniciar calendario exige ancla posterior a los periodos ya emitidos.
 - Un índice único por plantilla/fecha y el bloqueo del piso evitan duplicados. Confirmar dos veces retorna el mismo gasto.
 
 ## Compra → gasto
@@ -70,13 +70,13 @@ Antiguos miembros no se añaden a gastos nuevos. Una edición histórica puede c
 
 ## Adjuntos, seguridad y Realtime
 
-Bucket privado `expense-receipts`, máximo 10 MiB, JPEG/PNG/WebP/PDF. Server Action valida MIME, tamaño y firma; el bucket restringe tamaño/MIME y las políticas ruta/extensión/piso. Objetos con UUID sin upsert. Acceso mediante ruta autenticada y URL firmada de descarga de 60 segundos. La URL emitida puede seguir válida durante esos 60 segundos tras salir.
+Bucket privado `expense-receipts`, máximo 10 MiB, JPEG/PNG/WebP/PDF. El navegador comprueba MIME y tamaño y sube directamente a una ruta temporal privada del miembro. La Server Action recibe la ruta, comprueba piso, miembro, MIME, tamaño y firma, sanea los PDF y guarda los bytes comprobados. El bucket restringe tamaño/MIME y las políticas restringen ruta, extensión y piso. Objetos con UUID sin upsert. Acceso mediante ruta autenticada y URL firmada de descarga de 60 segundos. La URL emitida puede seguir válida durante esos 60 segundos tras salir.
 
-El gasto se guarda antes de subir el ticket: PostgreSQL y Storage no comparten transacción. Si falla la subida o vinculación, se informa explícitamente de que el gasto existe y el ticket falló; puede reintentarse desde Editar. Se intenta borrar el objeto recién subido si no pudo vincularse. Se requiere futura limpieza programada de huérfanos y análisis antimalware antes de producción; no hay OCR.
+Para gastos con ticket, SQL comprueba la titularidad, ruta, tipo y tamaño del objeto definitivo antes de contabilizar. El gasto y el vínculo contable al objeto se guardan juntos. Ante un fallo, se intenta retirar el objeto definitivo no vinculado y se limpia la subida temporal al recibir la respuesta. Una desconexión puede dejar objetos privados sin vincular pendientes de limpieza.
 
 Las ocho tablas tienen RLS para activos y no conceden escrituras directas. FK compuestas impiden referencias entre pisos; validaciones de RPC cubren también JSON de plantillas. Sin service-role en aplicación: solo scripts de fixtures.
 
-Realtime añade INSERT/UPDATE de gastos, pagos, plantillas e instancias, siempre por home_id, reutilizando gestión de sesión, espera de suscripción y limpieza existente. Splits/revisiones se consultan tras el evento del padre, ya comprometida la transacción. Bajas lógicas emiten UPDATE. Inicio muestra solo el saldo resumido; no se añadieron estadísticas, calendario, puntos ni Fase 4.
+Realtime añade INSERT/UPDATE de gastos, pagos, plantillas e instancias, siempre por home_id, reutilizando gestión de sesión, espera de suscripción y limpieza existente. Splits/revisiones se consultan tras el evento del padre, ya comprometida la transacción. Las bajas lógicas emiten UPDATE. El borrado de la regla recurrente emite un UPDATE en el piso para activar la recarga de su lista. Inicio muestra solo el saldo resumido; no se añadieron estadísticas, calendario, puntos ni Fase 4.
 
 ## Validación y puesta en marcha
 

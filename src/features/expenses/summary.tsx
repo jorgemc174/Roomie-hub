@@ -22,11 +22,7 @@ export async function ExpenseSummary({ homeId }: { homeId: string }) {
       </h2>
       <p
         className={
-          BigInt(balance) > 0n
-            ? 'tone-positive'
-            : BigInt(balance) < 0n
-              ? 'tone-negative'
-              : 'tone-money'
+          BigInt(balance) > 0n ? 'tone-positive' : BigInt(balance) < 0n ? 'tone-debt' : 'tone-money'
         }
       >
         {BigInt(balance) === 0n

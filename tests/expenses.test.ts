@@ -314,10 +314,10 @@ test('PostgreSQL finances, history, recurrences, isolation and receipts', async 
           ),
           'Bob',
         );
-        // An authorized historical correction may create a departed balance. Only active members record its settlement.
-        await save(h, id, body('4000'), 1);
+        // A recorded settlement locks the expense even after the participant leaves.
+        await assert.rejects(save(h, id, body('4000'), 1), /expense_has_settlement/);
         await assert.rejects(
-          db.query('select public.record_settlement($1,$2,$3,$4,501,$5)', [
+          db.query('select public.record_settlement($1,$2,$3,$4,1,$5)', [
             h,
             randomUUID(),
             b,
@@ -326,13 +326,6 @@ test('PostgreSQL finances, history, recurrences, isolation and receipts', async 
           ]),
           /former_payment_limit/,
         );
-        await db.query('select public.record_settlement($1,$2,$3,$4,500,$5)', [
-          h,
-          randomUUID(),
-          b,
-          a,
-          '2026-09-15',
-        ]);
         assert.ok((await balances(h)).every((x) => x.balance === '0'));
       },
     );

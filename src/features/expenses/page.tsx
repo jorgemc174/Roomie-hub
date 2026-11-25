@@ -1,3 +1,4 @@
+import { ConfirmDelete } from '@/components/ui/confirm-delete';
 import { CategoryFilter } from './category-filter';
 import { CategoryLabel, CategorySummary } from './category-summary';
 import { CreatePanel } from '@/components/ui/create-panel';
@@ -117,7 +118,7 @@ export async function ExpensesPage({
       ? await readPage(expenseQuery.order('expense_date', { ascending: false }).order('id'))
       : [];
   const expenseIds = expenses.map((e) => e.id);
-  const [splits, payments, recurring, occurrences, receipts, events, links, members] =
+  const [splits, payments, recurring, occurrences, receipts, events, links, members, settled] =
     await Promise.all([
       expenseIds.length
         ? readRows(
@@ -183,7 +184,12 @@ export async function ExpensesPage({
           )
         : [],
       getMembers(homeId),
+      expenseIds.length
+        ? db.rpc('settled_expense_ids', { target: homeId, items: expenseIds })
+        : null,
     ]);
+  if (settled?.error) throw new Error('expense_settlements_read_failed');
+  const settledIds = new Set(settled?.data ?? []);
   const pageTotal = expenses.reduce((sum, expense) => sum + BigInt(expense.amount), 0n);
   const summary = summarizeCategories(
     tab === 'expenses' ? await readCategoryTotals(db, homeId, category) : [],
@@ -273,7 +279,7 @@ export async function ExpensesPage({
         <span className="sr-only">{t.balance}: </span>
         <strong
           className={
-            BigInt(me) > 0n ? 'tone-positive' : BigInt(me) < 0n ? 'tone-negative' : 'tone-money'
+            BigInt(me) > 0n ? 'tone-positive' : BigInt(me) < 0n ? 'tone-debt' : 'tone-money'
           }
         >
           {BigInt(me) === 0n
@@ -359,41 +365,56 @@ export async function ExpensesPage({
                   <OptionsMenu label={`${e.title}: ${t.options}`}>
                     <details>
                       <summary>{t.edit}</summary>
-                      <ExpenseForm
-                        {...props}
-                        id={e.id}
-                        version={e.version}
-                        initial={bodyFor(e, splits)}
-                        members={[
-                          ...people,
-                          ...splits
-                            .filter(
-                              (s) =>
-                                s.expense_id === e.id && !people.some((p) => p.id === s.user_id),
-                            )
-                            .map((s) => ({ id: s.user_id, name: `${s.user_name} · ${t.former}` })),
-                          ...(!people.some((p) => p.id === e.payer) &&
-                          !splits.some((s) => s.expense_id === e.id && s.user_id === e.payer)
-                            ? [{ id: e.payer, name: `${e.payer_name} · ${t.former}` }]
-                            : []),
-                        ]}
-                      />
+                      {settledIds.has(e.id) ? (
+                        <p role="alert" className="notice error">
+                          {t.settledExpense}
+                        </p>
+                      ) : (
+                        <ExpenseForm
+                          {...props}
+                          id={e.id}
+                          version={e.version}
+                          initial={bodyFor(e, splits)}
+                          members={[
+                            ...people,
+                            ...splits
+                              .filter(
+                                (s) =>
+                                  s.expense_id === e.id && !people.some((p) => p.id === s.user_id),
+                              )
+                              .map((s) => ({
+                                id: s.user_id,
+                                name: `${s.user_name} · ${t.former}`,
+                              })),
+                            ...(!people.some((p) => p.id === e.payer) &&
+                            !splits.some((s) => s.expense_id === e.id && s.user_id === e.payer)
+                              ? [{ id: e.payer, name: `${e.payer_name} · ${t.former}` }]
+                              : []),
+                          ]}
+                        />
+                      )}
                     </details>
                     <details>
                       <summary>{t.delete}</summary>
-                      <ActionForm
-                        action={financeAction.bind(null, homeId, 'delete')}
-                        label={t.delete}
-                        pendingLabel={t.saving}
-                        danger
-                      >
-                        <input type="hidden" name="id" value={e.id} />
-                        <input type="hidden" name="version" value={e.version} />
-                        <label className="checkbox">
-                          <input type="checkbox" name="confirm" required />
-                          {t.confirmDelete}
-                        </label>
-                      </ActionForm>
+                      {settledIds.has(e.id) ? (
+                        <p role="alert" className="notice error">
+                          {t.settledExpense}
+                        </p>
+                      ) : (
+                        <ActionForm
+                          action={financeAction.bind(null, homeId, 'delete')}
+                          label={t.delete}
+                          pendingLabel={t.saving}
+                          danger
+                        >
+                          <input type="hidden" name="id" value={e.id} />
+                          <input type="hidden" name="version" value={e.version} />
+                          <label className="checkbox">
+                            <input type="checkbox" name="confirm" required />
+                            {t.confirmDelete}
+                          </label>
+                        </ActionForm>
+                      )}
                     </details>
                   </OptionsMenu>
                 </div>
@@ -510,7 +531,7 @@ export async function ExpensesPage({
                     BigInt(b.balance) > 0n
                       ? 'tone-positive'
                       : BigInt(b.balance) < 0n
-                        ? 'tone-negative'
+                        ? 'tone-debt'
                         : 'tone-zero'
                   }
                 >
@@ -592,7 +613,12 @@ export async function ExpensesPage({
                 <span className="badge recurring">{r.active ? t.active : t.inactive}</span> ·{' '}
                 {t.next}: {date(r.next_date)}
               </summary>
+              {(!people.some((p) => p.id === r.template.payer) ||
+                !r.template.participants.some((p) => people.some((m) => m.id === p.user_id))) && (
+                <p className="notice">{t.recurringNeedsMembers}</p>
+              )}
               <ExpenseForm
+                key={r.version}
                 {...props}
                 operation="recurring"
                 id={r.id}
@@ -600,6 +626,18 @@ export async function ExpensesPage({
                 recurring={r}
                 initial={r.template}
               />
+              <ConfirmDelete
+                action={financeAction.bind(null, homeId, 'delete_recurring')}
+                label={t.deleteRecurring}
+                prompt={t.confirmDeleteRecurring}
+                confirmLabel={t.confirmDeletion}
+                cancelLabel={ui.cancel}
+                pendingLabel={t.saving}
+              >
+                <input type="hidden" name="id" value={r.id} />
+                <input type="hidden" name="version" value={r.version} />
+                <input type="hidden" name="confirm" value="on" />
+              </ConfirmDelete>
             </details>
           ))}
         </>
