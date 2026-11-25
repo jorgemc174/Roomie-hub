@@ -101,6 +101,10 @@ const es = {
   listDelete: 'Eliminar lista y sus productos',
   confirmDelete: 'Confirmar eliminación',
   invalid: 'Revisa los campos: fechas, dificultad de 1 a 5, recurrencia y personas de la rotación.',
+  difficultyRange: 'La dificultad debe estar entre 1 y 5.',
+  absenceEndBeforeStart: 'La fecha de fin no puede ser anterior a la de inicio.',
+  absenceOverlap:
+    'Esta persona ya tiene una ausencia que se solapa con esas fechas. Edita la existente o elige otras fechas.',
   unauthorized: 'Ya no tienes acceso a este piso. Vuelve a Mis pisos.',
   missing: 'Este elemento ya no está disponible. Actualiza la página.',
   error: 'No se ha podido guardar. Comprueba la conexión e inténtalo de nuevo.',
@@ -226,6 +230,10 @@ const en: Record<keyof typeof es, string> = {
   listDelete: 'Delete list and its products',
   confirmDelete: 'Confirm deletion',
   invalid: 'Check dates, difficulty from 1 to 5, recurrence and rotation members.',
+  difficultyRange: 'Difficulty must be between 1 and 5.',
+  absenceEndBeforeStart: 'The end date cannot be before the start date.',
+  absenceOverlap:
+    'This person already has an absence overlapping those dates. Edit the existing one or choose other dates.',
   unauthorized: 'You no longer have access to this home. Return to My homes.',
   missing: 'This item is no longer available. Refresh the page.',
   error: 'Could not save. Check your connection and try again.',

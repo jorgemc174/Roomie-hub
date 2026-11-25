@@ -64,6 +64,22 @@ textarea {
   background: transparent;
   scroll-margin-top: var(--space-4);
 }
+/* PA 2687: an overdue occurrence stays marked inside its period (rose = delay, not error). */
+.task-period .task-row.overdue {
+  padding-inline: var(--space-3);
+  background: var(--rose);
+  box-shadow: inset 4px 0 0 var(--rose-ink);
+  border-bottom-color: color-mix(in srgb, var(--rose-ink) 45%, var(--line));
+}
+.task-period .task-row.overdue .badge.overdue {
+  background: var(--surface);
+}
+/* PA 2467: a completed task is crossed out. */
+.task-row.completed .task-identity h3 {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  color: var(--muted);
+}
 .task-period .task-content {
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
