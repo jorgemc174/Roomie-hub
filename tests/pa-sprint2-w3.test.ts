@@ -109,13 +109,30 @@ test('W3 transactional regressions on PostgreSQL', async (t) => {
         )
       ).rows[0];
       await db.query('select public.complete_chore($1,$2)', [h, first.id]);
-      assert.equal(
-        await scalar(
-          'select assignee_id v from public.chore_instances where chore_id=$1 and period_start=$2',
+      const next = (
+        await db.query<{ id: string; assignee_id: string }>(
+          'select id,assignee_id from public.chore_instances where chore_id=$1 and period_start=$2',
           [task, first.ends],
-        ),
-        bob,
-      );
+        )
+      ).rows[0];
+      assert.equal(next.assignee_id, bob);
+      await db.exec('reset role');
+      const notices = () =>
+        scalar<number>(
+          "select count(*)::int v from public.notifications where source_id=$1 and user_id=$2 and event_type='task_assigned'",
+          [next.id, bob],
+        );
+      const tick = (offset: string) =>
+        db.query(
+          'select messaging_private.remind_home(h.id,($2::date::timestamp at time zone h.timezone)+$3::interval) from public.homes h where h.id=$1',
+          [h, first.ends, offset],
+        );
+      await tick('-1 second');
+      assert.equal(await notices(), 0);
+      await tick('0 seconds');
+      await tick('1 minute');
+      assert.equal(await notices(), 1);
+      await as(alice);
       await db.query('select public.complete_chore($1,$2)', [h, first.id]);
       await db.query('select public.generate_chore_instances($1,$2,$2)', [h, first.ends]);
       assert.equal(
@@ -292,11 +309,12 @@ test('W3 transactional regressions on PostgreSQL', async (t) => {
       const suffix = randomUUID() + '.pdf';
       const staging = `${h}/staging/${alice}/${suffix}`;
       const final = `${h}/${expense}/${alice}/${suffix}`;
-      const put = (path: string, size: number) =>
+      const put = (path: string, metadata: object, owner = alice) =>
         db.query(
           "insert into storage.objects(bucket_id,name,owner_id,metadata) values('expense-receipts',$1,$2,$3)",
-          [path, alice, { mimetype: 'application/pdf', size }],
+          [path, owner, metadata],
         );
+      const pdf = (size: number) => ({ mimetype: 'application/pdf', size });
       const save = (path: string) =>
         db.query('select public.save_expense_with_receipt($1,$2,0,$3,$4,false)', [
           h,
@@ -304,23 +322,36 @@ test('W3 transactional regressions on PostgreSQL', async (t) => {
           body(today, split([alice, bob])),
           path,
         ]);
-      await put(staging, RECEIPT_MAX_BYTES);
+      await put(staging, pdf(RECEIPT_MAX_BYTES));
       await as(bob);
       assert.equal(
         await scalar('select count(*)::int v from storage.objects where name=$1', [staging]),
         0,
       );
-      await assert.rejects(put(final, RECEIPT_MAX_BYTES), /row-level security/);
+      await assert.rejects(put(final, pdf(RECEIPT_MAX_BYTES)), /row-level security/);
       await as(alice);
       await assert.rejects(save(staging), /invalid_receipt/);
-      const invalid = final.replace(suffix, randomUUID() + '.pdf');
-      await put(invalid, RECEIPT_MAX_BYTES + 1);
-      await assert.rejects(save(invalid), /invalid_receipt/);
+      for (const metadata of [
+        pdf(RECEIPT_MAX_BYTES + 1),
+        pdf(1.5),
+        { mimetype: 'application/pdf' },
+        { ...pdf(100), mimetype: 'image/png' },
+      ]) {
+        const invalid = final.replace(suffix, randomUUID() + '.pdf');
+        await put(invalid, metadata);
+        await assert.rejects(save(invalid), /invalid_receipt/);
+      }
+      const foreign = final.replace(suffix, randomUUID() + '.pdf');
+      await put(foreign, pdf(100), bob);
+      await assert.rejects(save(foreign), /invalid_receipt/);
       assert.equal(
         await scalar('select count(*)::int v from public.expenses where id=$1', [expense]),
         0,
       );
-      await put(final, RECEIPT_MAX_BYTES);
+      await put(final, {
+        mimetype: 'Application/PDF; charset=binary',
+        contentLength: String(RECEIPT_MAX_BYTES),
+      });
       await save(final);
       await save(final);
       assert.equal(
@@ -346,6 +377,86 @@ test('W3 transactional regressions on PostgreSQL', async (t) => {
       assert.equal(
         await scalar('select count(*)::int v from storage.objects where name=$1', [final]),
         0,
+      );
+    },
+  );
+
+  await t.test(
+    'receipt cleanup reserves only expired orphans and retries unacknowledged deletions',
+    async () => {
+      const h = await home(2);
+      const expense = randomUUID();
+      const final = (id: string) => `${h}/${id}/${alice}/${randomUUID()}.pdf`;
+      const attached = final(expense);
+      const abandonedExpense = randomUUID();
+      const orphan = final(abandonedExpense);
+      const staging = `${h}/staging/${alice}/${randomUUID()}.pdf`;
+      const fresh = final(randomUUID());
+      const put = (path: string, bucket = 'expense-receipts') =>
+        db.query(
+          'insert into storage.objects(bucket_id,name,owner_id,metadata) values($1,$2,$3,$4)',
+          [bucket, path, alice, { mimetype: 'application/pdf', size: 100 }],
+        );
+      const save = async (id: string, path: string) =>
+        db.query('select public.save_expense_with_receipt($1,$2,0,$3,$4,false)', [
+          h,
+          id,
+          body(await date(h), split([alice, bob])),
+          path,
+        ]);
+      await put(attached);
+      await save(expense, attached);
+      const claim = () =>
+        db.query<{ path: string; lease: string }>('select * from public.claim_receipt_cleanup()');
+      await assert.rejects(claim(), /permission denied/);
+      await db.exec('reset role');
+      for (const path of [orphan, staging, fresh]) await put(path);
+      await put(staging, 'avatars');
+      await db.query(
+        "update storage.objects set created_at=now()-interval '25 hours' where name=any($1)",
+        [[attached, orphan, staging]],
+      );
+      await db.exec('set role service_role');
+      const first = (await claim()).rows;
+      assert.deepEqual(first.map((r) => r.path).sort(), [orphan, staging].sort());
+      assert.equal((await claim()).rows.length, 0);
+      await as(alice);
+      await assert.rejects(save(abandonedExpense, orphan), /invalid_receipt/);
+      await db.exec('reset role');
+      await db.exec(
+        "update messaging_private.receipt_cleanup set leased_at=now()-interval '6 minutes'; set role service_role",
+      );
+      const retry = (await claim()).rows;
+      assert.deepEqual(retry.map((r) => r.path).sort(), [orphan, staging].sort());
+      assert.notEqual(retry[0].lease, first[0].lease);
+      await db.query('select finish_receipt_cleanup($1)', [first[0].lease]);
+      await db.exec('reset role');
+      assert.equal(
+        await scalar('select count(*)::int v from messaging_private.receipt_cleanup'),
+        2,
+      );
+      await db.query(
+        "delete from storage.objects where bucket_id='expense-receipts' and name=any($1)",
+        [[orphan, staging]],
+      );
+      await db.exec('set role service_role');
+      await db.query('select finish_receipt_cleanup($1)', [retry[0].lease]);
+      assert.equal((await claim()).rows.length, 0);
+      await db.exec('reset role');
+      assert.equal(
+        await scalar('select count(*)::int v from messaging_private.receipt_cleanup'),
+        0,
+      );
+      assert.equal(
+        await scalar('select count(*)::int v from storage.objects where name=$1', [attached]),
+        1,
+      );
+      assert.equal(
+        await scalar(
+          "select count(*)::int v from storage.objects where bucket_id='avatars' and name=$1",
+          [staging],
+        ),
+        1,
       );
     },
   );

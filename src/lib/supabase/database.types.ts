@@ -193,6 +193,11 @@ export type Database = {
       run_notification_jobs: { Args: Record<string, never>; Returns: Json };
       pending_chat_attachment_cleanup: { Args: Record<string, never>; Returns: string[] };
       finish_chat_attachment_cleanup: { Args: { paths: string[] }; Returns: undefined };
+      claim_receipt_cleanup: {
+        Args: Record<string, never>;
+        Returns: { path: string; lease: string }[];
+      };
+      finish_receipt_cleanup: { Args: { lease_token: string }; Returns: undefined };
       claim_notification_deliveries: {
         Args: { channels: string[]; batch_size?: number };
         Returns: Json;
@@ -382,16 +387,6 @@ export type Database = {
           confirm_occurrence: boolean;
         };
         Returns: string;
-      };
-      attach_expense_receipt: {
-        Args: {
-          target: string;
-          item: string;
-          object_path: string;
-          media_type: string;
-          byte_size: number;
-        };
-        Returns: undefined;
       };
 
       ensure_current_chores: {

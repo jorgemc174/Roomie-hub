@@ -553,11 +553,21 @@ test('PostgreSQL finances, history, recurrences, isolation and receipts', async 
           "insert into storage.objects(bucket_id,name) values('expense-receipts',$1)",
           [path],
         );
-        await db.query("select public.attach_expense_receipt($1,$2,$3,'application/pdf',100)", [
-          h,
-          id,
-          path,
-        ]);
+        await assert.rejects(
+          db.query("select public.attach_expense_receipt($1,$2,$3,'application/pdf',100)", [
+            h,
+            id,
+            path,
+          ]),
+          /permission denied/,
+        );
+        // Keep a pre-migration attachment to cover visibility of existing receipts.
+        await db.exec('reset role');
+        await db.query(
+          "insert into expense_attachments(home_id,expense_id,path,mime,size) values($1,$2,$3,'application/pdf',100)",
+          [h, id, path],
+        );
+        await as(a);
         const tables = [
           'expenses',
           'expense_splits',
@@ -600,6 +610,14 @@ test('PostgreSQL finances, history, recurrences, isolation and receipts', async 
         );
         await db.exec('reset role; set role anon');
         await assert.rejects(balances(h), /permission denied/);
+        await assert.rejects(
+          db.query("select public.attach_expense_receipt($1,$2,$3,'application/pdf',100)", [
+            h,
+            id,
+            path,
+          ]),
+          /permission denied/,
+        );
         await db.exec('reset role');
       },
     );

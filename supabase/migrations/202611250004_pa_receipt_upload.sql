@@ -1,5 +1,12 @@
 begin;
 
+-- Reserve expired paths until the worker has removed their backing bytes.
+create table messaging_private.receipt_cleanup (
+ path text primary key, queued_at timestamptz not null default now(),
+ lease uuid, leased_at timestamptz
+);
+alter table messaging_private.receipt_cleanup enable row level security;
+revoke all on messaging_private.receipt_cleanup from public,anon,authenticated,service_role;
 -- Four components distinguish private uploads from existing three-component receipts.
 create function public.owns_receipt_upload(object_name text) returns boolean
 language sql stable set search_path='' as $$
@@ -12,8 +19,15 @@ $$;
 revoke all on function public.owns_receipt_upload(text) from public,anon;
 grant execute on function public.owns_receipt_upload(text) to authenticated;
 
+create function public.receipt_cleanup_pending(object_path text) returns boolean
+language sql stable security definer set search_path='' as $$
+ select exists(select 1 from messaging_private.receipt_cleanup where path=object_path and public.owns_receipt_upload(object_path));
+$$;
+revoke all on function public.receipt_cleanup_pending(text) from public,anon;
+grant execute on function public.receipt_cleanup_pending(text) to authenticated;
+
 alter policy receipt_insert on storage.objects to authenticated with check (
- bucket_id='expense-receipts' and (
+ bucket_id='expense-receipts' and not public.receipt_cleanup_pending(name) and (
   public.owns_receipt_upload(name)
   or (cardinality(string_to_array(name,'/'))=3 and public.can_access_receipt(name)
       and name ~ '\.(jpg|png|webp|pdf)$')
@@ -47,6 +61,8 @@ begin
  values(target,item,object_path,media_type,byte_size) on conflict(path) do nothing;
  update public.expenses set updated_at=now() where id=item;
 end $$;
+revoke execute on function public.attach_expense_receipt(uuid,uuid,text,text,integer)
+ from public,anon,authenticated,service_role;
 
 -- Verify actual Storage metadata before either posting the expense or confirming an occurrence.
 -- Save/confirm and attachment metadata commit together under the existing home lock.
@@ -55,14 +71,16 @@ returns uuid language plpgsql security definer set search_path='' as $$
 declare object_metadata jsonb; mime text; bytes text; extension text; expense uuid;
 begin
  perform public.organization_lock(target);
- if not public.owns_receipt_upload(object_path)
+ if object_path is null or not public.owns_receipt_upload(object_path)
     or object_path not like target::text||'/'||item::text||'/%'
+    or public.receipt_cleanup_pending(object_path)
  then raise exception 'invalid_receipt'; end if;
- select metadata into object_metadata from storage.objects
- where bucket_id='expense-receipts' and name=object_path
-   and (owner_id=auth.uid()::text or owner=auth.uid())
- for update;
- mime:=object_metadata->>'mimetype'; bytes:=object_metadata->>'size';
+ select o.metadata into object_metadata from storage.objects o
+ where o.bucket_id='expense-receipts' and o.name=object_path and o.owner_id=auth.uid()::text;
+ if not found then raise exception 'invalid_receipt'; end if;
+ -- Storage supplies metadata; client-supplied user_metadata is never trusted.
+ mime:=lower(btrim(split_part(object_metadata->>'mimetype',';',1)));
+ bytes:=coalesce(object_metadata->>'size',object_metadata->>'contentLength');
  extension:=case mime when 'image/jpeg' then 'jpg' when 'image/png' then 'png'
   when 'image/webp' then 'webp' when 'application/pdf' then 'pdf' end;
  if extension is null or right(object_path,length(extension)+1) <> '.'||extension
