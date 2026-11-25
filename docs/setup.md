@@ -144,3 +144,9 @@ Privacidad de fotos: la ruta de la app verifica membresía en cada petición y n
 Después de 008, ejecutar completo una vez `supabase/migrations/202609150009_departure_overdue.sql`. Solo reemplaza leave_home y conserva sus permisos. No volver a ejecutar 001–008. En este proyecto de desarrollo el usuario confirmó Success y se verificaron salidas reales con dos usuarios autenticados.
 
 `npm run test:departure:remote` prepara dos cuentas y tres pisos temporales usando la clave administrativa local; las operaciones de negocio usan JWT normales. Valida atrasos 4/5/1.003 y limpia solo sus fixtures. No necesita servidor Next activo. Usar únicamente Supabase de desarrollo. La salida procesa todo el backlog de forma atómica: un timeout aborta, no permite escapar de negativos. [Detalles](phase-5-hardening.md).
+
+## Despliegue de los cambios del Sprint 2
+
+Aplica las migraciones pendientes de `202611250001` a `202611250006` en orden y despliega el código nuevo justo después de aplicar la `202611250006`. La página de Gastos del código nuevo requiere la RPC `settled_expense_ids` de la `202611250003`.
+
+Desde que se aplica la `202611250004` hasta que entra en servicio el código nuevo, falla la subida de tickets de la versión anterior. Esa versión llama a `attach_expense_receipt`, cuyo permiso revoca la migración. Planifica las migraciones y el despliegue en la misma ventana para reducir la interrupción.

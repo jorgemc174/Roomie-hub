@@ -382,6 +382,46 @@ test('W3 transactional regressions on PostgreSQL', async (t) => {
   );
 
   await t.test(
+    'replaying an expense with a new receipt path keeps only the original attachment',
+    async () => {
+      const h = await home(2);
+      const expense = randomUUID();
+      const payload = body(await date(h), split([alice, bob]));
+      const paths = Array.from({ length: 3 }, () => `${h}/${expense}/${alice}/${randomUUID()}.pdf`);
+      const [original, retry, edit] = paths;
+      for (const path of paths) {
+        await db.query(
+          "insert into storage.objects(bucket_id,name,owner_id,metadata) values('expense-receipts',$1,$2,$3)",
+          [path, alice, { mimetype: 'application/pdf', size: 100 }],
+        );
+      }
+      const save = (path: string, version = 0, data = payload) =>
+        scalar<string>('select public.save_expense_with_receipt($1,$2,$3,$4,$5,false) v', [
+          h,
+          expense,
+          version,
+          data,
+          path,
+        ]);
+      const attachments = async () =>
+        (
+          await db.query<{ path: string }>(
+            'select path from public.expense_attachments where expense_id=$1 order by path',
+            [expense],
+          )
+        ).rows.map(({ path }) => path);
+
+      assert.equal(await save(original), expense);
+      assert.deepEqual(await attachments(), [original]);
+      assert.equal(await save(retry), expense);
+      assert.deepEqual(await attachments(), [original]);
+      assert.equal(await save(edit, 1, { ...payload, amount: '1500' }), expense);
+      assert.deepEqual(await attachments(), [original, edit].sort());
+      assert.equal(await scalar('select version v from public.expenses where id=$1', [expense]), 2);
+    },
+  );
+
+  await t.test(
     'receipt cleanup reserves only expired orphans and retries unacknowledged deletions',
     async () => {
       const h = await home(2);

@@ -18,3 +18,5 @@ No se implementa Fase 3 ni gastos, puntos, calendario completo, chat o notificac
 ## Revisión posterior
 
 La migración W3 `202611250002_pa_task_lifecycle.sql` añade las semillas al alta, la eliminación irreversible y la emisión de la siguiente ocurrencia al completar. El endurecimiento 004 sustituye el horizonte y las reglas de futuras instancias descritos en la entrega original. Consulte [la semántica actual](phase-2-hardening.md) y [validación](validation.md).
+
+Desde `202611250006_pa_task_assignment_notice.sql`, los avisos de asignación o reasignación de tareas futuras quedan pendientes hasta el primer ciclo del planificador a partir de la medianoche local del piso en el día de inicio del periodo. Esto incluye las ocurrencias generadas para mañana y las emitidas al completar la anterior. Las asignaciones del periodo en curso se notifican en el momento.

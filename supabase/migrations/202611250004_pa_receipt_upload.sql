@@ -65,10 +65,12 @@ revoke execute on function public.attach_expense_receipt(uuid,uuid,text,text,int
  from public,anon,authenticated,service_role;
 
 -- Verify actual Storage metadata before either posting the expense or confirming an occurrence.
+-- Byte validation and PDF sanitization happen in the Server Action. A member uploading
+-- directly to their own final path can call this metadata-only RPC without that check.
 -- Save/confirm and attachment metadata commit together under the existing home lock.
 create function public.save_expense_with_receipt(target uuid,item uuid,expected_version integer,body jsonb,object_path text,confirm_occurrence boolean)
 returns uuid language plpgsql security definer set search_path='' as $$
-declare object_metadata jsonb; mime text; bytes text; extension text; expense uuid;
+declare object_metadata jsonb; mime text; bytes text; extension text; expense uuid; replay boolean;
 begin
  perform public.organization_lock(target);
  if object_path is null or not public.owns_receipt_upload(object_path)
@@ -87,12 +89,14 @@ begin
     or coalesce(bytes,'') !~ '^[0-9]{1,8}$' then raise exception 'invalid_receipt'; end if;
  if bytes::integer not between 1 and 10485760 then raise exception 'invalid_receipt'; end if;
 
+ replay:=expected_version is not distinct from 0 and exists(select 1 from public.expenses where id=item);
  if confirm_occurrence then
   expense:=public.confirm_recurring_expense(target,item,body);
  else
   expense:=public.save_expense(target,item,expected_version,body);
  end if;
- perform public.attach_expense_receipt(target,expense,object_path,mime,bytes::integer);
+ -- Keep the attachments from the original save on idempotent replay.
+ if not replay then perform public.attach_expense_receipt(target,expense,object_path,mime,bytes::integer); end if;
  return expense;
 end $$;
 revoke all on function public.save_expense_with_receipt(uuid,uuid,integer,jsonb,text,boolean) from public,anon;

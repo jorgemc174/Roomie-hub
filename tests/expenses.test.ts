@@ -330,6 +330,35 @@ test('PostgreSQL finances, history, recurrences, isolation and receipts', async 
       },
     );
     await t.test(
+      'a historical correction can reopen and settle a former member balance',
+      async () => {
+        const h = await home(2);
+        const id = randomUUID();
+        await save(h, id, body('1000'));
+        await as(b);
+        await save(h, randomUUID(), { ...body('1000'), payer: b });
+        await db.query('select public.leave_home($1)', [h]);
+
+        await as(a);
+        await save(h, id, body('2000'), 1);
+        assert.equal((await balances(h)).find((row) => row.user_id === b)?.balance, '-500');
+
+        const pay = (amount: number) =>
+          db.query('select public.record_settlement($1,$2,$3,$4,$5,$6)', [
+            h,
+            randomUUID(),
+            b,
+            a,
+            amount,
+            '2026-09-15',
+          ]);
+        await assert.rejects(pay(501), /former_payment_limit/);
+        await pay(500);
+        assert.ok((await balances(h)).every((row) => row.balance === '0'));
+        await assert.rejects(save(h, id, body('2500'), 2), /expense_has_settlement/);
+      },
+    );
+    await t.test(
       'fixed, variable, monthly anchor, timezone and repeated confirmations',
       async () => {
         const h = await home(2);
