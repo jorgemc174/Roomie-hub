@@ -144,3 +144,26 @@ export async function readActivityMembers(db: CalendarDB, homeId: string, ids: s
       .order('user_id'),
   );
 }
+
+/**
+ * Names for expense templates: active members first; former members (who can still be payer
+ * or participant of an existing template) come from the home's expense snapshots.
+ */
+export async function expenseNames(
+  db: CalendarDB,
+  homeId: string,
+  members: { user_id: string; profiles?: { name: string | null } | null }[],
+  templates: { template: { payer: string; participants: { user_id: string }[] } }[],
+) {
+  const names: Record<string, string> = {};
+  for (const m of members) if (m.profiles?.name) names[m.user_id] = m.profiles.name;
+  const missing = templates.some(({ template }) =>
+    [template.payer, ...template.participants.map((p) => p.user_id)].some((id) => !names[id]),
+  );
+  if (missing) {
+    const r = await db.rpc('expense_balances', { target: homeId });
+    if (r.error) throw r.error;
+    for (const b of r.data ?? []) if (!names[b.user_id] && b.name) names[b.user_id] = b.name;
+  }
+  return names;
+}

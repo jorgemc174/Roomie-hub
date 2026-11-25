@@ -14,6 +14,7 @@ import {
   calendarPageIndex,
   findCalendarItem,
   readActivityMembers,
+  expenseNames,
   readActivityPage,
   readReservationPage,
   type CalendarKind,
@@ -289,6 +290,7 @@ export async function CalendarPage({
     homeId,
     activities.map((a) => a.id),
   );
+  const names = await expenseNames(db, homeId, members, [...recurring, ...occurrences]);
   const events = normalizeCalendar(
     {
       homeId,
@@ -299,6 +301,7 @@ export async function CalendarPage({
       recurring,
       occurrences,
       timezone: home.timezone,
+      names,
     },
     now,
   );

@@ -18,6 +18,7 @@ import {
 } from './money';
 import type { ExpenseBody } from './models';
 import { validDate } from '@/features/organization/logic';
+import { checkExpense, fillMessage, formatPercent, shareValue } from './validation';
 const field = (f: FormData, k: string) => String(f.get(k) ?? '').trim();
 const uuid = (v: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -87,20 +88,46 @@ export async function financeAction(
     } else if (['save', 'recurring', 'confirm'].includes(operation)) {
       const mode = field(form, 'split_mode') as SplitMode;
       const variable = operation === 'recurring' && field(form, 'kind') === 'variable';
+      const selected = form.getAll('participant').map(String);
+      // Same specific messages as the form, in case a request bypasses the client checks.
+      const issues = checkExpense({
+        title: field(form, 'title'),
+        amount: field(form, 'amount'),
+        variable,
+        mode: ['custom', 'percentage'].includes(mode) ? mode : 'equal',
+        participants: selected,
+        shares: Object.fromEntries(selected.map((id) => [id, field(form, `share_${id}`)])),
+        scale,
+      });
+      if (issues.title) return { error: t.conceptRequired };
+      if (issues.amount === 'positive') return { error: t.amountPositive };
+      if (issues.amount) return { error: fillMessage(t.amountFormat, { decimals: String(scale) }) };
+      if (issues.participants) return { error: t.participantsRequired };
+      if (issues.sum && issues.sum.sum !== issues.sum.target) {
+        const { sum, target } = issues.sum;
+        const money = (n: bigint) => formatMoney(n, home.currency, locale);
+        return {
+          error:
+            issues.sum.mode === 'percentage'
+              ? fillMessage(t.percentInvalid, { sum: formatPercent(sum, locale) })
+              : fillMessage(sum < target ? t.splitShort : t.splitOver, {
+                  sum: money(sum),
+                  total: money(target),
+                  diff: money(sum < target ? target - sum : sum - target),
+                }),
+        };
+      }
       const total = variable ? 10000n : parseDecimal(field(form, 'amount'), scale);
-      const participants = form
-        .getAll('participant')
-        .map(String)
-        .map((user_id) => ({
-          user_id,
-          weight:
-            mode === 'equal'
-              ? '1'
-              : parseDecimal(
-                  field(form, `share_${user_id}`),
-                  mode === 'percentage' ? 2 : scale,
-                ).toString(),
-        }));
+      const participants = selected.map((user_id) => ({
+        user_id,
+        weight:
+          mode === 'equal'
+            ? '1'
+            : parseDecimal(
+                shareValue(field(form, `share_${user_id}`)),
+                mode === 'percentage' ? 2 : scale,
+              ).toString(),
+      }));
       const date = field(form, 'date'),
         payer = field(form, 'payer'),
         title = field(form, 'title'),

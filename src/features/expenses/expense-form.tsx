@@ -2,7 +2,7 @@
 import { useRetainedForm } from '@/components/ui/use-retained-form';
 import { FormFeedback } from '@/components/ui/form-feedback';
 import { LoaderCircle } from 'lucide-react';
-import { useActionState, useState } from 'react';
+import { useActionState, useState, type FormEvent } from 'react';
 import { financeAction } from './actions';
 import { expenseMessages, categoryNames } from './messages';
 import {
@@ -15,6 +15,15 @@ import {
   inferCategory,
   type SplitMode,
 } from './money';
+import {
+  checkExpense,
+  fillMessage,
+  formatPercent,
+  hasFieldIssues,
+  limitDecimals,
+  shareValue,
+  splitMismatch,
+} from './validation';
 import type { ExpenseBody, Recurring } from './models';
 import type { Locale } from '@/lib/i18n/dictionaries';
 export function ExpenseForm({
@@ -66,28 +75,61 @@ export function ExpenseForm({
   const [kind, setKind] = useState(recurring?.kind ?? 'fixed');
   const [category, setCategory] = useState(initial?.category ?? '');
   const [state, action, pending] = useActionState(financeAction.bind(null, homeId, operation), {});
+  const [attempted, setAttempted] = useState(false);
   const variable = operation === 'recurring' && kind === 'variable';
+  const shareScale = mode === 'percentage' ? 2 : scale;
+  const issues = checkExpense({
+    title,
+    amount,
+    variable,
+    mode,
+    participants: selected,
+    shares,
+    scale,
+  });
+  const fieldIssues = hasFieldIssues(issues);
+  // A wrong split keeps the save button disabled until the figures add up (PA 2357/2358/2362).
+  const blocked = splitMismatch(issues) || (variable && mode === 'custom');
   let preview: { user_id: string; amount: string }[] = [];
-  let invalid = false;
-  try {
-    preview = splitMoney(
-      variable ? 10000n : parseDecimal(amount, scale),
-      mode,
-      selected.map((user_id) => ({
-        user_id,
-        weight:
-          mode === 'equal'
-            ? '1'
-            : parseDecimal(shares[user_id] ?? '', mode === 'percentage' ? 2 : scale).toString(),
-      })),
-    );
-    if (variable && mode === 'custom') invalid = true;
-  } catch {
-    invalid = true;
+  let invalid = fieldIssues || blocked;
+  if (!invalid) {
+    try {
+      preview = splitMoney(
+        variable ? 10000n : parseDecimal(amount, scale),
+        mode,
+        selected.map((user_id) => ({
+          user_id,
+          weight:
+            mode === 'equal'
+              ? '1'
+              : parseDecimal(shareValue(shares[user_id]), shareScale).toString(),
+        })),
+      );
+    } catch {
+      invalid = true;
+    }
   }
+  const money = (minor: bigint) => formatMoney(minor, currency, locale);
+  const sum = issues.sum;
+  const showTitle = attempted && issues.title;
+  const showAmount = (attempted || amount.trim() !== '') && issues.amount;
   const retainForm = useRetainedForm(state.error, pending);
+  function submit(event: FormEvent<HTMLFormElement>) {
+    // Client-side block: no request reaches the server while a field is invalid (PA 2337/2339).
+    if (fieldIssues || blocked) {
+      event.preventDefault();
+      setAttempted(true);
+      return;
+    }
+    retainForm(event);
+  }
   return (
-    <form onSubmit={retainForm} action={action} className="form">
+    <form
+      onSubmit={submit}
+      onInvalidCapture={() => setAttempted(true)}
+      action={action}
+      className="form"
+    >
       <fieldset disabled={pending}>
         <input type="hidden" name="id" value={requestId} />
         <input type="hidden" name="version" value={expectedVersion} />
@@ -99,8 +141,15 @@ export function ExpenseForm({
             required
             maxLength={160}
             value={title}
+            aria-invalid={showTitle ? true : undefined}
+            aria-describedby={showTitle ? `${requestId}-title-error` : undefined}
             onChange={(e) => setTitle(e.target.value)}
           />
+          {showTitle && (
+            <small id={`${requestId}-title-error`} className="field-error" role="alert">
+              {t.conceptRequired}
+            </small>
+          )}
         </label>
         {operation === 'recurring' && (
           <>
@@ -126,8 +175,17 @@ export function ExpenseForm({
               inputMode="decimal"
               required
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              aria-invalid={showAmount ? true : undefined}
+              aria-describedby={showAmount ? `${requestId}-amount-error` : undefined}
+              onChange={(e) => setAmount(limitDecimals(e.target.value, scale))}
             />
+            {showAmount && (
+              <small id={`${requestId}-amount-error`} className="field-error" role="alert">
+                {issues.amount === 'positive'
+                  ? t.amountPositive
+                  : fillMessage(t.amountFormat, { decimals: String(scale) })}
+              </small>
+            )}
             <small>{t.amountLimit}</small>
           </label>
         )}
@@ -205,14 +263,62 @@ export function ExpenseForm({
                   <input
                     name={`share_${m.id}`}
                     inputMode="decimal"
-                    required
+                    placeholder={decimal(0n, shareScale)}
                     value={shares[m.id] ?? ''}
-                    onChange={(e) => setShares({ ...shares, [m.id]: e.target.value })}
+                    aria-invalid={blocked ? true : undefined}
+                    onChange={(e) =>
+                      setShares({ ...shares, [m.id]: limitDecimals(e.target.value, shareScale) })
+                    }
                   />
                 </label>
               )}
             </div>
           ))}
+          {issues.participants && (
+            <p className="notice error" role="alert">
+              {t.participantsRequired}
+            </p>
+          )}
+          {mode !== 'equal' && issues.shares && (
+            <p className="notice error" role="alert">
+              {fillMessage(t.sharesFormat, { decimals: String(shareScale) })}
+            </p>
+          )}
+          {sum && (
+            <div className="split-sum" aria-live="polite">
+              <p>
+                {sum.mode === 'custom'
+                  ? fillMessage(t.splitSum, { sum: money(sum.sum), total: money(sum.target) })
+                  : fillMessage(t.percentSum, { sum: formatPercent(sum.sum, locale) })}
+              </p>
+              {sum.sum === sum.target ? (
+                <p className="notice success">
+                  {sum.mode === 'custom' ? t.splitBalanced : t.percentBalanced}
+                </p>
+              ) : (
+                <p className="notice error" role="alert">
+                  {sum.mode === 'percentage' ? (
+                    <Highlighted
+                      text={t.percentInvalid}
+                      name="sum"
+                      value={formatPercent(sum.sum, locale)}
+                    />
+                  ) : (
+                    <Highlighted
+                      text={fillMessage(sum.sum < sum.target ? t.splitShort : t.splitOver, {
+                        sum: money(sum.sum),
+                        total: money(sum.target),
+                      })}
+                      name="diff"
+                      value={money(
+                        sum.sum < sum.target ? sum.target - sum.sum : sum.sum - sum.target,
+                      )}
+                    />
+                  )}
+                </p>
+              )}
+            </div>
+          )}
         </fieldset>
         {operation === 'recurring' ? (
           <>
@@ -263,7 +369,9 @@ export function ExpenseForm({
         <section aria-live="polite">
           <h3>{t.preview}</h3>
           {invalid ? (
-            <p className="notice">{amount.trim() ? t.invalid : t.previewHint}</p>
+            <p className="notice">
+              {fieldIssues || !amount.trim() ? t.previewHint : blocked ? t.splitBlocked : t.invalid}
+            </p>
           ) : (
             preview.map((p) => (
               <p key={p.user_id}>
@@ -278,7 +386,7 @@ export function ExpenseForm({
       <button
         type="submit"
         className="button"
-        disabled={pending || invalid || Boolean(state.success)}
+        disabled={pending || blocked || Boolean(state.success)}
       >
         {pending && <LoaderCircle className="ui-spinner" size={18} aria-hidden="true" />}
         {pending ? t.saving : operation === 'confirm' ? t.confirm : t.save}
@@ -289,5 +397,17 @@ export function ExpenseForm({
         </a>
       )}
     </form>
+  );
+}
+
+/** Renders a message with one value highlighted, e.g. the split difference (PA 2357/2358). */
+function Highlighted({ text, name, value }: { text: string; name: string; value: string }) {
+  const [before, after = ''] = text.split(`{${name}}`);
+  return (
+    <>
+      {before}
+      <strong className="split-diff">{value}</strong>
+      {after}
+    </>
   );
 }
