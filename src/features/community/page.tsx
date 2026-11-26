@@ -10,9 +10,16 @@ import { readCommunityRows } from './queries';
 import { formatInstant } from '@/features/calendar/logic';
 import { communityMessages } from './messages';
 import { CommunityForm, RatingFields } from './form';
+import { PunishmentDescription } from './punishment-description';
 import { CommunityNav, CommunityOptions, communityTab } from './nav';
 import { CommunityRanking } from './ranking';
-import { rankMembers, type AuthorLabel, type RatingReason, type CommunityBalance } from './models';
+import {
+  rankMembers,
+  savedPunishments,
+  type AuthorLabel,
+  type RatingReason,
+  type CommunityBalance,
+} from './models';
 
 export async function CommunityPage({
   homeId,
@@ -156,9 +163,9 @@ export async function CommunityPage({
                 <span className="badge punishment">
                   {p.severity === 'heavy' ? t.heavy : t.light}
                 </span>{' '}
-                · {number(p.threshold)}
+                · {t.threshold}: {number(p.threshold)} {t.negativesUnit}
               </h3>
-              {!done && (
+              {!done && p.description.trim() && (
                 <OptionsMenu label={`${p.user_name}: ${t.options}`}>
                   <details>
                     <summary>{t.edit}</summary>
@@ -170,14 +177,11 @@ export async function CommunityPage({
                       locale={locale}
                       label={t.save}
                     >
-                      <label>
-                        {t.description}
-                        <textarea
-                          name="description"
-                          maxLength={2000}
-                          defaultValue={p.description}
-                        />
-                      </label>
+                      <PunishmentDescription
+                        locale={locale}
+                        saved={savedPunishments(punishments, p.severity)}
+                        defaultValue={p.description}
+                      />
                     </CommunityForm>
                   </details>
                 </OptionsMenu>
@@ -202,13 +206,30 @@ export async function CommunityPage({
                   id={p.id}
                   version={p.version}
                   locale={locale}
-                  label={t.complete}
+                  label={t.finish}
                 >
                   <input type="hidden" name="description" value={p.description} />
                   <input type="hidden" name="finish" value="on" />
                 </CommunityForm>
               ) : (
-                <small>{t.define}</small>
+                <details className="punishment-define">
+                  <summary className="button">{t.defineAction}</summary>
+                  <p className="muted">{t.define}</p>
+                  <CommunityForm
+                    homeId={homeId}
+                    operation="punishment"
+                    id={p.id}
+                    version={p.version}
+                    locale={locale}
+                    label={t.save}
+                  >
+                    <PunishmentDescription
+                      locale={locale}
+                      saved={savedPunishments(punishments, p.severity)}
+                      required
+                    />
+                  </CommunityForm>
+                </details>
               ))}
           </article>
         ))}

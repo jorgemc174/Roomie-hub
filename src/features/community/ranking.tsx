@@ -91,7 +91,17 @@ export function CommunityRanking({
               <td className={balance.negative_effective > 0 ? 'tone-negative' : 'tone-zero'}>
                 {number(balance.negative_effective)}
               </td>
-              <td>{balance.pending_punishments > 0 ? number(balance.pending_punishments) : '—'}</td>
+              <td>
+                {balance.pending_punishments > 0 ? (
+                  <Link
+                    href={`/homes/${homeId}/community?tab=punishments&person=${balance.user_id}`}
+                  >
+                    {number(balance.pending_punishments)}
+                  </Link>
+                ) : (
+                  '—'
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

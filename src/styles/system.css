@@ -918,6 +918,16 @@ span.ui-spinner {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.punishment-define > summary {
+  list-style: none;
+  width: fit-content;
+}
+.punishment-define > summary::-webkit-details-marker {
+  display: none;
+}
+.punishment-define[open] > summary {
+  margin-bottom: var(--space-3);
+}
 @media (max-width: 700px) {
   .community-ranking {
     font-size: 0.875rem;
@@ -1189,4 +1199,22 @@ span.ui-spinner {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
+}
+.punishment-saved {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.punishment-saved-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.punishment-saved-list .button {
+  max-width: 100%;
+  min-height: 40px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
 }

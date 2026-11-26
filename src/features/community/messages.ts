@@ -97,6 +97,11 @@ const es = {
   former: 'Antiguo miembro',
   mySummary: 'Tu convivencia',
   define: 'Define el castigo antes de marcarlo como cumplido.',
+  defineAction: 'Definir castigo',
+  negativesUnit: 'negativos',
+  viewPunishments: 'Ver castigos',
+  savedPunishments: 'Castigos guardados',
+  usedTimes: 'usado {n} veces',
   completedBy: 'Cumplido por',
 };
 const en: Record<keyof typeof es, string> = {
@@ -195,6 +200,11 @@ const en: Record<keyof typeof es, string> = {
   former: 'Former member',
   mySummary: 'Your household feedback',
   define: 'Describe the consequence before marking it completed.',
+  defineAction: 'Define consequence',
+  negativesUnit: 'negatives',
+  viewPunishments: 'View consequences',
+  savedPunishments: 'Saved consequences',
+  usedTimes: 'used {n} times',
   completedBy: 'Completed by',
 };
 export const communityMessages = (locale: Locale) => (locale === 'en' ? en : es);

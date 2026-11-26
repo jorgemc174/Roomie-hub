@@ -10,7 +10,7 @@ import { useLocale } from '@/lib/i18n/provider';
 import { safeNext } from '@/lib/validation';
 import { readNotices } from './actions';
 import { notificationMessages } from './messages';
-import type { Notice } from './models';
+import { noticeHref, type Notice } from './models';
 import { useNoticesRealtime } from './realtime';
 export function NotificationBell() {
   const t = notificationMessages(useLocale()),
@@ -111,7 +111,7 @@ export function Inbox({ initial }: { initial: Notice[] }) {
       {rows.map((n) => (
         <article key={n.id} className={`panel notification-card ${!n.read_at ? 'unread' : ''}`}>
           <h2>
-            <Link href={safeNext(n.target_url)}>{n.title}</Link>
+            <Link href={safeNext(noticeHref(n))}>{n.title}</Link>
             {!n.read_at && (
               <span className="unread-dot" aria-label={t.unread}>
                 {' '}
