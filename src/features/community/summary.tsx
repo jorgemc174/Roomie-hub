@@ -26,7 +26,10 @@ export async function CommunitySummary({ homeId }: { homeId: string }) {
       </p>
       {Number(b.pending_punishments) > 0 && (
         <p>
-          {t.punishments} · {t.pending}: <strong>{n(b.pending_punishments)}</strong>
+          {t.punishments} · {t.pending}: <strong>{n(b.pending_punishments)}</strong> ·{' '}
+          <Link href={`/homes/${homeId}/community?tab=punishments&person=${user.id}`}>
+            {t.viewPunishments}
+          </Link>
         </p>
       )}
       <Link href={`/homes/${homeId}/community?tab=points`}>{t.points}</Link>

@@ -80,3 +80,34 @@ export function rankMembers(rows: CommunityBalance[]) {
         a.user_id.localeCompare(b.user_id),
     );
 }
+export type SavedPunishment = { text: string; severity: Punishment['severity']; uses: number };
+// Every described consequence becomes reusable: same severity first, then most used, then most recent.
+export function savedPunishments(
+  rows: Pick<Punishment, 'description' | 'severity' | 'triggered_at'>[],
+  severity?: Punishment['severity'],
+  limit = 12,
+) {
+  const byText = new Map<string, SavedPunishment & { last: string }>();
+  for (const row of rows) {
+    const text = row.description.trim().replace(/\s+/g, ' ');
+    if (!text) continue;
+    const key = text.toLocaleLowerCase('es');
+    const found = byText.get(key);
+    if (!found) byText.set(key, { text, severity: row.severity, uses: 1, last: row.triggered_at });
+    else {
+      found.uses += 1;
+      if (row.triggered_at > found.last)
+        Object.assign(found, { text, severity: row.severity, last: row.triggered_at });
+    }
+  }
+  return [...byText.values()]
+    .sort(
+      (a, b) =>
+        Number(b.severity === severity) - Number(a.severity === severity) ||
+        b.uses - a.uses ||
+        b.last.localeCompare(a.last) ||
+        a.text.localeCompare(b.text),
+    )
+    .slice(0, limit)
+    .map(({ text, severity: kind, uses }) => ({ text, severity: kind, uses }));
+}
