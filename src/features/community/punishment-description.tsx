@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState } from 'react';
 import type { Locale } from '@/lib/i18n/dictionaries';
 import { communityMessages } from './messages';
@@ -8,15 +9,25 @@ export function PunishmentDescription({
   saved,
   defaultValue = '',
   required = false,
+  manageHref,
 }: {
   locale: Locale;
   saved: SavedPunishment[];
   defaultValue?: string;
   required?: boolean;
+  manageHref?: string;
 }) {
   const t = communityMessages(locale),
     [value, setValue] = useState(defaultValue),
     options = saved.filter((s) => s.text !== value.trim());
+  const hint = (s: SavedPunishment) =>
+    [
+      s.preset ? t.presets : null,
+      s.severity === 'heavy' ? t.heavy : s.severity === 'light' ? t.light : null,
+      s.uses > 1 ? t.usedTimes.replace('{n}', String(s.uses)) : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
   return (
     <>
       {options.length > 0 && (
@@ -27,8 +38,8 @@ export function PunishmentDescription({
               <button
                 key={s.text}
                 type="button"
-                className="button secondary"
-                title={`${s.severity === 'heavy' ? t.heavy : t.light}${s.uses > 1 ? ` · ${t.usedTimes.replace('{n}', String(s.uses))}` : ''}`}
+                className={`button secondary${s.preset ? ' is-preset' : ''}`}
+                title={hint(s)}
                 onClick={() => setValue(s.text)}
               >
                 {s.text}
@@ -47,6 +58,11 @@ export function PunishmentDescription({
           onChange={(e) => setValue(e.target.value)}
         />
       </label>
+      {manageHref && (
+        <Link className="punishment-manage" href={manageHref}>
+          {t.managePresets}
+        </Link>
+      )}
     </>
   );
 }

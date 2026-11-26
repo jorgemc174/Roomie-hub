@@ -37,6 +37,7 @@ async function component<T>(file: string, dependencies: Record<string, unknown>)
     outputText,
     {
       exports,
+      crypto,
       require: (name: string) => {
         if (name === 'react/jsx-runtime') return jsxRuntime;
         if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`);
@@ -117,7 +118,12 @@ function FakeForm({
   );
 }
 
-async function renderPage(locale: Locale, rows: ReturnType<typeof punishment>[]) {
+async function renderPage(
+  locale: Locale,
+  rows: ReturnType<typeof punishment>[],
+  presets: models.PunishmentPreset[] | null = [],
+  tab = 'punishments',
+) {
   const balances = [balance(me, 'Jorge', 2), balance(other, 'Ana', 0)];
   const { CommunityPage } = await component<{
     CommunityPage: (props: {
@@ -139,7 +145,7 @@ async function renderPage(locale: Locale, rows: ReturnType<typeof punishment>[])
     },
     '@/lib/i18n/server': { i18n: async () => ({ locale, t: {} }) },
     './queries': {
-      readCommunityRows: async () => ({ reasons: [], punishments: rows, redemptions: [] }),
+      readCommunityRows: async () => ({ reasons: [], punishments: rows, redemptions: [], presets }),
     },
     '@/features/calendar/logic': { formatInstant },
     './messages': { communityMessages },
@@ -150,7 +156,7 @@ async function renderPage(locale: Locale, rows: ReturnType<typeof punishment>[])
     './models': models,
   });
   return renderToStaticMarkup(
-    createElement('div', null, await CommunityPage({ homeId, search: { tab: 'punishments' } })),
+    createElement('div', null, await CommunityPage({ homeId, search: { tab } })),
   );
 }
 
@@ -311,4 +317,110 @@ test('choosing a saved consequence fills the description in es/en', () => {
     assert.ok(!empty.includes(t.savedPunishments));
     assert.ok(empty.includes('required=""'));
   }
+});
+
+const preset = (
+  id: string,
+  description: string,
+  severity: 'light' | 'heavy' | null,
+): models.PunishmentPreset => ({
+  id,
+  home_id: homeId,
+  description,
+  severity,
+  version: 2,
+  created_at: '2026-11-26T10:00:00Z',
+});
+
+test('predefined consequences come first when defining, filtered by severity, with a manage link', async () => {
+  for (const locale of ['es', 'en'] as const) {
+    const t = communityMessages(locale);
+    const html = await renderPage(
+      locale,
+      [
+        punishment('aaaaaaaa-0000-4000-8000-000000000005', me, 5),
+        punishment('aaaaaaaa-0000-4000-8000-000000000015', other, 15, 'Fregar', true),
+      ],
+      [
+        preset('bbbbbbbb-0000-4000-8000-000000000001', 'Bajar la basura', null),
+        preset('bbbbbbbb-0000-4000-8000-000000000002', 'Limpiar el horno', 'heavy'),
+        preset('bbbbbbbb-0000-4000-8000-000000000003', 'Fregar', 'light'),
+      ],
+    );
+    const start = html.indexOf('id="punishment-aaaaaaaa-0000-4000-8000-000000000005"');
+    const card = html.slice(start, html.indexOf('</article>', start));
+    const buttons = Array.from(
+      card.matchAll(/<button type="button" class="([^"]+)"[^>]*>([^<]+)<\/button>/g),
+      (m) => [m[1], m[2]],
+    );
+    assert.deepEqual(buttons, [
+      ['button secondary is-preset', 'Fregar'],
+      ['button secondary is-preset', 'Bajar la basura'],
+    ]);
+    assert.ok(!card.includes('Limpiar el horno'));
+    assert.ok(card.includes(`href="/homes/${homeId}/community?tab=reasons#punishment-presets"`));
+    assert.ok(card.includes(t.managePresets));
+    assert.ok(!html.includes(t.noPending));
+    const none = await renderPage(locale, [], []);
+    assert.ok(none.includes(t.noPending));
+    assert.ok(none.includes(`href="/homes/${homeId}/community?tab=reasons#punishment-presets"`));
+  }
+});
+
+test('Ajustes de puntos manages predefined consequences, and explains a missing migration', async () => {
+  for (const locale of ['es', 'en'] as const) {
+    const t = communityMessages(locale);
+    const html = await renderPage(
+      locale,
+      [],
+      [
+        preset('bbbbbbbb-0000-4000-8000-000000000001', 'Bajar la basura', null),
+        preset('bbbbbbbb-0000-4000-8000-000000000002', 'Limpiar el horno', 'heavy'),
+      ],
+      'reasons',
+    );
+    const section = html.slice(html.indexOf('id="punishment-presets"'));
+    assert.ok(section.includes(`<h2>${t.presets}</h2>`));
+    assert.ok(section.includes(`<summary>${t.newPreset}</summary>`));
+    assert.equal((section.match(/data-operation="preset"/g) ?? []).length, 3);
+    assert.equal((section.match(/data-operation="preset-delete"/g) ?? []).length, 2);
+    assert.ok(section.includes('required="" name="confirm"'));
+    assert.ok(section.includes(t.confirmPreset));
+    assert.ok(section.includes('maxLength="500"'));
+    assert.ok(section.includes(`<option value="heavy" selected="">${t.heavyOnly}</option>`));
+    assert.ok(section.includes(`<p class="badge punishment">${t.anySeverity}</p>`));
+    assert.ok(section.includes(`<p class="badge punishment">${t.heavyOnly}</p>`));
+    const empty = await renderPage(locale, [], [], 'reasons');
+    assert.ok(empty.includes(t.presetsEmpty));
+    const missing = await renderPage(locale, [], null, 'reasons');
+    assert.ok(missing.includes(t.presetsMigration));
+    assert.ok(!missing.includes('data-operation="preset"'));
+  }
+});
+
+test('suggestions put matching presets before history and never repeat a text', () => {
+  const history = [
+    { description: 'fregar', severity: 'light' as const, triggered_at: '2026-11-01T10:00:00Z' },
+    {
+      description: 'Pasear al perro',
+      severity: 'light' as const,
+      triggered_at: '2026-11-02T10:00:00Z',
+    },
+  ];
+  assert.deepEqual(
+    models.punishmentSuggestions(
+      [
+        { description: 'Bajar la basura', severity: null },
+        { description: 'Fregar', severity: 'light' },
+        { description: 'Limpiar el horno', severity: 'heavy' },
+      ],
+      history,
+      'light',
+    ),
+    [
+      { text: 'Fregar', severity: 'light', uses: 0, preset: true },
+      { text: 'Bajar la basura', severity: null, uses: 0, preset: true },
+      { text: 'Pasear al perro', severity: 'light', uses: 1 },
+    ],
+  );
 });

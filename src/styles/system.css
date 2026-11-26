@@ -1180,3 +1180,9 @@ span.ui-spinner {
   overflow-wrap: anywhere;
   text-align: left;
 }
+.punishment-saved-list .button.is-preset {
+  border-color: var(--accent);
+}
+.punishment-manage {
+  width: fit-content;
+}

@@ -5,6 +5,7 @@ import type {
   Rating,
   Redemption,
   Punishment,
+  PunishmentPreset,
   CommunityBalance,
   AuthorLabel,
 } from '@/features/community/models';
@@ -58,6 +59,7 @@ export type Database = {
       ratings: Table<Rating>;
       rating_redemptions: Table<Redemption>;
       punishments: Table<Punishment>;
+      punishment_presets: Table<PunishmentPreset>;
       resources: Table<Resource>;
       reservations: Table<Reservation>;
       activities: Table<Activity>;
@@ -252,6 +254,20 @@ export type Database = {
           notes: string;
           finish: boolean;
         };
+        Returns: undefined;
+      };
+      save_punishment_preset: {
+        Args: {
+          target: string;
+          item: string;
+          expected_version: number;
+          label: string;
+          level: string;
+        };
+        Returns: string;
+      };
+      delete_punishment_preset: {
+        Args: { target: string; item: string; expected_version: number };
         Returns: undefined;
       };
       prepare_rating_photo: { Args: { target: string; item: string }; Returns: string };

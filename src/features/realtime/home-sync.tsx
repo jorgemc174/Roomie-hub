@@ -70,6 +70,7 @@ export function HomeSync({ homeId }: { homeId: string }) {
         'ratings',
         'rating_redemptions',
         'punishments',
+        'punishment_presets',
       ]) {
         channel
           .on(

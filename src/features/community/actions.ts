@@ -77,7 +77,24 @@ export async function communityAction(
         notes: field(form, 'description'),
         finish: field(form, 'finish') === 'on',
       });
-    else if (operation === 'photo') result = { error: null };
+    else if (operation === 'preset') {
+      const level = field(form, 'severity');
+      if (!['', 'light', 'heavy'].includes(level)) return { error: t.invalid };
+      result = await db.rpc('save_punishment_preset', {
+        target: homeId,
+        item: id,
+        expected_version: version,
+        label: field(form, 'description'),
+        level,
+      });
+    } else if (operation === 'preset-delete') {
+      if (field(form, 'confirm') !== 'on') return { error: t.invalid };
+      result = await db.rpc('delete_punishment_preset', {
+        target: homeId,
+        item: id,
+        expected_version: version,
+      });
+    } else if (operation === 'photo') result = { error: null };
     else return { error: t.invalid };
     if (result.error) throw result.error;
     saved = operation === 'rating';
@@ -129,7 +146,8 @@ export async function communityAction(
       revalidatePath(`/homes/${homeId}`, 'layout');
       return { error: t.partial };
     }
-    if (err.code === 'PGRST202' || err.code === '42P01') return { error: t.migration };
+    if (['PGRST202', 'PGRST205', '42P01'].includes(err.code ?? '')) return { error: t.migration };
+    if (err.message === 'duplicate_preset') return { error: t.duplicatePreset };
     if (err.message === 'self_rating') return { error: t.self };
     if (err.message === 'locked_rating') return { error: t.locked };
     if (err.message === 'anonymous_locked') return { error: t.anonymousLocked };

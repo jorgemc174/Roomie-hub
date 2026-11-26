@@ -5,7 +5,7 @@ import { readCommunityRows } from '../src/features/community/queries';
 
 // Query transport spy only: verifies which reads execute, scoping, pagination and
 // failures. No application session or remote database is replaced by these tests.
-function transport(options: { fail?: string; large?: string } = {}) {
+function transport(options: { fail?: string; large?: string; code?: string } = {}) {
   const reads: { table: string; range: number[]; filters: unknown[][] }[] = [];
   const db = {
     from(table: string) {
@@ -50,7 +50,7 @@ function transport(options: { fail?: string; large?: string } = {}) {
         async range(from: number, to: number) {
           reads.push({ table, range: [from, to], filters: [...filters] });
           if (options.fail === table)
-            return { data: null, error: { code: 'test', message: 'read failed' } };
+            return { data: null, error: { code: options.code ?? 'test', message: 'read failed' } };
           const size = options.large === table ? 502 : 1;
           return {
             data: Array.from({ length: Math.max(0, Math.min(to + 1, size) - from) }, (_, i) => ({
@@ -150,9 +150,9 @@ test('assignment history batches only visible instance IDs and preserves read fa
 test('community avoids unrelated histories and keeps home scoping', async () => {
   const expected = {
     points: ['rating_reasons', 'rating_redemptions'],
-    punishments: ['punishments'],
+    punishments: ['punishments', 'punishment_presets'],
     ranking: [],
-    reasons: ['rating_reasons'],
+    reasons: ['rating_reasons', 'punishment_presets'],
   };
   for (const tab of ['points', 'punishments', 'ranking', 'reasons'] as const) {
     const { db, reads } = transport({ fail: tab === 'ranking' ? 'punishments' : undefined });
@@ -176,4 +176,17 @@ test('community preserves pagination and surfaces failures in the selected view'
     code: 'test',
     message: 'read failed',
   });
+});
+
+test('community keeps working before the predefined consequences migration, but not on other failures', async () => {
+  const missing = transport({ fail: 'punishment_presets' });
+  // The transport reports a generic code: anything other than a missing table is surfaced.
+  await assert.rejects(readCommunityRows(missing.db, 'home-example', 'punishments'), {
+    message: 'read failed',
+  });
+  for (const code of ['PGRST205', '42P01']) {
+    const { db } = transport({ fail: 'punishment_presets', code });
+    const result = await readCommunityRows(db, 'home-example', 'punishments');
+    assert.equal(result.presets, null);
+  }
 });

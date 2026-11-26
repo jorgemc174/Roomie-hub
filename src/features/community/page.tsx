@@ -15,8 +15,9 @@ import { CommunityNav, CommunityOptions, communityTab } from './nav';
 import { CommunityRanking } from './ranking';
 import {
   rankMembers,
-  savedPunishments,
+  punishmentSuggestions,
   type AuthorLabel,
+  type PunishmentPreset,
   type RatingReason,
   type CommunityBalance,
 } from './models';
@@ -42,7 +43,7 @@ export async function CommunityPage({
         {['PGRST202', '42P01'].includes(report.error.code) ? t.migration : t.error}
       </p>
     );
-  const [{ reasons, punishments, redemptions }, members, result] = await Promise.all([
+  const [{ reasons, punishments, redemptions, presets }, members, result] = await Promise.all([
     readCommunityRows(db, homeId, tab),
     getMembers(homeId),
     db.rpc('community_balances', { target: homeId }),
@@ -149,10 +150,37 @@ export async function CommunityPage({
     person ? balances.find((b) => b.user_id === person)?.user_name : t.all,
     ...(tab === 'points' && history ? [t.history] : []),
   ].join(' · ');
+  const presetsHref = `${base}?tab=reasons#punishment-presets`;
+  const presetLevel = (value: 'light' | 'heavy' | null) =>
+    value === 'light' ? t.lightOnly : value === 'heavy' ? t.heavyOnly : t.anySeverity;
+  const presetFields = (preset?: PunishmentPreset) => (
+    <>
+      <label>
+        {t.description}
+        <textarea
+          name="description"
+          maxLength={500}
+          required
+          defaultValue={preset?.description ?? ''}
+        />
+      </label>
+      <label>
+        {t.presetSeverity}
+        <select name="severity" defaultValue={preset?.severity ?? ''}>
+          <option value="">{t.anySeverity}</option>
+          <option value="light">{t.lightOnly}</option>
+          <option value="heavy">{t.heavyOnly}</option>
+        </select>
+      </label>
+    </>
+  );
   const selectedPunishments = punishments.filter((p) => !person || p.user_id === person);
   const punishmentList = (done: boolean) => (
     <section className="stack">
       <h2>{done ? t.completed : t.pending}</h2>
+      {!done && !selectedPunishments.some((p) => !p.completed_at) && (
+        <p className="muted">{t.noPending}</p>
+      )}
       {selectedPunishments
         .filter((p) => Boolean(p.completed_at) === done)
         .map((p) => (
@@ -179,7 +207,8 @@ export async function CommunityPage({
                     >
                       <PunishmentDescription
                         locale={locale}
-                        saved={savedPunishments(punishments, p.severity)}
+                        saved={punishmentSuggestions(presets ?? [], punishments, p.severity)}
+                        manageHref={presetsHref}
                         defaultValue={p.description}
                       />
                     </CommunityForm>
@@ -225,7 +254,8 @@ export async function CommunityPage({
                   >
                     <PunishmentDescription
                       locale={locale}
-                      saved={savedPunishments(punishments, p.severity)}
+                      saved={punishmentSuggestions(presets ?? [], punishments, p.severity)}
+                      manageHref={presetsHref}
                       required
                     />
                   </CommunityForm>
@@ -297,6 +327,68 @@ export async function CommunityPage({
       )}
       {tab === 'reasons' && (
         <>
+          <section className="stack" id="punishment-presets">
+            <h2>{t.presets}</h2>
+            <p className="muted">{t.presetsHelp}</p>
+            {presets === null ? (
+              <p className="notice">{t.presetsMigration}</p>
+            ) : (
+              <>
+                <details className="panel">
+                  <summary>{t.newPreset}</summary>
+                  <CommunityForm
+                    homeId={homeId}
+                    operation="preset"
+                    id={crypto.randomUUID()}
+                    locale={locale}
+                    label={t.save}
+                  >
+                    {presetFields()}
+                  </CommunityForm>
+                </details>
+                {!presets.length && <p className="muted">{t.presetsEmpty}</p>}
+                {presets.map((preset) => (
+                  <article className="panel" key={preset.id} id={`preset-${preset.id}`}>
+                    <div className="section-heading options-heading">
+                      <h3 className="community-description">{preset.description}</h3>
+                      <OptionsMenu label={`${preset.description}: ${t.options}`}>
+                        <details>
+                          <summary>{t.edit}</summary>
+                          <CommunityForm
+                            homeId={homeId}
+                            operation="preset"
+                            id={preset.id}
+                            version={preset.version}
+                            locale={locale}
+                            label={t.save}
+                          >
+                            {presetFields(preset)}
+                          </CommunityForm>
+                        </details>
+                        <details>
+                          <summary>{t.delete}</summary>
+                          <CommunityForm
+                            homeId={homeId}
+                            operation="preset-delete"
+                            id={preset.id}
+                            version={preset.version}
+                            locale={locale}
+                            label={t.delete}
+                          >
+                            <label className="checkbox">
+                              <input type="checkbox" name="confirm" required />
+                              {t.confirmPreset}
+                            </label>
+                          </CommunityForm>
+                        </details>
+                      </OptionsMenu>
+                    </div>
+                    <p className="badge punishment">{presetLevel(preset.severity)}</p>
+                  </article>
+                ))}
+              </>
+            )}
+          </section>
           <h2>{t.reasons}</h2>
           <CommunityForm
             homeId={homeId}
@@ -374,6 +466,9 @@ export async function CommunityPage({
       )}
       {tab === 'punishments' && (
         <>
+          <Link className="punishment-manage" href={presetsHref}>
+            {t.managePresets}
+          </Link>
           {punishmentList(false)}
           {punishmentList(true)}
         </>

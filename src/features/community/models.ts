@@ -80,7 +80,20 @@ export function rankMembers(rows: CommunityBalance[]) {
         a.user_id.localeCompare(b.user_id),
     );
 }
-export type SavedPunishment = { text: string; severity: Punishment['severity']; uses: number };
+export type PunishmentPreset = {
+  id: string;
+  home_id: string;
+  description: string;
+  severity: Punishment['severity'] | null;
+  version: number;
+  created_at: string;
+};
+export type SavedPunishment = {
+  text: string;
+  severity: Punishment['severity'] | null;
+  uses: number;
+  preset?: boolean;
+};
 // Every described consequence becomes reusable: same severity first, then most used, then most recent.
 export function savedPunishments(
   rows: Pick<Punishment, 'description' | 'severity' | 'triggered_at'>[],
@@ -110,4 +123,24 @@ export function savedPunishments(
     )
     .slice(0, limit)
     .map(({ text, severity: kind, uses }) => ({ text, severity: kind, uses }));
+}
+// Predefined consequences first (matching severity or any), then the reusable history without repeating texts.
+export function punishmentSuggestions(
+  presets: Pick<PunishmentPreset, 'description' | 'severity'>[],
+  rows: Pick<Punishment, 'description' | 'severity' | 'triggered_at'>[],
+  severity: Punishment['severity'],
+  limit = 12,
+): SavedPunishment[] {
+  const fixed = presets
+    .filter((p) => !p.severity || p.severity === severity)
+    .map((p) => ({ text: p.description, severity: p.severity, uses: 0, preset: true }))
+    .sort(
+      (a, b) =>
+        Number(Boolean(b.severity)) - Number(Boolean(a.severity)) || a.text.localeCompare(b.text),
+    );
+  const known = new Set(fixed.map((p) => p.text.toLocaleLowerCase('es')));
+  const history = savedPunishments(rows, severity, limit).filter(
+    (s) => !known.has(s.text.toLocaleLowerCase('es')),
+  );
+  return [...fixed, ...history].slice(0, Math.max(limit, fixed.length));
 }

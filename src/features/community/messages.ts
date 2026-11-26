@@ -102,6 +102,21 @@ const es = {
   viewPunishments: 'Ver castigos',
   savedPunishments: 'Castigos guardados',
   usedTimes: 'usado {n} veces',
+  noPending: 'No hay castigos pendientes. Aparecen solos al llegar a 5, 10, 15… negativos.',
+  presets: 'Castigos predefinidos',
+  presetsHelp:
+    'Aparecen primero al pulsar «Definir castigo». Puedes dejarlos para cualquier castigo o solo para leves o fuertes.',
+  newPreset: 'Nuevo castigo predefinido',
+  presetSeverity: 'Para',
+  anySeverity: 'Cualquier castigo',
+  lightOnly: 'Solo leves',
+  heavyOnly: 'Solo fuertes',
+  presetsEmpty: 'Todavía no hay castigos predefinidos.',
+  managePresets: 'Gestionar castigos predefinidos',
+  confirmPreset: 'Confirmo que lo quito de la lista; los castigos ya definidos no cambian.',
+  duplicatePreset: 'Ese castigo predefinido ya existe.',
+  presetsMigration:
+    'Falta aplicar la migración 202611260001_punishment_presets.sql para usar castigos predefinidos.',
   completedBy: 'Cumplido por',
 };
 const en: Record<keyof typeof es, string> = {
@@ -205,6 +220,21 @@ const en: Record<keyof typeof es, string> = {
   viewPunishments: 'View consequences',
   savedPunishments: 'Saved consequences',
   usedTimes: 'used {n} times',
+  noPending: 'No pending consequences. They appear automatically at 5, 10, 15… negatives.',
+  presets: 'Predefined consequences',
+  presetsHelp:
+    'They appear first when you press “Define consequence”. Keep them for any consequence or only for light or heavy ones.',
+  newPreset: 'New predefined consequence',
+  presetSeverity: 'For',
+  anySeverity: 'Any consequence',
+  lightOnly: 'Light only',
+  heavyOnly: 'Heavy only',
+  presetsEmpty: 'There are no predefined consequences yet.',
+  managePresets: 'Manage predefined consequences',
+  confirmPreset: 'I confirm removing it from the list; consequences already defined do not change.',
+  duplicatePreset: 'That predefined consequence already exists.',
+  presetsMigration:
+    'Apply migration 202611260001_punishment_presets.sql to use predefined consequences.',
   completedBy: 'Completed by',
 };
 export const communityMessages = (locale: Locale) => (locale === 'en' ? en : es);
