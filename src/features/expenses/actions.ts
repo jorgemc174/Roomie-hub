@@ -2,7 +2,7 @@
 import { receiptFile } from './receipts';
 import { RECEIPT_BUCKET, allowedReceiptExtension, receiptStagingFolder } from './receipt-limits';
 import { revalidatePath } from 'next/cache';
-import { redirect, unstable_rethrow } from 'next/navigation';
+import { redirect, RedirectType, unstable_rethrow } from 'next/navigation';
 import { getHome, requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import type { ActionState } from '@/app/actions';
@@ -240,6 +240,9 @@ export async function financeAction(
     } else return { error: t.invalid };
     if (result.error) throw result.error;
     revalidatePath(`/homes/${homeId}`, 'layout');
+    if (operation === 'save' && field(form, 'shopping_list_id')) {
+      redirect(`/homes/${homeId}/expenses#expense-${id}`, RedirectType.replace);
+    }
     return { success: t.saved };
   } catch (e) {
     unstable_rethrow(e);
