@@ -182,6 +182,7 @@ textarea {
   --accent: #257a55;
   --on-accent: #ffffff;
   --danger: #b3263e;
+  --debt: #ac1717;
   --focus: #257a55;
   --raised: #f9faf8;
   --shadow: 0 4px 18px #1e3a2c0d;
@@ -207,6 +208,7 @@ textarea {
   --accent: #8fe0b5;
   --on-accent: #0d2a1c;
   --danger: #f5a3ad;
+  --debt: #ff7676;
   --focus: #8fe0b5;
   --raised: #282c34;
   --shadow: 0 6px 24px #00000052;

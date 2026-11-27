@@ -1,4 +1,5 @@
 import { sanitizePdf } from '@/lib/files/pdf';
+import { allowedReceiptExtension, RECEIPT_MAX_BYTES } from './receipt-limits';
 
 // PDFs are stored as re-serialized by pdf-lib, never as uploaded: validating one parse
 // and storing the original bytes would let parser differentials (polyglots) through.
@@ -7,12 +8,12 @@ export async function receiptFile(
   size: number,
   bytes: Uint8Array,
 ): Promise<{ extension: string; bytes?: Uint8Array<ArrayBuffer> } | null> {
-  if (size < 1 || size > 10485760) return null;
+  if (!allowedReceiptExtension(mime, size)) return null;
   if (mime === 'application/pdf') {
     if (bytes.length !== size) return null;
     try {
       const clean = new Uint8Array(await sanitizePdf(bytes));
-      return clean.length <= 10485760 ? { extension: 'pdf', bytes: clean } : null;
+      return clean.length <= RECEIPT_MAX_BYTES ? { extension: 'pdf', bytes: clean } : null;
     } catch {
       return null;
     }

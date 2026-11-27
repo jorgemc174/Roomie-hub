@@ -42,13 +42,29 @@ const es = {
   receipt: 'Ticket (imagen o PDF, máximo 10 MB)',
   preview: 'Reparto antes de guardar',
   invalid: 'Revisa los datos. El reparto debe sumar exactamente el importe o el 100 %.',
+  conceptRequired: 'El concepto es obligatorio',
+  amountPositive: 'El importe debe ser mayor que 0',
+  amountFormat: 'Introduce un importe válido con {decimals} decimales como máximo.',
+  participantsRequired: 'Debe haber al menos un participante seleccionado para repartir el gasto',
+  sharesFormat:
+    'Revisa las cantidades del reparto: solo números positivos con {decimals} decimales como máximo.',
+  splitSum: 'Suma de las partes: {sum} de {total}',
+  splitBalanced: 'La suma de las partes coincide con el total del gasto.',
+  splitShort:
+    'La suma de las partes ({sum}) no coincide con el total del gasto ({total}). Faltan {diff} por asignar',
+  splitOver:
+    'La suma de las partes ({sum}) no coincide con el total del gasto ({total}). La suma introducida supera el total por {diff}',
+  percentSum: 'Suma de los porcentajes: {sum}',
+  percentInvalid: 'La suma de los porcentajes debe ser exactamente 100%. Actual: {sum}',
+  percentBalanced: 'Los porcentajes suman exactamente 100 %.',
+  splitBlocked: 'Corrige el reparto para poder guardar.',
   error: 'No se pudo completar la operación. Comprueba la conexión e inténtalo de nuevo.',
   migration: 'Falta aplicar la migración 202609150005_expenses.sql.',
   stale: 'Otra persona modificó este registro. Recarga y revisa los cambios antes de guardar.',
   balance: 'Tu saldo',
   owed: 'Te deben',
   owe: 'Debes',
-  zero: 'Estás al día',
+  zero: 'Estás saldado',
   balances: 'Saldos',
   suggestions: 'Pagos sugeridos',
   suggestionHelp:
@@ -83,7 +99,7 @@ const es = {
   generate: 'Revisar periodos pendientes',
   more: 'Quedan periodos atrasados. Pulsa Revisar periodos pendientes para continuar.',
   recurrenceHelp:
-    'Se emiten solo periodos vencidos al abrir Gastos. Sin cron instalado. Las variables no cuentan hasta confirmar; las fijas con miembros inactivos requieren revisión.',
+    'Se emiten los periodos vencidos. Los importes variables requieren confirmación. Si alguien deja el piso, su parte se reparte entre los participantes activos.',
   variableHelp:
     'Para importes variables usa reparto igual o porcentajes; puedes introducir cantidades exactas al confirmar.',
   shopping: 'Crear gasto desde compra',
@@ -95,7 +111,14 @@ const es = {
   confirmLeave: 'Confirmo que quiero salir de este piso.',
   leaveDebt: 'No puedes salir. Tu saldo es',
   currencyLocked: 'La moneda no puede cambiarse porque el piso ya tiene historial financiero.',
-  receiptFailed: 'El gasto se guardó, pero el adjunto no. Puedes volver a adjuntarlo desde Editar.',
+  receiptFailed: 'No se ha podido guardar el ticket. Vuelve a intentarlo.',
+  settledExpense:
+    'Este gasto está vinculado a una liquidación ya efectuada. No se puede editar ni eliminar.',
+  deleteRecurring: 'Eliminar',
+  confirmDeleteRecurring: '¿Eliminar esta regla? Los gastos ya contabilizados se conservan.',
+  confirmDeletion: 'Confirmar eliminación',
+  recurringNeedsMembers:
+    'Para emitir nuevos gastos, selecciona un pagador activo y al menos un participante activo.',
   receiptInvalid: 'Adjunto inválido: usa JPEG, PNG, WebP o PDF de hasta 10 MB.',
   download: 'Abrir ticket',
   scheduleHistory: 'La nueva fecha inicial debe ser posterior a los periodos ya emitidos.',
@@ -149,13 +172,29 @@ const en: Record<keyof typeof es, string> = {
   receipt: 'Receipt (image or PDF, maximum 10 MB)',
   preview: 'Split before saving',
   invalid: 'Check the fields. Shares must equal the exact total or 100%.',
+  conceptRequired: 'Description is required',
+  amountPositive: 'Amount must be greater than 0',
+  amountFormat: 'Enter a valid amount with at most {decimals} decimal places.',
+  participantsRequired: 'At least one participant must be selected to split the expense',
+  sharesFormat:
+    'Check the split amounts: positive numbers only, with at most {decimals} decimal places.',
+  splitSum: 'Sum of shares: {sum} of {total}',
+  splitBalanced: 'The shares add up to the expense total.',
+  splitShort:
+    'The sum of the shares ({sum}) does not match the expense total ({total}). {diff} left to assign',
+  splitOver:
+    'The sum of the shares ({sum}) does not match the expense total ({total}). The entered sum exceeds the total by {diff}',
+  percentSum: 'Sum of percentages: {sum}',
+  percentInvalid: 'Percentages must add up to exactly 100%. Current: {sum}',
+  percentBalanced: 'Percentages add up to exactly 100%.',
+  splitBlocked: 'Fix the split to save.',
   error: 'Could not complete the operation. Check your connection and try again.',
   migration: 'Apply migration 202609150005_expenses.sql first.',
   stale: 'Someone changed this record. Reload and review before saving.',
   balance: 'Your balance',
   owed: 'You are owed',
   owe: 'You owe',
-  zero: 'Settled up',
+  zero: 'You’re settled up',
   balances: 'Balances',
   suggestions: 'Suggested payments',
   suggestionHelp:
@@ -190,7 +229,7 @@ const en: Record<keyof typeof es, string> = {
   generate: 'Process due periods',
   more: 'More overdue periods remain. Select Process due periods to continue.',
   recurrenceHelp:
-    'Only due periods are issued when Expenses opens. No cron is installed. Variable amounts require confirmation; fixed expenses with inactive members require review.',
+    'Only due periods are issued. Variable amounts require confirmation. When someone leaves the home, their share is redistributed among active participants.',
   variableHelp:
     'Variable templates use equal or percentage shares. Exact amounts are available when confirming.',
   shopping: 'Create expense from shopping',
@@ -202,7 +241,14 @@ const en: Record<keyof typeof es, string> = {
   confirmLeave: 'I confirm that I want to leave this home.',
   leaveDebt: 'You cannot leave. Your balance is',
   currencyLocked: 'Currency cannot change because this home has financial history.',
-  receiptFailed: 'Expense saved, but the attachment failed. You can attach it again from Edit.',
+  receiptFailed: 'The receipt could not be saved. Please try again.',
+  settledExpense:
+    'This expense is linked to a recorded settlement. It cannot be edited or deleted.',
+  deleteRecurring: 'Delete',
+  confirmDeleteRecurring: 'Delete this rule? Previously posted expenses are kept.',
+  confirmDeletion: 'Confirm deletion',
+  recurringNeedsMembers:
+    'To issue new expenses, select an active payer and at least one active participant.',
   receiptInvalid: 'Invalid attachment: use JPEG, PNG, WebP or PDF up to 10 MB.',
   download: 'Open receipt',
   scheduleHistory: 'The new anchor must be after all issued periods.',

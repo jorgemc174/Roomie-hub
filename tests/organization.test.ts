@@ -279,25 +279,24 @@ test('Phase 2 PostgreSQL: assignments, shopping, history, privileges and RLS', a
         await assert.rejects(generate(h));
       },
     );
-    await t.test(
-      'starter defaults are explicit, localized, idempotent and preserve edits',
-      async () => {
-        const h = await home(1);
-        await db.query("select public.initialize_chores($1,'en')", [h]);
-        await db.query("select public.initialize_chores($1,'es')", [h]);
-        assert.equal(
-          await scalar<number>('select count(*)::int v from public.chores where home_id=$1', [h]),
-          5,
-        );
-        assert.equal(
-          await scalar<string>(
-            "select name v from public.chores where home_id=$1 and seed_key='default-1'",
-            [h],
-          ),
-          'Clean kitchen',
-        );
-      },
-    );
+    await t.test('starter defaults use the creator’s language and are idempotent', async () => {
+      await as(alice);
+      await db.query("update public.profiles set locale='en' where id=$1", [alice]);
+      const h = await home(1);
+      await db.query("select public.initialize_chores($1,'en')", [h]);
+      await db.query("select public.initialize_chores($1,'es')", [h]);
+      assert.equal(
+        await scalar<number>('select count(*)::int v from public.chores where home_id=$1', [h]),
+        5,
+      );
+      assert.equal(
+        await scalar<string>(
+          "select name v from public.chores where home_id=$1 and seed_key='default-1'",
+          [h],
+        ),
+        'Clean kitchen',
+      );
+    });
     await t.test(
       'deadlines store concrete DST-aware instants, optional deadlines remain null',
       async () => {

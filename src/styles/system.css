@@ -64,6 +64,22 @@ textarea {
   background: transparent;
   scroll-margin-top: var(--space-4);
 }
+/* PA 2687: an overdue occurrence stays marked inside its period (rose = delay, not error). */
+.task-period .task-row.overdue {
+  padding-inline: var(--space-3);
+  background: var(--rose);
+  box-shadow: inset 4px 0 0 var(--rose-ink);
+  border-bottom-color: color-mix(in srgb, var(--rose-ink) 45%, var(--line));
+}
+.task-period .task-row.overdue .badge.overdue {
+  background: var(--surface);
+}
+/* PA 2467: a completed task is crossed out. */
+.task-row.completed .task-identity h3 {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  color: var(--muted);
+}
 .task-period .task-content {
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
@@ -798,6 +814,9 @@ span.ui-spinner {
 .tone-negative {
   color: var(--rose-ink);
 }
+.tone-debt {
+  color: var(--debt);
+}
 .tone-money {
   color: var(--peach-ink);
 }
@@ -1148,7 +1167,7 @@ span.ui-spinner {
   border-radius: inherit;
 }
 
-.shopping-delete-dialog {
+.confirm-delete-dialog {
   width: min(28rem, calc(100% - 32px));
   max-height: calc(100dvh - 32px);
   overflow: auto;
@@ -1159,7 +1178,7 @@ span.ui-spinner {
   background: var(--surface);
   color: var(--ink);
 }
-.shopping-delete-dialog::backdrop {
+.confirm-delete-dialog::backdrop {
   background: rgb(0 0 0 / 55%);
 }
 .punishment-saved {
@@ -1185,4 +1204,23 @@ span.ui-spinner {
 }
 .punishment-manage {
   width: fit-content;
+}
+.form .field-error {
+  color: var(--danger);
+  font-weight: 600;
+}
+.form input[aria-invalid='true'],
+.form select[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.split-sum {
+  display: grid;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+.split-diff {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }

@@ -1,3 +1,4 @@
+import { ConfirmDelete } from '../src/components/ui/confirm-delete';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -241,6 +242,7 @@ test('PA1278: SSR separates the visible 50-row total from all 51 filtered expens
       const passthrough = ({ children }: { children?: import('react').ReactNode }) =>
         React.createElement('div', null, children);
       const dependencies: Record<string, unknown> = {
+        '@/components/ui/confirm-delete': { ConfirmDelete },
         'react/jsx-runtime': jsx,
         './category-filter': filter,
         './category-summary': summary,

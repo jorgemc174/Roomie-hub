@@ -44,6 +44,20 @@ export async function deliverNotifications() {
       else attachmentsRemoved = paths.length;
     }
   }
+  const expiredReceipts = await db.rpc('claim_receipt_cleanup');
+  if (expiredReceipts.error) attachmentCleanupErrors++;
+  else if (expiredReceipts.data.length) {
+    const receiptPaths = expiredReceipts.data.map((item) => item.path);
+    const removed = await db.storage.from('expense-receipts').remove(receiptPaths);
+    if (removed.error) attachmentCleanupErrors++;
+    else {
+      const finished = await db.rpc('finish_receipt_cleanup', {
+        lease_token: expiredReceipts.data[0].lease,
+      });
+      if (finished.error) attachmentCleanupErrors++;
+      else attachmentsRemoved += receiptPaths.length;
+    }
+  }
   const cleanup = { attachmentsRemoved, attachmentCleanupErrors };
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     privateKey = process.env.VAPID_PRIVATE_KEY,

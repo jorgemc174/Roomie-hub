@@ -1,4 +1,5 @@
 // Development only: real Auth, PostgREST, RLS, Storage and optional two-browser Realtime.
+import { PDFDocument } from 'pdf-lib';
 import { createClient } from '@supabase/supabase-js';
 import { chromium, expect } from '@playwright/test';
 import { randomUUID, randomBytes } from 'node:crypto';
@@ -93,12 +94,13 @@ try {
   ]);
   assert.ok((await rpc(a.c, 'expense_balances', { target: h })).every((x) => x.balance === '0'));
   check('30 EUR split, 15 EUR payment, zero balances and concurrent retry idempotency');
+  const editableId = randomUUID();
   for (const [mode, total, weights] of [
     ['equal', '1001', ['1', '1']],
     ['custom', '1000', ['700', '300']],
     ['percentage', '1001', ['5000', '5000']],
   ]) {
-    const item = randomUUID(),
+    const item = mode === 'equal' ? editableId : randomUUID(),
       p = {
         ...body,
         amount: total,
@@ -115,15 +117,15 @@ try {
   const edits = await Promise.all([
     a.c.rpc('save_expense', {
       target: h,
-      item: id,
+      item: editableId,
       expected_version: 1,
-      body: { ...body, title: 'Edited A' },
+      body: { ...body, amount: '1001', title: 'Edited A' },
     }),
     b.c.rpc('save_expense', {
       target: h,
-      item: id,
+      item: editableId,
       expected_version: 1,
-      body: { ...body, title: 'Edited B' },
+      body: { ...body, amount: '1001', title: 'Edited B' },
     }),
   ]);
   assert.equal(edits.filter((r) => r.error).length, 1);
@@ -202,19 +204,23 @@ try {
     (await c.c.rpc('save_expense', { target: h, item: randomUUID(), expected_version: 0, body }))
       .error,
   );
-  const path = `${h}/${id}/${randomUUID()}.pdf`,
-    bytes = Buffer.from('%PDF-1.4\n% RoomieHub access test\n%%EOF');
+  const receiptExpense = randomUUID();
+  const path = `${h}/${receiptExpense}/${a.id}/${randomUUID()}.pdf`;
+  const pdf = await PDFDocument.create();
+  pdf.addPage();
+  const bytes = await pdf.save();
   const uploaded = await a.c.storage
     .from('expense-receipts')
     .upload(path, bytes, { contentType: 'application/pdf' });
   if (uploaded.error) throw uploaded.error;
   objects.push(path);
-  await rpc(a.c, 'attach_expense_receipt', {
+  await rpc(a.c, 'save_expense_with_receipt', {
     target: h,
-    item: id,
+    item: receiptExpense,
+    expected_version: 0,
+    body: { ...body, participants: [{ user_id: a.id, weight: '1' }] },
     object_path: path,
-    media_type: 'application/pdf',
-    byte_size: bytes.length,
+    confirm_occurrence: false,
   });
   assert.ok((await c.c.storage.from('expense-receipts').download(path)).error);
   assert.equal((await b.c.storage.from('expense-receipts').download(path)).error, null);

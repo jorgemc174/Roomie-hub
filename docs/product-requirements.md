@@ -245,7 +245,7 @@ NO mostrar el ranking de positivos/negativos en Inicio.
 
 Cada piso configura sus propias tareas.
 
-Dar tareas genéricas iniciales:
+Al crear un piso se añaden exactamente cinco tareas genéricas activas y sin asignar:
 
 * limpiar cocina
 * limpiar baño
@@ -253,7 +253,7 @@ Dar tareas genéricas iniciales:
 * sacar basura
 * fregar suelo
 
-Pero se pueden editar/eliminar/añadir.
+Se pueden editar, añadir y eliminar con confirmación. Eliminar cancela pendientes y conserva completadas y puntos. Completar una tarea recurrente emite el periodo siguiente si hay responsable elegible.
 
 Cada tarea tendrá:
 

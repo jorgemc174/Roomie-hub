@@ -5,7 +5,7 @@ import { requireUser } from '@/lib/data';
 import { i18n } from '@/lib/i18n/server';
 import type { ActionState } from '@/app/actions';
 import { organizationMessages } from './messages';
-import { validDate, validDifficulty } from './logic';
+import { overlappingAbsence, validDate, validDifficulty } from './logic';
 const field = (f: FormData, key: string) => String(f.get(key) ?? '').trim();
 const uuid = (s: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -35,8 +35,8 @@ export async function organizationAction(
         description = field(form, 'description');
       const rotation = form.getAll('rotation').map(String);
       const due = field(form, 'deadline') === 'on' ? Number(field(form, 'deadline_days')) : null;
+      if (!validDifficulty(weight)) return { error: t.difficultyRange };
       if (
-        !validDifficulty(weight) ||
         !validDate(anchor) ||
         !['daily', 'days', 'weekly', 'weeks', 'monthly'].includes(kind) ||
         !Number.isInteger(n) ||
@@ -68,6 +68,9 @@ export async function organizationAction(
         due_time: field(form, 'deadline_time') || '20:00',
         due_timezone: field(form, 'deadline_timezone') || 'UTC',
       });
+    } else if (operation === 'delete_chore') {
+      if (!id || field(form, 'confirm') !== 'on') return { error: t.invalid };
+      result = await db.rpc('delete_chore', { target: homeId, task: id });
     } else if (operation === 'initialize') {
       result = await db.rpc('initialize_chores', { target: homeId, language_code: locale });
     } else if (operation === 'generate') {
@@ -94,8 +97,21 @@ export async function organizationAction(
       const person = field(form, 'person'),
         starts = field(form, 'start_date'),
         ends = field(form, 'end_date');
-      if (!uuid(person) || !validDate(starts) || !validDate(ends) || ends < starts)
-        return { error: t.invalid };
+      if (!uuid(person) || !validDate(starts) || !validDate(ends)) return { error: t.invalid };
+      if (ends < starts) return { error: t.absenceEndBeforeStart };
+      if (operation === 'save_absence') {
+        const existing = await db
+          .from('absences')
+          .select('id,start_date,end_date')
+          .eq('home_id', homeId)
+          .eq('user_id', person)
+          .is('deleted_at', null)
+          .lte('start_date', ends)
+          .gte('end_date', starts);
+        if (existing.error) throw existing.error;
+        if (overlappingAbsence(existing.data ?? [], starts, ends, id))
+          return { error: t.absenceOverlap };
+      }
       result = await db.rpc('save_absence', {
         target: homeId,
         absence: id || null,
@@ -150,14 +166,20 @@ export async function organizationAction(
                 ? operation === 'add_item'
                   ? t.productNameInvalid
                   : t.listNameInvalid
-                : message === 'not_found'
-                  ? t.missing
-                  : message.startsWith('invalid_') ||
-                      ['23514', '23502', '23505', '22P02', '22007', '22008'].includes(code ?? '')
-                    ? t.invalid
-                    : ['PGRST202', '42P01'].includes(code ?? '')
-                      ? t.migration
-                      : t.error,
+                : message === 'absence_overlap'
+                  ? t.absenceOverlap
+                  : message === 'absence_end_before_start'
+                    ? t.absenceEndBeforeStart
+                    : message === 'not_found'
+                      ? t.missing
+                      : message.startsWith('invalid_') ||
+                          ['23514', '23502', '23505', '22P02', '22007', '22008'].includes(
+                            code ?? '',
+                          )
+                        ? t.invalid
+                        : ['PGRST202', '42P01'].includes(code ?? '')
+                          ? t.migration
+                          : t.error,
       };
     }
     revalidatePath(`/homes/${homeId}`, 'layout');

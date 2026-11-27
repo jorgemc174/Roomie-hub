@@ -13,6 +13,8 @@ export type Chore = {
   deadline_time: string;
   deadline_timezone: string;
   seed_key: string | null;
+  awaiting_assignment: boolean;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };

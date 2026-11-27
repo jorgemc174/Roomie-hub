@@ -10,11 +10,13 @@
 8. **Realtime:** cinco tablas operativas por home_id, INSERT/UPDATE; rotaciones actualizan su definición. Bajas lógicas para sincronizar eliminaciones. Se conservan suscripciones base de homes/home_members. Espera de disponibilidad PostgreSQL, JWT y limpieza al desmontar.
 9. **Pruebas:** lint, typecheck, build, 37 pruebas unitarias/PostgreSQL y 10 e2e públicos correctos. Ver `docs/validation.md` para cobertura e incidencias corregidas.
 10. **Remoto:** tres cuentas de test, dos pisos; JWT/RLS/RPC reales, creación/completado y reasignación; dos navegadores observan cambios reales de tareas y compras sin recarga; perfil, idioma, tema y móvil. Fixtures eliminados al terminar.
-11. **Paso manual:** la migración ya está aplicada en el proyecto actual. Para las cinco tareas genéricas del piso existente, Organización → Configurar tareas → Añadir tareas iniciales. Al copiar el ZIP a otro equipo, instalar dependencias y crear `.env.local` según `docs/setup.md`.
+11. **Paso manual:** en pisos existentes que aún no tienen las tareas genéricas, Convivencia → Configurar tareas → Añadir tareas iniciales. Los pisos nuevos reciben las cinco genéricas al crearse. Al copiar el ZIP a otro equipo, instalar dependencias y crear `.env.local` según `docs/setup.md`.
 12. **Límites:** generación bajo demanda, sin cron instalado; tareas completadas no se desmarcan; periodos/ausencias UTC y deadlines con zona IANA; sin personas disponibles se informa y reintenta. Stress de concurrencia, cortes prolongados, OAuth/SMTP y automatizaciones futuras no están acreditados por esta entrega.
 
 No se implementa Fase 3 ni gastos, puntos, calendario completo, chat o notificaciones.
 
 ## Revisión posterior
 
-El endurecimiento 004 sustituye el horizonte y las reglas de futuras instancias descritos en la entrega original. Consulte [la semántica actual](phase-2-hardening.md) y [validación](validation.md).
+La migración W3 `202611250002_pa_task_lifecycle.sql` añade las semillas al alta, la eliminación irreversible y la emisión de la siguiente ocurrencia al completar. El endurecimiento 004 sustituye el horizonte y las reglas de futuras instancias descritos en la entrega original. Consulte [la semántica actual](phase-2-hardening.md) y [validación](validation.md).
+
+Desde `202611250006_pa_task_assignment_notice.sql`, los avisos de asignación o reasignación de tareas futuras quedan pendientes hasta el primer ciclo del planificador a partir de la medianoche local del piso en el día de inicio del periodo. Esto incluye las ocurrencias generadas para mañana y las emitidas al completar la anterior. Las asignaciones del periodo en curso se notifican en el momento.

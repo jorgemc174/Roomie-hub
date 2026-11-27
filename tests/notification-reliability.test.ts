@@ -44,7 +44,8 @@ async function worker(total: number, sendDuration = 0) {
       admin: { getUserById: async () => ({ data: { user: { email: 'test@example.test' } } }) },
     },
     rpc: async (name: string, args: { batch_size?: number; item?: string }) => {
-      if (name === 'pending_chat_attachment_cleanup') return { data: [] };
+      if (name === 'pending_chat_attachment_cleanup' || name === 'claim_receipt_cleanup')
+        return { data: [] };
       if (name === 'claim_notification_deliveries') {
         claims++;
         return { data: queue.splice(0, args.batch_size ?? 30) };

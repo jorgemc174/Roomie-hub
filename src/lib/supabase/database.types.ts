@@ -195,6 +195,11 @@ export type Database = {
       run_notification_jobs: { Args: Record<string, never>; Returns: Json };
       pending_chat_attachment_cleanup: { Args: Record<string, never>; Returns: string[] };
       finish_chat_attachment_cleanup: { Args: { paths: string[] }; Returns: undefined };
+      claim_receipt_cleanup: {
+        Args: Record<string, never>;
+        Returns: { path: string; lease: string }[];
+      };
+      finish_receipt_cleanup: { Args: { lease_token: string }; Returns: undefined };
       claim_notification_deliveries: {
         Args: { channels: string[]; batch_size?: number };
         Returns: Json;
@@ -383,15 +388,21 @@ export type Database = {
         Args: { target: string; item: string; body: Json };
         Returns: string;
       };
-      attach_expense_receipt: {
+      settled_expense_ids: { Args: { target: string; items: string[] }; Returns: string[] };
+      delete_recurring_expense: {
+        Args: { target: string; item: string; expected_version: number };
+        Returns: undefined;
+      };
+      save_expense_with_receipt: {
         Args: {
           target: string;
           item: string;
+          expected_version: number;
+          body: Json;
           object_path: string;
-          media_type: string;
-          byte_size: number;
+          confirm_occurrence: boolean;
         };
-        Returns: undefined;
+        Returns: string;
       };
 
       ensure_current_chores: {
@@ -424,6 +435,7 @@ export type Database = {
         Returns: { created: number; blocked: number };
       };
       reconcile_chore_assignments: { Args: { target: string }; Returns: number };
+      delete_chore: { Args: { target: string; task: string }; Returns: undefined };
       initialize_chores: { Args: { target: string; language_code: string }; Returns: undefined };
       save_absence: {
         Args: {

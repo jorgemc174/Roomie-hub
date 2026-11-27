@@ -1,3 +1,4 @@
+import { ConfirmDelete } from '../src/components/ui/confirm-delete';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -255,6 +256,7 @@ test('empty tasks, shopping and absences keep one creation entry in their destin
       }) => Promise<ReactNode>;
     }>('src/features/organization/page.tsx', {
       '@/components/ui/create-panel': { CreatePanel },
+      '@/components/ui/confirm-delete': { ConfirmDelete },
       '@/components/ui/empty-state': { EmptyState },
       './nav': { OrganizationOptions },
       '@/features/community/nav': { CommunityNav },

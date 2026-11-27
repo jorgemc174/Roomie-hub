@@ -314,10 +314,10 @@ test('PostgreSQL finances, history, recurrences, isolation and receipts', async 
           ),
           'Bob',
         );
-        // An authorized historical correction may create a departed balance. Only active members record its settlement.
-        await save(h, id, body('4000'), 1);
+        // A recorded settlement locks the expense even after the participant leaves.
+        await assert.rejects(save(h, id, body('4000'), 1), /expense_has_settlement/);
         await assert.rejects(
-          db.query('select public.record_settlement($1,$2,$3,$4,501,$5)', [
+          db.query('select public.record_settlement($1,$2,$3,$4,1,$5)', [
             h,
             randomUUID(),
             b,
@@ -326,14 +326,36 @@ test('PostgreSQL finances, history, recurrences, isolation and receipts', async 
           ]),
           /former_payment_limit/,
         );
-        await db.query('select public.record_settlement($1,$2,$3,$4,500,$5)', [
-          h,
-          randomUUID(),
-          b,
-          a,
-          '2026-09-15',
-        ]);
         assert.ok((await balances(h)).every((x) => x.balance === '0'));
+      },
+    );
+    await t.test(
+      'a historical correction can reopen and settle a former member balance',
+      async () => {
+        const h = await home(2);
+        const id = randomUUID();
+        await save(h, id, body('1000'));
+        await as(b);
+        await save(h, randomUUID(), { ...body('1000'), payer: b });
+        await db.query('select public.leave_home($1)', [h]);
+
+        await as(a);
+        await save(h, id, body('2000'), 1);
+        assert.equal((await balances(h)).find((row) => row.user_id === b)?.balance, '-500');
+
+        const pay = (amount: number) =>
+          db.query('select public.record_settlement($1,$2,$3,$4,$5,$6)', [
+            h,
+            randomUUID(),
+            b,
+            a,
+            amount,
+            '2026-09-15',
+          ]);
+        await assert.rejects(pay(501), /former_payment_limit/);
+        await pay(500);
+        assert.ok((await balances(h)).every((row) => row.balance === '0'));
+        await assert.rejects(save(h, id, body('2500'), 2), /expense_has_settlement/);
       },
     );
     await t.test(
@@ -560,11 +582,21 @@ test('PostgreSQL finances, history, recurrences, isolation and receipts', async 
           "insert into storage.objects(bucket_id,name) values('expense-receipts',$1)",
           [path],
         );
-        await db.query("select public.attach_expense_receipt($1,$2,$3,'application/pdf',100)", [
-          h,
-          id,
-          path,
-        ]);
+        await assert.rejects(
+          db.query("select public.attach_expense_receipt($1,$2,$3,'application/pdf',100)", [
+            h,
+            id,
+            path,
+          ]),
+          /permission denied/,
+        );
+        // Keep a pre-migration attachment to cover visibility of existing receipts.
+        await db.exec('reset role');
+        await db.query(
+          "insert into expense_attachments(home_id,expense_id,path,mime,size) values($1,$2,$3,'application/pdf',100)",
+          [h, id, path],
+        );
+        await as(a);
         const tables = [
           'expenses',
           'expense_splits',
@@ -607,6 +639,14 @@ test('PostgreSQL finances, history, recurrences, isolation and receipts', async 
         );
         await db.exec('reset role; set role anon');
         await assert.rejects(balances(h), /permission denied/);
+        await assert.rejects(
+          db.query("select public.attach_expense_receipt($1,$2,$3,'application/pdf',100)", [
+            h,
+            id,
+            path,
+          ]),
+          /permission denied/,
+        );
         await db.exec('reset role');
       },
     );

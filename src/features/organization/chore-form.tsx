@@ -33,6 +33,14 @@ export function ChoreForm({
       .filter((id) => members.some((m) => m.user_id === id)),
   );
   const [person, setPerson] = useState('');
+  const [difficultyError, setDifficultyError] = useState(false);
+  // PA 2464: the browser only names the violated limit; show the full range instead.
+  const checkDifficulty = (input: HTMLInputElement) => {
+    const value = Number(input.value);
+    const outside = input.value !== '' && !(Number.isInteger(value) && value >= 1 && value <= 5);
+    input.setCustomValidity(outside ? t.difficultyRange : '');
+    setDifficultyError(outside);
+  };
   const move = (i: number, delta: number) =>
     setRotation((old) => {
       const next = [...old];
@@ -62,9 +70,25 @@ export function ChoreForm({
             type="number"
             min={1}
             max={5}
+            step={1}
             required
             defaultValue={chore?.difficulty ?? 3}
+            aria-invalid={difficultyError || undefined}
+            aria-describedby={
+              difficultyError ? `difficulty-error-${chore?.id ?? 'new'}` : undefined
+            }
+            onInput={(e) => checkDifficulty(e.currentTarget)}
+            onInvalid={(e) => checkDifficulty(e.currentTarget)}
           />
+          {difficultyError && (
+            <small
+              id={`difficulty-error-${chore?.id ?? 'new'}`}
+              className="field-error"
+              role="alert"
+            >
+              {t.difficultyRange}
+            </small>
+          )}
         </label>
         <label>
           {t.recurrence}
@@ -215,9 +239,7 @@ export function ChoreForm({
             <input
               name="deadline_timezone"
               required
-              defaultValue={
-                chore?.deadline_timezone ?? homeTimezone
-              }
+              defaultValue={chore?.deadline_timezone ?? homeTimezone}
             />
           </label>
           <p>{t.timezoneHelp}</p>

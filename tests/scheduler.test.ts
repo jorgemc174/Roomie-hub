@@ -168,6 +168,7 @@ test('D3: scheduler installation, attachment purge and scheduled job execution',
         const adapter = {
           rpc: async (name: string, args?: { paths: string[] }) => {
             if (name === 'pending_chat_attachment_cleanup') return { data: await queued() };
+            if (name === 'claim_receipt_cleanup') return { data: [] };
             assert.equal(name, 'finish_chat_attachment_cleanup');
             if (failure === 'ack') return { error: { message: 'temporary' } };
             await db.query('select finish_chat_attachment_cleanup($1)', [args!.paths]);

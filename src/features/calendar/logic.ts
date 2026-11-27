@@ -75,12 +75,22 @@ export function normalizeCalendar(
     recurring: Recurring[];
     occurrences: Occurrence[];
     timezone?: string;
+    /** Names inside this home (active and former members) for expense templates. */
+    names?: Record<string, string>;
   },
   now: string,
 ): CalendarEvent[] {
   const base = `/homes/${input.homeId}`,
     zone = input.timezone ?? 'UTC',
     events: CalendarEvent[] = [];
+  // Expense templates only keep user IDs: payer first, then participants, without repeats.
+  const involved = (template: Recurring['template']) => {
+    const people = [...new Set([template.payer, ...template.participants.map((p) => p.user_id)])];
+    return {
+      people,
+      names: people.flatMap((id) => (input.names?.[id] ? [input.names[id]] : [])),
+    };
+  };
   for (const t of input.tasks) {
     if (t.cancelled_at) continue;
     events.push({
@@ -147,8 +157,7 @@ export function normalizeCalendar(
       endsAt: null,
       allDay: true,
       status: 'scheduled',
-      people: [r.template.payer, ...r.template.participants.map((p) => p.user_id)],
-      names: [],
+      ...involved(r.template),
       href: `${base}/expenses?tab=recurring#recurring-${r.id}`,
     });
   }
@@ -163,8 +172,7 @@ export function normalizeCalendar(
       endsAt: null,
       allDay: true,
       status: 'pending',
-      people: [r.template.payer, ...r.template.participants.map((p) => p.user_id)],
-      names: [],
+      ...involved(r.template),
       href: `${base}/expenses?tab=recurring#occurrence-${r.id}`,
     });
   }

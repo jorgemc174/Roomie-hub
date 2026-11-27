@@ -11,6 +11,16 @@ export function addDays(value: string, days: number): string {
 export function validDifficulty(value: number) {
   return Number.isInteger(value) && value >= 1 && value <= 5;
 }
+// PA 2411: live absences of one person cannot overlap. Both ends are inclusive and the
+// absence being edited is ignored. save_absence enforces the same rule in SQL.
+export function overlappingAbsence(
+  existing: { id: string; start_date: string; end_date: string }[],
+  starts: string,
+  ends: string,
+  editing = '',
+) {
+  return existing.some((a) => a.id !== editing && a.start_date <= ends && a.end_date >= starts);
+}
 // Phase 5 hook: floor elapsed 24-hour blocks; stop the clock at completion.
 // Point creation belongs to a future transactional job, with unique(instance_id, overdue_day).
 export function overdueDays(

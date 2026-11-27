@@ -43,7 +43,7 @@ No utilizar localStorage ni datos ficticios como backend.
 
 Cada piso debe poder definir sus propias tareas.
 
-Crear tareas genéricas cuando corresponda durante el setup inicial:
+Crear cinco tareas genéricas activas y sin asignar durante el alta del piso:
 
 * Limpiar cocina
 * Limpiar baño
@@ -604,9 +604,7 @@ Revisar cuidadosamente las FK y estrategias de borrado.
 
 # 24. DATOS INICIALES
 
-Al crear un piso nuevo, debe ser posible disponer de las tareas genéricas indicadas.
-
-Si modificar directamente el flujo existente de creación de piso puede introducir riesgo, implementa una función segura/idempotente de inicialización.
+Al crear un piso nuevo, el alta genera las cinco tareas genéricas indicadas en la misma transacción mediante la función idempotente de inicialización. Se muestran sin responsable hasta guardar su configuración.
 
 No dupliques tareas genéricas si se ejecuta dos veces.
 

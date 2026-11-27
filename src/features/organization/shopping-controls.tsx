@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { ActionForm } from '@/components/action-form';
+import { ConfirmDelete } from '@/components/ui/confirm-delete';
 import type { ActionState } from '@/app/actions';
 import type { OrganizationMessages } from './messages';
 
@@ -24,44 +25,17 @@ export function DeleteShoppingList({
   action: (state: ActionState, form: FormData) => Promise<ActionState>;
   t: OrganizationMessages;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  const cancel = useRef<HTMLButtonElement>(null);
-  const titleId = useId();
   return (
-    <>
-      <button
-        type="button"
-        ref={trigger}
-        className="button secondary"
-        onClick={() => {
-          dialog.current?.showModal();
-          cancel.current?.focus();
-        }}
-      >
-        {t.listDelete}
-      </button>
-      <dialog
-        ref={dialog}
-        className="shopping-delete-dialog"
-        aria-labelledby={titleId}
-        onKeyDown={(event) => event.stopPropagation()}
-        onClose={() => trigger.current?.focus()}
-      >
-        <p id={titleId}>{t.deleteListPrompt}</p>
-        <ActionForm action={action} label={t.confirmDelete} pendingLabel={t.saving} danger>
-          <input type="hidden" name="list_id" value={listId} />
-          <button
-            ref={cancel}
-            type="button"
-            className="button secondary"
-            onClick={() => dialog.current?.close()}
-          >
-            {t.cancel}
-          </button>
-        </ActionForm>
-      </dialog>
-    </>
+    <ConfirmDelete
+      action={action}
+      label={t.listDelete}
+      prompt={t.deleteListPrompt}
+      confirmLabel={t.confirmDelete}
+      cancelLabel={t.cancel}
+      pendingLabel={t.saving}
+    >
+      <input type="hidden" name="list_id" value={listId} />
+    </ConfirmDelete>
   );
 }
 
