@@ -174,6 +174,17 @@ export async function CommunityPage({
       </label>
     </>
   );
+  const createPreset = () => (
+    <CommunityForm
+      homeId={homeId}
+      operation="preset"
+      id={crypto.randomUUID()}
+      locale={locale}
+      label={t.save}
+    >
+      {presetFields()}
+    </CommunityForm>
+  );
   const selectedPunishments = punishments.filter((p) => !person || p.user_id === person);
   const punishmentList = (done: boolean) => (
     <section className="stack">
@@ -272,6 +283,14 @@ export async function CommunityPage({
         action={<CommunityOptions homeId={homeId} locale={locale} tab={tab} />}
       />
       <CommunityNav homeId={homeId} locale={locale} tab={tab} />
+      {tab === 'punishments' &&
+        (presets === null ? (
+          <p className="notice">{t.presetsMigration}</p>
+        ) : (
+          <CreatePanel title={t.addPreset} closeLabel={ui.closePanel} id="create-punishment-preset">
+            {createPreset()}
+          </CreatePanel>
+        ))}
       {tab === 'points' && (
         <CreatePanel
           title={t.rate}
@@ -336,15 +355,7 @@ export async function CommunityPage({
               <>
                 <details className="panel">
                   <summary>{t.newPreset}</summary>
-                  <CommunityForm
-                    homeId={homeId}
-                    operation="preset"
-                    id={crypto.randomUUID()}
-                    locale={locale}
-                    label={t.save}
-                  >
-                    {presetFields()}
-                  </CommunityForm>
+                  {createPreset()}
                 </details>
                 {!presets.length && <p className="muted">{t.presetsEmpty}</p>}
                 {presets.map((preset) => (

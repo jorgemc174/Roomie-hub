@@ -364,6 +364,12 @@ test('predefined consequences come first when defining, filtered by severity, wi
     const none = await renderPage(locale, [], []);
     assert.ok(none.includes(t.noPending));
     assert.ok(none.includes(`href="/homes/${homeId}/community?tab=reasons#punishment-presets"`));
+    assert.ok(none.includes(t.addPreset));
+    assert.equal((none.match(/data-operation="preset"/g) ?? []).length, 1);
+    assert.ok(none.indexOf(t.addPreset) < none.indexOf(t.noPending));
+    const unavailable = await renderPage(locale, [], null);
+    assert.ok(unavailable.includes(t.presetsMigration));
+    assert.ok(!unavailable.includes('data-operation="preset"'));
   }
 });
 

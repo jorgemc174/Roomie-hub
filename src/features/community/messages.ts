@@ -107,6 +107,7 @@ const es = {
   presetsHelp:
     'Aparecen primero al pulsar «Definir castigo». Puedes dejarlos para cualquier castigo o solo para leves o fuertes.',
   newPreset: 'Nuevo castigo predefinido',
+  addPreset: 'Añadir castigo predefinido',
   presetSeverity: 'Para',
   anySeverity: 'Cualquier castigo',
   lightOnly: 'Solo leves',
@@ -225,6 +226,7 @@ const en: Record<keyof typeof es, string> = {
   presetsHelp:
     'They appear first when you press “Define consequence”. Keep them for any consequence or only for light or heavy ones.',
   newPreset: 'New predefined consequence',
+  addPreset: 'Add predefined consequence',
   presetSeverity: 'For',
   anySeverity: 'Any consequence',
   lightOnly: 'Light only',
